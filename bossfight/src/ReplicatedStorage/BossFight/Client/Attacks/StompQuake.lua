@@ -24,7 +24,6 @@ function A.start(ctx, d)
 	local K, S, Fx, Warn, Rig = ctx.K, ctx.S, ctx.Fx, ctx.Warn, ctx.Rig
 	local epoch = ctx.epoch()
 	local side = d.Foot
-	local other = side == "Right" and "Left" or "Right"
 	local plant = Rig.Feet[side].Plant
 	-- (the foot comes down a little toward the arena)
 	local toArena = S.flat(S.CENTER - plant).Unit
@@ -52,7 +51,6 @@ function A.start(ctx, d)
 			if t < d.StompT - 0.1 then
 				Rig:pose(Rig.REST, BALANCE, K.k(t, d.T0, d.T0 + 0.6))
 			else
-				Rig:pose(BALANCE, Rig.REST, 0)
 				Rig:pose(SLAMMED, Rig.REST, K.k(t, d.StompT + 0.2, d.StompT + 1.1))
 			end
 			ctx.SK.hang(Rig.SB, "Right", 0.9, 0)

@@ -1,0 +1,2537 @@
+<roblox version="4"><Item class="Folder" referent="RBX13"><Properties><string name="Name">BossFight</string></Properties><Item class="Folder" referent="RBX11"><Properties><string name="Name">Client</string></Properties><Item class="Folder" referent="RBX5"><Properties><string name="Name">Attacks</string></Properties><Item class="ModuleScript" referent="RBX1"><Properties><string name="Name">ConstellationLances</string><ProtectedString name="Source"><![CDATA[--==================================================
+-- ATTACK 4: CONSTELLATION LANCES (client)
+-- He points to the sky. Stars ignite over the arena and join
+-- into constellations; each line burns red on the floor below,
+-- and then comes down as a blade of starlight.
+--==================================================
+local RunService = game:GetService("RunService")
+local Debris = game:GetService("Debris")
+
+local A = {}
+
+local UP = Vector3.yAxis
+local HIGH = 150
+
+local POINT = {
+	Waist = { 8, -10, 0 }, RightShoulder = { 172, 0, 16 }, RightElbow = { 4, 0, 0 },
+	LeftShoulder = { 14, 0, -20 }, LeftElbow = { 20, 0, 0 },
+}
+local SWEEP = {
+	Waist = { -18, 14, 0 }, RightShoulder = { 70, 0, 20 }, RightElbow = { 0, 0, 0 },
+	LeftShoulder = { 20, 0, -30 }, LeftElbow = { 20, 0, 0 },
+}
+
+function A.start(ctx, d)
+	local K, S, Fx, Warn, Rig, SK = ctx.K, ctx.S, ctx.Fx, ctx.Warn, ctx.Rig, ctx.SK
+	local epoch = ctx.epoch()
+	local host = K.part({ Name = "LanceHost", Size = Vector3.one, Transparency = 1, CFrame = CFrame.new(S.CENTER + UP * HIGH) }, Fx.Folder)
+	local first = d.Lines[1].T
+	local last = d.Lines[#d.Lines].T
+	local items = {}
+	for i, l in ipairs(d.Lines) do
+		local shape = { Kind = "line", A = l.A, B = l.B, W = l.W }
+		local sa, sb = l.A + UP * HIGH, l.B + UP * HIGH
+		local appear = d.T0 + 0.1 + (i - 1) * 0.12
+		local e = {
+			L = l, Shape = shape, SA = sa, SB = sb, Appear = appear,
+			StarA = SK.glow(K, host, sa, 30, Color3.fromRGB(255, 240, 255), 4),
+			StarB = SK.glow(K, host, sb, 30, Color3.fromRGB(255, 240, 255), 4),
+			Link = (K.ray(host, sa, sa, 1.2, 1.2, nil, { Color = Color3.fromRGB(230, 200, 255), Brightness = 3, Segments = 1 })),
+			Zone = Fx.zone(shape, appear + 0.3, l.T),
+		}
+		e.Link.Enabled = false
+		table.insert(items, e)
+		Warn.add({ Id = l.Id, T = l.T, Shape = shape, Name = "LANCE", Target = l.Target, Rad = 20, Pos = function() return l.A:Lerp(l.B, 0.5) + UP * 3 end })
+	end
+	Rig:act({
+		Until = last + 1,
+		Upper = function(t)
+			if t < first - 0.25 then
+				Rig:pose(Rig.REST, POINT, K.k(t, d.T0, d.T0 + 0.6, K.E.outCubic))
+			elseif t < last + 0.2 then
+				Rig:pose(POINT, SWEEP, K.k(t, first - 0.25, first + 0.1, K.E.inQuad))
+			else
+				Rig:pose(SWEEP, Rig.REST, K.k(t, last + 0.2, last + 1))
+			end
+			SK.hang(Rig.SB, "Right", 0.2, 0.3)
+			SK.hang(Rig.SB, "Left", 0.6, 0.1)
+			Rig.SB.lookAt(S.CENTER + UP * HIGH, 0.8, Rig.RootCF)
+			return true
+		end,
+	})
+	K.sfx(K.S.Choir, 0.5, 1.1)
+	K.sfx(K.S.Sting, 0.5, 1.2)
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		local now = S.now()
+		if ctx.epoch() ~= epoch then
+			conn:Disconnect()
+			for _, e in ipairs(items) do e.Zone.destroy() end
+			host:Destroy()
+			return
+		end
+		local alive = false
+		for i, e in ipairs(items) do
+			local l = e.L
+			-- the stars ignite, then the line draws between them
+			local lit = K.k(now, e.Appear, e.Appear + 0.25, K.E.outBack)
+			local tw = 0.85 + 0.15 * math.sin(now * 12 + i)
+			local gone = K.k(now, l.T, l.T + 0.4)
+			e.StarA.set(e.SA, 30 * lit * tw, lit * (1 - gone))
+			e.StarB.set(e.SB, 30 * lit * tw, lit * (1 - gone))
+			local draw = K.k(now, e.Appear + 0.2, e.Appear + 0.6)
+			e.Link.Enabled = draw > 0 and gone < 1
+			e.Link.Attachment0.WorldPosition = e.SA
+			e.Link.Attachment1.WorldPosition = e.SA:Lerp(e.SB, draw)
+			e.Link.Transparency = NumberSequence.new(0.1 + 0.9 * gone)
+			if not e.Done then
+				alive = true
+				e.Zone.update(now)
+				if now >= l.T then
+					e.Done = true
+					e.Zone.destroy()
+					A.lance(ctx, e, Warn.claimed(l.Id))
+				end
+			elseif gone < 1 then
+				alive = true
+			end
+		end
+		if not alive then
+			conn:Disconnect()
+			host:Destroy()
+		end
+	end)
+end
+
+-- a blade of starlight down the line
+function A.lance(ctx, e, parried)
+	local K, Fx = ctx.K, ctx.Fx
+	local l = e.L
+	local a, b = l.A, l.B
+	local mid = a:Lerp(b, 0.5)
+	local dir = (b - a)
+	local len = dir.Magnitude
+	local blade = K.part({ Name = "Lance", Size = Vector3.new(0.1, 0.1, 0.1), Transparency = 1, CFrame = CFrame.new(mid) }, Fx.Folder)
+	local q = K.quad(blade, CFrame.fromMatrix(mid + UP * HIGH / 2, dir.Unit, UP), len, HIGH, "10365550877", {
+		Color = parried and Fx.GREEN or Color3.fromRGB(245, 225, 255), Brightness = 6, Transparency = K.ns(0, 0, 0.8, 0.2, 1, 0.6),
+	})
+	local q2 = K.quad(blade, CFrame.fromMatrix(mid + UP * HIGH / 2, dir.Unit, UP) * CFrame.Angles(0, math.pi / 2, 0), l.W, HIGH, nil, {
+		Color = Fx.VIOLET, Brightness = 3, Transparency = 0.3,
+	})
+	local t0 = os.clock()
+	task.spawn(function()
+		while blade.Parent do
+			local u = (os.clock() - t0) / 0.45
+			if u >= 1 then break end
+			q.Transparency = NumberSequence.new(math.clamp(u ^ 0.7, 0, 1))
+			q2.Transparency = NumberSequence.new(math.clamp(0.3 + u, 0, 1))
+			q.Width0 = HIGH * (1 - 0.3 * u)
+			q.Width1 = q.Width0
+			task.wait()
+		end
+		blade:Destroy()
+	end)
+	if parried then
+		Fx.parryBurst(mid + UP * 4, false)
+	else
+		for i = 0, 2 do
+			Fx.blast(a:Lerp(b, 0.15 + i * 0.35), l.W * 0.9, Fx.VIOLET, { Column = false, Shake = 0.9, Volume = i == 1 and 1 or 0 })
+		end
+		Fx.sound(K.S.Lightning, mid, 1, 1.1, 900)
+	end
+	Debris:AddItem(blade, 1)
+end
+
+return A
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX2"><Properties><string name="Name">FistSlam</string><ProtectedString name="Source"><![CDATA[--==================================================
+-- ATTACK 2: FIST SLAM (client)
+-- He rears back, fist high, and red zones open on the arena.
+-- As they fill, he drives the fist down - and a violet fist of
+-- his power crashes into every zone, one after another.
+--==================================================
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local A = {}
+
+local function poses(side)
+	local s = side == "Right" and 1 or -1
+	local S1, E1 = side .. "Shoulder", side .. "Elbow"
+	local O1 = (side == "Right" and "Left" or "Right") .. "Shoulder"
+	local windup = { Waist = { 10, -14 * s, 0 }, [S1] = { 175, 0, 12 * s }, [E1] = { 75, 0, 0 }, [O1] = { 20, 0, -35 * s } }
+	local slam = { Waist = { -26, 18 * s, 0 }, [S1] = { 62, 0, 6 * s }, [E1] = { 0, 0, 0 }, [O1] = { 30, 0, -45 * s } }
+	return windup, slam
+end
+
+local function fist(K, Fx, size)
+	local src = ReplicatedStorage:FindFirstChild("FinalCutscene")
+	src = src and src:FindFirstChild("Assets") and src.Assets:FindFirstChild("AntiSpiralHand")
+	local f
+	if src then
+		f = src:Clone()
+		for _, c in ipairs(f:GetChildren()) do c:Destroy() end
+		f.Anchored, f.CanCollide, f.CanQuery, f.CanTouch = true, false, false, false
+	else
+		f = K.part({ Shape = Enum.PartType.Ball }, nil)
+	end
+	f.Name = "SpectralFist"
+	f.Size = Vector3.new(0.47, 1, 0.41) * size
+	f.Material = Enum.Material.Neon
+	f.Color = Fx.VIOLET
+	f.Transparency = 0.15
+	f.Parent = Fx.Folder
+	local a0 = Instance.new("Attachment") a0.Position = Vector3.new(size * 0.2, size * 0.4, 0) a0.Parent = f
+	local a1 = Instance.new("Attachment") a1.Position = Vector3.new(-size * 0.2, size * 0.4, 0) a1.Parent = f
+	local tr = Instance.new("Trail")
+	tr.Attachment0, tr.Attachment1 = a0, a1
+	tr.Lifetime = 0.25
+	tr.LightEmission = 1
+	tr.Color = ColorSequence.new(Fx.VIOLET_HOT, Fx.VIOLET)
+	tr.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) })
+	tr.Parent = f
+	return f
+end
+
+function A.start(ctx, d)
+	local K, S, Fx, Warn, Rig = ctx.K, ctx.S, ctx.Fx, ctx.Warn, ctx.Rig
+	local epoch = ctx.epoch()
+	local zones = {}
+	local first = d.Zones[1] and d.Zones[1].T or (S.now() + 1.5)
+	local last = d.Zones[#d.Zones] and d.Zones[#d.Zones].T or first
+	for _, z in ipairs(d.Zones) do
+		local shape = { Kind = "circle", P = z.P, R = z.R }
+		local ent = { Z = z, Zone = Fx.zone(shape, d.T0, z.T), Fist = nil }
+		table.insert(zones, ent)
+		Warn.add({ Id = z.Id, T = z.T, Shape = shape, Name = "FIST", Target = z.Target, Rad = z.R, Pos = function() return z.P + Vector3.new(0, 4, 0) end })
+	end
+	local windup, slam = poses(d.Hand)
+	local strike = first - 0.3
+	Rig:act({
+		Until = last + 0.9,
+		Root = function(t)
+			-- (rocks back, then drops his weight into it)
+			local back = K.k(t, d.T0, strike - 0.1) * (1 - K.k(t, strike - 0.1, first))
+			local drop = K.k(t, strike, first, K.E.outCubic) * (1 - K.k(t, last + 0.2, last + 0.9))
+			return CFrame.new(0, -18 * drop, 0) * CFrame.Angles(math.rad(4 * back - 6 * drop), 0, 0)
+		end,
+		Upper = function(t)
+			if t < strike then
+				Rig:pose(Rig.REST, windup, K.k(t, d.T0, strike - 0.1, K.E.outCubic))
+			elseif t < last + 0.2 then
+				Rig:pose(windup, slam, K.k(t, strike, first, K.E.inQuad))
+			else
+				Rig:pose(slam, Rig.REST, K.k(t, last + 0.2, last + 0.9))
+			end
+			ctx.SK.hang(Rig.SB, d.Hand, 1, 0)
+			ctx.SK.hang(Rig.SB, d.Hand == "Right" and "Left" or "Right", 0.6, 0.1)
+			if zones[1] then Rig.SB.lookAt(zones[1].Z.P, 0.9, Rig.RootCF) end
+			return true
+		end,
+	})
+	K.sfx(K.S.Riser, 0.6, 1.3)
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		local now = S.now()
+		if ctx.epoch() ~= epoch then
+			conn:Disconnect()
+			for _, e in ipairs(zones) do
+				e.Zone.destroy()
+				if e.Fist then e.Fist:Destroy() end
+			end
+			return
+		end
+		local alive = false
+		for _, e in ipairs(zones) do
+			local z = e.Z
+			if not e.Done then
+				alive = true
+				e.Zone.update(now)
+				-- the fist comes down out of the sky over the last half second
+				local fall = 0.5
+				if now >= z.T - fall then
+					if not e.Fist then
+						e.Fist = fist(K, Fx, z.R * 1.5)
+						K.sfx(K.S.FireWhoosh, 0.5, 0.8)
+					end
+					local u = K.E.inQuad(K.remap(now, z.T - fall, z.T))
+					local top = z.P + Vector3.new(0, 260, 0)
+					local bottom = z.P + Vector3.new(0, e.Fist.Size.Y * 0.45, 0)
+					e.Fist.CFrame = CFrame.new(top:Lerp(bottom, u)) * CFrame.Angles(0, math.rad(z.T * 50 % 360), 0)
+				end
+				if now >= z.T then
+					e.Done = true
+					e.Zone.destroy()
+					local f = e.Fist
+					if Warn.claimed(z.Id) then
+						-- parried: the fist is knocked away and shatters into green light
+						Fx.parryBurst(z.P + Vector3.new(0, 6, 0), false)
+						if f then
+							f.Color = Fx.GREEN
+							K.tween(f, 0.35, { CFrame = f.CFrame + Vector3.new(0, 60, 0), Transparency = 1 })
+						end
+					else
+						Fx.blast(z.P, z.R * 1.4, Fx.VIOLET, { Sound = K.S.RockBoom, Shake = 2, Volume = 1.2 })
+						if f then
+							K.tween(f, 0.5, { Transparency = 1, Size = f.Size * 1.15 })
+						end
+					end
+					if f then task.delay(0.6, function() f:Destroy() end) end
+				end
+			end
+		end
+		if not alive then conn:Disconnect() end
+	end)
+end
+
+return A
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX3"><Properties><string name="Name">GalaxyBarrage</string><ProtectedString name="Source"><![CDATA[--==================================================
+-- ATTACK 1: GALAXY BARRAGE (client)
+-- He throws his arms up and violet galaxies tear open over the
+-- arena; planets, moons and stars pour out of their hearts. Each
+-- one gets a red zone where it will land and (if it's yours) the
+-- lock-on. Parry one and it's batted straight back into him.
+--==================================================
+local RunService = game:GetService("RunService")
+local Debris = game:GetService("Debris")
+
+local A = {}
+
+local RAISED = {
+	Waist = { 10, 0, 0 }, RightShoulder = { 165, 0, 28 }, LeftShoulder = { 165, 0, -28 },
+	RightElbow = { 12, 0, 0 }, LeftElbow = { 12, 0, 0 },
+}
+local PUSH_R = {
+	Waist = { 4, -8, 0 }, RightShoulder = { 120, 0, 20 }, LeftShoulder = { 160, 0, -30 },
+	RightElbow = { 0, 0, 0 }, LeftElbow = { 18, 0, 0 },
+}
+local PUSH_L = {
+	Waist = { 4, 8, 0 }, RightShoulder = { 160, 0, 30 }, LeftShoulder = { 120, 0, -20 },
+	RightElbow = { 18, 0, 0 }, LeftElbow = { 0, 0, 0 },
+}
+
+-- the barrage: the galaxies and his pose (shots arrive separately)
+function A.start(ctx, d)
+	local K, S, Fx, Rig = ctx.K, ctx.S, ctx.Fx, ctx.Rig
+	local epoch = ctx.epoch()
+	local host = K.part({ Name = "BarrageHost", Size = Vector3.one, Transparency = 1, CFrame = CFrame.new(S.CENTER) }, Fx.Folder)
+	local gals = {}
+	for i, p in ipairs(d.Portals) do gals[i] = { G = Fx.galaxy(host), P = p } end
+	ctx.Barrage = { Id = d.Id, Pulse = 0 }
+	local B = ctx.Barrage
+	Rig:act({
+		Until = d.CloseT + 0.8,
+		Upper = function(t)
+			local up = K.k(t, d.T0, d.OpenT - 0.3)
+			local down = K.k(t, d.CloseT - 0.4, d.CloseT + 0.6)
+			-- (each shot is a push from one hand)
+			local push = math.max(0, 1 - (os.clock() - B.Pulse) / 0.35)
+			local target = B.Side == "Left" and PUSH_L or PUSH_R
+			if push > 0 and up >= 1 and down <= 0 then
+				Rig:pose(RAISED, target, K.E.outQuad(push))
+			else
+				Rig:pose(Rig.REST, RAISED, up * (1 - down))
+			end
+			ctx.SK.hang(Rig.SB, "Right", 0.1, 0.7)
+			ctx.SK.hang(Rig.SB, "Left", 0.1, 0.7)
+			if gals[1] then Rig.SB.lookAt(gals[1].P, 0.9, Rig.RootCF) end
+			return true
+		end,
+	})
+	K.sfx(K.S.Portal, 0.9, 0.8)
+	K.sfx(K.S.DarkDrone, 0.6, 0.9)
+	task.delay(math.max(d.OpenT - ctx.S.now() - 0.2, 0), function() K.sfx(K.S.Portal2, 0.9, 0.9) end)
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		local now = S.now()
+		if ctx.epoch() ~= epoch or now > d.CloseT + 1 then
+			conn:Disconnect()
+			host:Destroy()
+			return
+		end
+		local amount = K.k(now, d.T0 + 0.2, d.OpenT, K.E.outCubic) * (1 - K.k(now, d.CloseT - 0.5, d.CloseT + 0.4))
+		for i, g in ipairs(gals) do
+			local size = 150 + 10 * math.sin(now * 2 + i)
+			g.G.set(g.P, S.CENTER + Vector3.new(0, 20, 0), size, amount, now + i)
+		end
+	end)
+end
+
+-- one body out of a galaxy
+function A.shot(ctx, d)
+	local K, S, Fx, Warn = ctx.K, ctx.S, ctx.Fx, ctx.Warn
+	local epoch = ctx.epoch()
+	local B = ctx.Barrage
+	if B then
+		B.Pulse = os.clock()
+		B.Side = (B.Side == "Left") and "Right" or "Left"
+	end
+	local body
+	if d.Kind == "planet" and d.Model then
+		body = K.planet(d.Model, d.Size, CFrame.new(d.From), Fx.Folder)
+	end
+	local glow
+	if not body then
+		-- a star: a white-hot core in a violet glow
+		body = K.part({ Name = "Star", Shape = Enum.PartType.Ball, Size = Vector3.one * d.Size, Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 240, 255), CFrame = CFrame.new(d.From) }, Fx.Folder)
+		glow = ctx.SK.glow(K, body, d.From, d.Size * 5, Fx.VIOLET, 3)
+	end
+	local a0 = Instance.new("Attachment") a0.Position = Vector3.new(0, d.Size * 0.4, 0) a0.Parent = body
+	local a1 = Instance.new("Attachment") a1.Position = Vector3.new(0, -d.Size * 0.4, 0) a1.Parent = body
+	local trail = Instance.new("Trail")
+	trail.Attachment0, trail.Attachment1 = a0, a1
+	trail.Lifetime = 0.45
+	trail.LightEmission = 1
+	trail.Brightness = 3
+	trail.FaceCamera = true
+	trail.Color = ColorSequence.new(Color3.fromRGB(240, 220, 255), Fx.VIOLET)
+	trail.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(1, 1) })
+	trail.Parent = body
+	K.emitter(body, {
+		Texture = "1851669703", Color = ColorSequence.new(Color3.new(1, 1, 1), Fx.VIOLET_HOT), Size = K.ns(0, d.Size * 0.3, 1, 0),
+		Lifetime = NumberRange.new(0.3, 0.6), Speed = NumberRange.new(2, 8), SpreadAngle = Vector2.new(180, 180), Rate = 25, Brightness = 4,
+	})
+	local zone = Fx.zone({ Kind = "circle", P = d.To, R = d.R }, d.T0, d.T)
+	local peak = d.From:Lerp(d.To, 0.5) + Vector3.new(0, 70, 0)
+	local function at(u)
+		local a = d.From:Lerp(peak, u)
+		local b = peak:Lerp(d.To + Vector3.new(0, d.Size * 0.4, 0), u)
+		return a:Lerp(b, u)
+	end
+	Warn.add({
+		Id = d.Id, T = d.T, Shape = { Kind = "circle", P = d.To, R = d.R }, Name = d.Name, Target = d.Target, Rad = d.Size,
+		Pos = function(now) return at(K.remap(now, d.T0, d.T) ^ 1.25) end,
+	})
+	K.sfx(d.Kind == "star" and K.S.FireWhoosh or K.S.Whoosh, 0.5, d.Kind == "star" and 1.4 or 0.7)
+	local spin = CFrame.Angles(0, 0, 0)
+	local conn
+	conn = RunService.RenderStepped:Connect(function(dt)
+		local now = S.now()
+		if ctx.epoch() ~= epoch then
+			conn:Disconnect()
+			zone.destroy()
+			body:Destroy()
+			return
+		end
+		local u = K.remap(now, d.T0, d.T) ^ 1.25
+		spin = spin * CFrame.Angles(dt * d.Spin * 0.4, dt * d.Spin, 0)
+		body.CFrame = CFrame.new(at(u)) * spin
+		if glow then glow.set(body.Position, d.Size * 5, 1) end
+		zone.update(now)
+		if now >= d.T then
+			conn:Disconnect()
+			zone.destroy()
+			if Warn.claimed(d.Id) then
+				-- batted back: it flies home into his chest
+				local from = body.Position
+				local t0 = os.clock()
+				local c2
+				c2 = RunService.RenderStepped:Connect(function()
+					local v = (os.clock() - t0) / 0.45
+					local to = ctx.chest()
+					body.CFrame = CFrame.new(from:Lerp(to, K.E.inQuad(math.min(v, 1)))) * spin
+					if v >= 1 then
+						c2:Disconnect()
+						body:Destroy()
+					end
+				end)
+				trail.Color = ColorSequence.new(Fx.LIME, Fx.GREEN)
+			else
+				Fx.blast(d.To, d.R * 1.6, d.Kind == "star" and Color3.fromRGB(230, 180, 255) or Fx.VIOLET, { Shake = d.Kind == "star" and 0.6 or 1.4 })
+				body:Destroy()
+			end
+		end
+	end)
+	Debris:AddItem(body, (d.T - S.now()) + 3)
+end
+
+return A
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX4"><Properties><string name="Name">StompQuake</string><ProtectedString name="Source"><![CDATA[--==================================================
+-- ATTACK 3: STOMP QUAKE (client)
+-- He shifts his weight, raises one foot high over the galaxy
+-- floor... and brings it down. The arena rim takes the blow and
+-- walls of violet light roll out across it: jump them, or parry.
+--==================================================
+local RunService = game:GetService("RunService")
+
+local A = {}
+
+local UP = Vector3.yAxis
+local SEGS = 56
+
+local BALANCE = {
+	Waist = { 8, 0, 0 }, RightShoulder = { 25, 0, 70 }, LeftShoulder = { 25, 0, -70 },
+	RightElbow = { 25, 0, 0 }, LeftElbow = { 25, 0, 0 },
+}
+local SLAMMED = {
+	Waist = { -22, 0, 0 }, RightShoulder = { 40, 0, 28 }, LeftShoulder = { 40, 0, -28 },
+	RightElbow = { 10, 0, 0 }, LeftElbow = { 10, 0, 0 },
+}
+
+function A.start(ctx, d)
+	local K, S, Fx, Warn, Rig = ctx.K, ctx.S, ctx.Fx, ctx.Warn, ctx.Rig
+	local epoch = ctx.epoch()
+	local side = d.Foot
+	local plant = Rig.Feet[side].Plant
+	-- (the foot comes down a little toward the arena)
+	local toArena = S.flat(S.CENTER - plant).Unit
+	local land = plant + toArena * 40
+	local LIFT = 300
+	local raiseEnd = d.StompT - 0.3
+	Rig:act({
+		Until = d.StompT + 1.2,
+		Root = function(t)
+			-- weight onto the other leg, a lean back as the foot rises, a drop on impact
+			local shift = K.k(t, d.T0, d.T0 + 0.5) * (1 - K.k(t, d.StompT + 0.3, d.StompT + 1.1))
+			local impact = K.k(t, d.StompT - 0.05, d.StompT + 0.1, K.E.outCubic) * (1 - K.k(t, d.StompT + 0.3, d.StompT + 1.1))
+			local sx = (side == "Right" and -1 or 1) * 22 * shift
+			return CFrame.new(sx, -10 * shift - 30 * impact, 0) * CFrame.Angles(math.rad(6 * shift - 10 * impact), 0, math.rad(-sx * 0.2))
+		end,
+		Foot = {
+			[side] = function(t)
+				local up = K.k(t, d.T0 + 0.2, raiseEnd, K.E.outCubic)
+				local down = K.k(t, raiseEnd, d.StompT, K.E.inQuad)
+				local pos = plant:Lerp(land, down) + UP * LIFT * up * (1 - down)
+				return pos, -35 * up * (1 - down) + 10 * down * (1 - K.k(t, d.StompT, d.StompT + 0.2))
+			end,
+		},
+		Upper = function(t)
+			if t < d.StompT - 0.1 then
+				Rig:pose(Rig.REST, BALANCE, K.k(t, d.T0, d.T0 + 0.6))
+			else
+				Rig:pose(SLAMMED, Rig.REST, K.k(t, d.StompT + 0.2, d.StompT + 1.1))
+			end
+			ctx.SK.hang(Rig.SB, "Right", 0.9, 0)
+			ctx.SK.hang(Rig.SB, "Left", 0.9, 0)
+			Rig.SB.lookAt(S.CENTER, 0.8, Rig.RootCF)
+			return true
+		end,
+	})
+	-- after the stomp the foot is planted where it landed
+	task.delay(math.max(d.StompT - S.now(), 0) + 0.02, function()
+		if ctx.epoch() == epoch then
+			Rig.Feet[side].Plant = land
+			Rig.Feet[side].LandT = S.now()
+		end
+	end)
+	K.sfx(K.S.Rumble, 0.7, 0.8)
+	Warn.pop("JUMP THE SHOCKWAVES!", Color3.fromRGB(255, 200, 220), false, Vector2.new(0.5, 0.3))
+
+	-- the rings: a wall of light (quads round the circle) + a glow on the floor
+	local host = K.part({ Name = "QuakeHost", Size = Vector3.one, Transparency = 1, CFrame = CFrame.new(d.Origin) }, Fx.Folder)
+	local rings = {}
+	for _, r in ipairs(d.Rings) do
+		local walls = {}
+		for i = 1, SEGS do
+			local q = K.quad(host, host.CFrame, 1, r.Shape.H, "10365550877", { Color = Fx.VIOLET_HOT, Brightness = 3.5, Transparency = K.ns(0, 0.05, 0.7, 0.3, 1, 1) })
+			q.Enabled = false
+			walls[i] = q
+		end
+		local floor = K.softRing(host, SEGS, 1, 2, { Brightness = 3, Alpha = 0 })
+		for _, q in ipairs(floor.Q) do q.Color = ColorSequence.new(Fx.MAGENTA, Fx.VIOLET) end
+		floor.setEnabled(false)
+		table.insert(rings, { R = r, Walls = walls, Floor = floor })
+		Warn.add({ Id = r.Id, Shape = r.Shape, Name = "SHOCKWAVE" })
+	end
+	local stomped = false
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		local now = S.now()
+		if ctx.epoch() ~= epoch then
+			conn:Disconnect()
+			host:Destroy()
+			return
+		end
+		if not stomped and now >= d.StompT then
+			stomped = true
+			Fx.stomp(Rig:printAt(side, land, Rig.Feet[side].Yaw), 3)
+			Fx.blast(d.Origin, 30, Fx.VIOLET, { Sound = K.S.Boom, Shake = 3, Volume = 1.3 })
+			K.sfx(K.S.Thunder, 0.8, 0.7)
+		end
+		local any = false
+		local o = Vector3.new(d.Origin.X, S.CENTER.Y, d.Origin.Z)
+		for _, ring in ipairs(rings) do
+			local sh = ring.R.Shape
+			local r = S.ringRadius(sh, now)
+			local on = now >= sh.T0 and r < 2 * S.ARENA_R + 20
+			if on then any = true end
+			local da = 2 * math.pi / SEGS
+			for i, q in ipairs(ring.Walls) do
+				local a0, a1 = (i - 1) * da, i * da
+				local p0 = o + Vector3.new(math.cos(a0) * r, 0, math.sin(a0) * r)
+				local p1 = o + Vector3.new(math.cos(a1) * r, 0, math.sin(a1) * r)
+				local mid = (p0 + p1) / 2
+				local show = on and S.onArena(mid, -2)
+				q.Enabled = show
+				if show then
+					local along = (p1 - p0)
+					local len = along.Magnitude
+					local cf = CFrame.fromMatrix(mid + UP * sh.H / 2, along.Unit, UP)
+					K.moveQuad(q, cf)
+					K.setQuadSize(q, len * 1.02, sh.H)
+				end
+			end
+			ring.Floor.setEnabled(on)
+			if on then
+				ring.Floor.update(CFrame.lookAt(o + UP * 0.3, o + UP * 2), math.max(r - sh.W, 0.1), r + 1, now)
+				ring.Floor.setTransparency(0.2)
+				-- (the floor glow would show beyond the rim too: fade it as it leaves)
+				for i, q in ipairs(ring.Floor.Q) do
+					local a = (i - 1) * da
+					q.Enabled = S.onArena(o + Vector3.new(math.cos(a) * r, 0, math.sin(a) * r), -2)
+				end
+			end
+		end
+		if stomped and not any then
+			conn:Disconnect()
+			host:Destroy()
+		end
+	end)
+end
+
+return A
+]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX6"><Properties><string name="Name">Bat</string><ProtectedString name="Source"><![CDATA[--==================================================
+-- THE SPIRAL BAT (client)
+--   Click / tap / R2  - swing (a 3-hit combo). Swing as a hit lands
+--                       on you to PARRY it (the prompt shows when).
+--   Q / ButtonB       - Spiral Dash: a burst of speed, brief i-frames
+--   E / ButtonY       - Drill Break: hurl a spiral drill at his core
+-- Also draws everyone's bat effects (trails, dashes, thrown drills)
+-- and spins every Spiral Bat's drill tip.
+--==================================================
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+local ContextActionService = game:GetService("ContextActionService")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+
+local Bat = {}
+
+local TOOL = "SpiralBat"
+local GREEN = Color3.fromRGB(70, 255, 120)
+local LIME = Color3.fromRGB(190, 255, 90)
+local FONT = Font.new("rbxasset://fonts/families/Inconsolata.json", Enum.FontWeight.Bold)
+
+local player = Players.LocalPlayer
+local K, S, Fx, Warn, net, shared
+local getChest -- () -> his chest position (from the rig)
+
+local combo, lastSwing = 0, 0
+local lastDash, lastDrill = -99, -99
+local tracks = {}
+local hud, slots = nil, {}
+local active = false -- the fight is on
+
+local function cfgAttr(name, default)
+	local v = shared:GetAttribute(name)
+	return type(v) == "number" and v or default
+end
+
+--------------------------------------------------------------------------
+-- the ability bar (bottom centre)
+--------------------------------------------------------------------------
+local function buildHud()
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "SpiralBatHUD"
+	gui.ResetOnSpawn = false
+	gui.DisplayOrder = 40
+	gui.Enabled = false
+	gui.Parent = player:WaitForChild("PlayerGui")
+	local bar = Instance.new("Frame")
+	bar.AnchorPoint = Vector2.new(0.5, 1)
+	bar.Position = UDim2.new(0.5, 0, 1, -18)
+	bar.Size = UDim2.fromOffset(300, 78)
+	bar.BackgroundTransparency = 1
+	bar.Parent = gui
+	local ll = Instance.new("UIListLayout")
+	ll.FillDirection = Enum.FillDirection.Horizontal
+	ll.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	ll.Padding = UDim.new(0, 12)
+	ll.Parent = bar
+	local defs = {
+		{ Key = "Swing", Glyph = UIS.TouchEnabled and not UIS.KeyboardEnabled and "TAP" or "M1", Name = "SWING / PARRY" },
+		{ Key = "Dash", Glyph = "Q", Name = "SPIRAL DASH" },
+		{ Key = "Drill", Glyph = "E", Name = "DRILL BREAK" },
+	}
+	for i, d in ipairs(defs) do
+		local f = Instance.new("Frame")
+		f.Size = UDim2.fromOffset(88, 78)
+		f.BackgroundColor3 = Color3.fromRGB(8, 22, 14)
+		f.BackgroundTransparency = 0.15
+		f.LayoutOrder = i
+		f.Parent = bar
+		local c = Instance.new("UICorner") c.CornerRadius = UDim.new(0, 10) c.Parent = f
+		local st = Instance.new("UIStroke") st.Color = GREEN st.Thickness = 2 st.Parent = f
+		local g = Instance.new("TextLabel")
+		g.BackgroundTransparency = 1
+		g.Size = UDim2.new(1, 0, 0.55, 0)
+		g.FontFace = FONT
+		g.TextScaled = true
+		g.Text = d.Glyph
+		g.TextColor3 = Color3.new(1, 1, 1)
+		g.Parent = f
+		local gs = Instance.new("UIStroke") gs.Thickness = 2 gs.Parent = g
+		local n = Instance.new("TextLabel")
+		n.BackgroundTransparency = 1
+		n.Position = UDim2.fromScale(0.05, 0.58)
+		n.Size = UDim2.new(0.9, 0, 0.32, 0)
+		n.FontFace = FONT
+		n.TextScaled = true
+		n.Text = d.Name
+		n.TextColor3 = LIME
+		n.Parent = f
+		local cd = Instance.new("Frame")
+		cd.Name = "Cooldown"
+		cd.AnchorPoint = Vector2.new(0, 1)
+		cd.Position = UDim2.fromScale(0, 1)
+		cd.Size = UDim2.fromScale(1, 0)
+		cd.BackgroundColor3 = Color3.new(0, 0, 0)
+		cd.BackgroundTransparency = 0.35
+		cd.Parent = f
+		local cc = Instance.new("UICorner") cc.CornerRadius = UDim.new(0, 10) cc.Parent = cd
+		slots[d.Key] = { Frame = f, Stroke = st, Cooldown = cd }
+	end
+	hud = gui
+end
+
+local function flashSlot(key)
+	local s = slots[key]
+	if not s then return end
+	s.Stroke.Color = Color3.new(1, 1, 1)
+	TweenService:Create(s.Stroke, TweenInfo.new(0.3), { Color = GREEN }):Play()
+end
+
+--------------------------------------------------------------------------
+-- helpers
+--------------------------------------------------------------------------
+local function myChar()
+	local c = player.Character
+	local hum = c and c:FindFirstChildOfClass("Humanoid")
+	local root = c and c:FindFirstChild("HumanoidRootPart")
+	if not (hum and root and hum.Health > 0) then return nil end
+	return c, hum, root
+end
+
+local function equipped()
+	local c = player.Character
+	return c and c:FindFirstChild(TOOL)
+end
+
+local function track(hum, name)
+	local animator = hum:FindFirstChildOfClass("Animator")
+	if not animator then return nil end
+	tracks[animator] = tracks[animator] or {}
+	local t = tracks[animator][name]
+	if t then return t end
+	local folder = ReplicatedStorage:FindFirstChild("SwingAnims")
+	local anim = folder and folder:FindFirstChild(name)
+	if not anim then return nil end
+	local ok, tr = pcall(function() return animator:LoadAnimation(anim) end)
+	if not ok then return nil end
+	tr.Priority = Enum.AnimationPriority.Action
+	tracks[animator][name] = tr
+	return tr
+end
+
+local function trailOn(tool, dur)
+	local h = tool and tool:FindFirstChild("Handle")
+	local tr = h and h:FindFirstChild("SwingTrail")
+	if not tr then return end
+	tr.Enabled = true
+	task.delay(dur, function() if tr.Parent then tr.Enabled = false end end)
+end
+
+--------------------------------------------------------------------------
+-- actions
+--------------------------------------------------------------------------
+local function swing()
+	if not active then return end
+	local _, hum, root = myChar()
+	local tool = equipped()
+	if not (hum and tool) then return end
+	local now = os.clock()
+	if now - lastSwing < cfgAttr("SwingCooldown", 0.28) then return end
+	combo = (now - lastSwing > cfgAttr("ComboReset", 0.9)) and 1 or (combo % 3 + 1)
+	lastSwing = now
+	local ids = Warn.tryParry(S.now())
+	net.Bat:FireServer("swing", combo, { T = S.now(), Ids = ids })
+	local tr = track(hum, "Swing" .. combo)
+	if tr then tr:Play(0.05, 1, 1.25) end
+	trailOn(tool, 0.3)
+	K.sfx(K.S.Whoosh, 0.55, 1.3 + combo * 0.08)
+	flashSlot("Swing")
+	if #ids > 0 then
+		-- (instant feedback; the server's verdict follows)
+		Fx.parryBurst(root.Position + root.CFrame.LookVector * 3, false)
+	end
+end
+
+local function dash()
+	if not active then return end
+	local c, hum, root = myChar()
+	if not (c and equipped()) then return end
+	local now = os.clock()
+	if now - lastDash < cfgAttr("DashCooldown", 2.2) then return end
+	lastDash = now
+	net.Bat:FireServer("dash")
+	local dir = hum.MoveDirection
+	if dir.Magnitude < 0.1 then dir = root.CFrame.LookVector end
+	dir = Vector3.new(dir.X, 0, dir.Z).Unit
+	local att = Instance.new("Attachment")
+	att.Parent = root
+	local lv = Instance.new("LinearVelocity")
+	lv.Attachment0 = att
+	lv.MaxForce = 1e6
+	lv.VelocityConstraintMode = Enum.VelocityConstraintMode.Vector
+	lv.VectorVelocity = dir * 105 + Vector3.new(0, 4, 0)
+	lv.RelativeTo = Enum.ActuatorRelativeTo.World
+	lv.Parent = root
+	Debris:AddItem(lv, 0.17)
+	Debris:AddItem(att, 0.17)
+	local cam = workspace.CurrentCamera
+	cam.FieldOfView += 8
+	K.sfx(K.S.Whoosh, 0.9, 0.9)
+	K.sfx(K.S.Electric, 0.35, 1.5)
+	flashSlot("Dash")
+end
+
+local function drill()
+	if not active then return end
+	if not (myChar() and equipped()) then return end
+	local now = os.clock()
+	if now - lastDrill < cfgAttr("DrillCooldown", 7) then return end
+	lastDrill = now
+	net.Bat:FireServer("drill")
+	flashSlot("Drill")
+end
+
+--------------------------------------------------------------------------
+-- everyone's bat effects
+--------------------------------------------------------------------------
+local function charOf(userId)
+	local p = Players:GetPlayerByUserId(userId)
+	return p and p.Character
+end
+
+local function dashFx(char)
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+	Fx.emitAt(root.Position, {
+		Texture = "11381556016", FlipbookLayout = Enum.ParticleFlipbookLayout.Grid8x8, FlipbookMode = Enum.ParticleFlipbookMode.OneShot,
+		Color = ColorSequence.new(GREEN, LIME), Size = K.ns(0, 3, 1, 0), Lifetime = NumberRange.new(0.25, 0.5),
+		Speed = NumberRange.new(8, 25), SpreadAngle = Vector2.new(180, 180), Brightness = 3, Rotation = NumberRange.new(0, 360),
+	}, 22, 1.5)
+	-- a green afterimage: a ghost of each limb, fading where you were
+	for _, p in ipairs(char:GetChildren()) do
+		if p:IsA("BasePart") and p.Transparency < 1 and p.Name ~= "HumanoidRootPart" then
+			local g = K.part({ Name = "Ghost", Size = p.Size, CFrame = p.CFrame, Material = Enum.Material.Neon, Color = GREEN, Transparency = 0.45 }, Fx.Folder)
+			K.tween(g, 0.35, { Transparency = 1 })
+			Debris:AddItem(g, 0.4)
+		end
+	end
+end
+
+local function drillFx(data)
+	local from, t0, t1 = data.From, data.T0, data.T1
+	local src = ReplicatedStorage:FindFirstChild("FinalCutscene")
+	src = src and src:FindFirstChild("Assets") and src.Assets:FindFirstChild("DrillCone")
+	local d
+	if src then
+		d = src:Clone()
+		for _, c in ipairs(d:GetChildren()) do c:Destroy() end
+		d.Anchored, d.CanCollide, d.CanQuery, d.CanTouch = true, false, false, false
+	else
+		d = K.part({ Size = Vector3.one }, nil)
+	end
+	d.Name = "DrillBreak"
+	d.Size = Vector3.new(4, 8, 4)
+	d.Material = Enum.Material.Neon
+	d.Color = LIME
+	d.CFrame = CFrame.new(from)
+	d.Parent = Fx.Folder
+	local a0 = Instance.new("Attachment") a0.Position = Vector3.new(0, -3, 0) a0.Parent = d
+	local a1 = Instance.new("Attachment") a1.Position = Vector3.new(0, 3, 0) a1.Parent = d
+	local trail = Instance.new("Trail")
+	trail.Attachment0, trail.Attachment1 = a0, a1
+	trail.Lifetime = 0.35
+	trail.LightEmission = 1
+	trail.Brightness = 4
+	trail.Color = ColorSequence.new(LIME, GREEN)
+	trail.Texture = "rbxassetid://10365550877"
+	trail.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1) })
+	trail.Parent = d
+	K.emitter(d, {
+		Texture = "1851669703", Color = ColorSequence.new(Color3.new(1, 1, 1), GREEN), Size = K.ns(0, 3, 1, 0),
+		Lifetime = NumberRange.new(0.2, 0.4), Speed = NumberRange.new(4, 12), SpreadAngle = Vector2.new(180, 180), Rate = 60, Brightness = 4,
+	})
+	Fx.sound(K.S.Cannon, from, 0.9, 1.2, 600)
+	task.spawn(function()
+		local spin = 0
+		while d.Parent do
+			local now = S.now()
+			local u = math.clamp((now - t0) / math.max(t1 - t0, 0.05), 0, 1)
+			local to = getChest()
+			local p = from:Lerp(to, u) + Vector3.new(0, math.sin(math.pi * u) * 40, 0)
+			local ahead = from:Lerp(to, math.min(u + 0.02, 1)) + Vector3.new(0, math.sin(math.pi * math.min(u + 0.02, 1)) * 40, 0)
+			spin += 0.6
+			if (ahead - p).Magnitude > 0.01 then
+				-- (the cone's tip is its +Y: point it along the flight, spinning)
+				d.CFrame = CFrame.lookAt(p, ahead) * CFrame.Angles(-math.pi / 2, 0, 0) * CFrame.Angles(0, spin, 0)
+			end
+			if u >= 1 then
+				Fx.bolt(from:Lerp(to, 0.97), to, true)
+				Fx.emitAt(to, {
+					Texture = "11381556016", FlipbookLayout = Enum.ParticleFlipbookLayout.Grid8x8, FlipbookMode = Enum.ParticleFlipbookMode.OneShot,
+					Color = ColorSequence.new(GREEN, LIME), Size = K.ns(0, 30, 1, 0), Lifetime = NumberRange.new(0.4, 0.8),
+					Speed = NumberRange.new(40, 120), SpreadAngle = Vector2.new(180, 180), Brightness = 4, Rotation = NumberRange.new(0, 360),
+				}, 30, 2)
+				break
+			end
+			RunService.RenderStepped:Wait()
+		end
+		d:Destroy()
+	end)
+end
+
+--------------------------------------------------------------------------
+-- setup
+--------------------------------------------------------------------------
+function Bat.init(ctx)
+	K, S, Fx, Warn, net = ctx.K, ctx.S, ctx.Fx, ctx.Warn, ctx.Net
+	shared = ReplicatedStorage:WaitForChild("BossFight")
+	getChest = ctx.chest
+	buildHud()
+
+	local function hookTool(tool)
+		if tool:IsA("Tool") and tool.Name == TOOL and not tool:GetAttribute("BF_Hooked") then
+			tool:SetAttribute("BF_Hooked", true)
+			tool.Activated:Connect(swing)
+		end
+	end
+	local function hookChar(char)
+		for _, c in ipairs(char:GetChildren()) do hookTool(c) end
+		char.ChildAdded:Connect(hookTool)
+		local bp = player:WaitForChild("Backpack")
+		for _, c in ipairs(bp:GetChildren()) do hookTool(c) end
+		bp.ChildAdded:Connect(hookTool)
+	end
+	if player.Character then hookChar(player.Character) end
+	player.CharacterAdded:Connect(hookChar)
+
+	local function bind(name, fn, ...)
+		ContextActionService:BindAction(name, function(_, state)
+			if state == Enum.UserInputState.Begin and equipped() then fn() return Enum.ContextActionResult.Sink end
+			return Enum.ContextActionResult.Pass
+		end, true, ...)
+	end
+	bind("SpiralDash", dash, Enum.KeyCode.Q, Enum.KeyCode.ButtonB)
+	bind("DrillBreak", drill, Enum.KeyCode.E, Enum.KeyCode.ButtonY)
+	pcall(function()
+		ContextActionService:SetTitle("SpiralDash", "DASH")
+		ContextActionService:SetTitle("DrillBreak", "DRILL")
+		ContextActionService:SetPosition("SpiralDash", UDim2.new(1, -170, 1, -150))
+		ContextActionService:SetPosition("DrillBreak", UDim2.new(1, -95, 1, -205))
+	end)
+
+	net.BatFx.OnClientEvent:Connect(function(kind, userId, data)
+		local char = charOf(userId)
+		if kind == "swing" then
+			if userId ~= player.UserId and char then
+				trailOn(char:FindFirstChild(TOOL), 0.3)
+			end
+		elseif kind == "dash" then
+			dashFx(char)
+		elseif kind == "drill" and type(data) == "table" then
+			drillFx(data)
+		end
+	end)
+
+	-- spin every drill tip; keep the ability bar current
+	RunService.RenderStepped:Connect(function(dt)
+		for _, p in ipairs(Players:GetPlayers()) do
+			local tool = p.Character and p.Character:FindFirstChild(TOOL)
+			local drillPart = tool and tool:FindFirstChild("Drill")
+			local w = drillPart and drillPart:FindFirstChild("DrillWeld")
+			if w then
+				local fast = (p == player and os.clock() - lastSwing < 0.4) and 4 or 1
+				w.C0 = w.C0 * CFrame.Angles(0, dt * 9 * fast, 0)
+			end
+		end
+		if hud then
+			hud.Enabled = active and equipped() ~= nil
+			if hud.Enabled then
+				local now = os.clock()
+				local function cd(key, last, total)
+					local u = math.clamp(1 - (now - last) / total, 0, 1)
+					slots[key].Cooldown.Size = UDim2.fromScale(1, u)
+				end
+				cd("Swing", lastSwing, cfgAttr("SwingCooldown", 0.28))
+				cd("Dash", lastDash, cfgAttr("DashCooldown", 2.2))
+				cd("Drill", lastDrill, cfgAttr("DrillCooldown", 7))
+			end
+		end
+	end)
+end
+
+function Bat.setActive(on)
+	active = on
+end
+
+return Bat
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX7"><Properties><string name="Name">Cam</string><ProtectedString name="Source"><![CDATA[--==================================================
+-- BOSS FIGHT: THE LOCK-ON CAMERA (client)
+-- Sits behind you on the line from the Anti-Spiral through you,
+-- and frames the two of you together: you low in the shot, him
+-- towering over the rim behind. It follows him as he walks the
+-- ring. Hold right mouse (or the right stick / drag on touch) to
+-- swing it round; it eases back when you let go. C toggles it.
+--==================================================
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+local ContextActionService = game:GetService("ContextActionService")
+
+local C = {}
+
+local player = Players.LocalPlayer
+local DIST = 26
+local HEIGHT = 9
+local FOV = 72
+
+local enabled = false
+local wanted = true
+local focusFn -- () -> Vector3: the point on him to frame
+local camPos, aimDir
+local yawOff, pitchOff = 0, 0
+local dragging = false
+local shakes = {}
+
+function C.shake(amp, dur)
+	table.insert(shakes, { A = amp, D = dur, T0 = os.clock() })
+end
+
+local function shakeOffset()
+	local now = os.clock()
+	local off = Vector3.zero
+	for i = #shakes, 1, -1 do
+		local s = shakes[i]
+		local u = (now - s.T0) / s.D
+		if u >= 1 then
+			table.remove(shakes, i)
+		else
+			local a = s.A * (1 - u) ^ 2 * 0.35
+			off += Vector3.new(math.noise(now * 22, i, 0.3) * a, math.noise(now * 22, i, 1.7) * a, math.noise(now * 22, i, 3.1) * a)
+		end
+	end
+	return off
+end
+
+local function step(dt)
+	local cam = workspace.CurrentCamera
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not (enabled and wanted and root and hum and hum.Health > 0 and focusFn) then
+		if cam.CameraType == Enum.CameraType.Scriptable and enabled then
+			cam.CameraType = Enum.CameraType.Custom
+			if hum then cam.CameraSubject = hum end
+		end
+		camPos = nil
+		return
+	end
+	cam.CameraType = Enum.CameraType.Scriptable
+	local me = root.Position + Vector3.new(0, 1.5, 0)
+	local boss = focusFn()
+	local away = Vector3.new(me.X - boss.X, 0, me.Z - boss.Z)
+	away = away.Magnitude > 1 and away.Unit or Vector3.xAxis
+	-- (your own swing of the camera, easing home when you let go)
+	if not dragging then
+		yawOff *= math.exp(-dt * 2.2)
+		pitchOff *= math.exp(-dt * 2.2)
+	end
+	local turned = CFrame.Angles(0, yawOff, 0):VectorToWorldSpace(away)
+	local want = me + turned * DIST + Vector3.new(0, HEIGHT + pitchOff, 0)
+	camPos = camPos and camPos:Lerp(want, 1 - math.exp(-dt * 9)) or want
+	-- aim between you and him (you in the lower part of the frame)
+	local toMe = (me - camPos).Unit
+	local toBoss = (boss - camPos).Unit
+	local aim = (toMe * 1.1 + toBoss).Unit
+	aimDir = aimDir and aimDir:Lerp(aim, 1 - math.exp(-dt * 7)).Unit or aim
+	local pos = camPos + shakeOffset()
+	cam.CFrame = CFrame.lookAt(pos, pos + aimDir)
+	cam.FieldOfView = cam.FieldOfView + (FOV - cam.FieldOfView) * (1 - math.exp(-dt * 4))
+end
+
+function C.start(fn)
+	focusFn = fn
+	if enabled then return end
+	enabled = true
+	RunService:BindToRenderStep("BossFightCamera", Enum.RenderPriority.Camera.Value + 2, step)
+	ContextActionService:BindAction("BossFightCamToggle", function(_, state)
+		if state == Enum.UserInputState.Begin then
+			wanted = not wanted
+			local cam = workspace.CurrentCamera
+			if not wanted then
+				cam.CameraType = Enum.CameraType.Custom
+				local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+				if hum then cam.CameraSubject = hum end
+			end
+		end
+		return Enum.ContextActionResult.Pass
+	end, false, Enum.KeyCode.C, Enum.KeyCode.ButtonR3)
+end
+
+function C.stop()
+	if not enabled then return end
+	enabled = false
+	RunService:UnbindFromRenderStep("BossFightCamera")
+	ContextActionService:UnbindAction("BossFightCamToggle")
+	local cam = workspace.CurrentCamera
+	cam.CameraType = Enum.CameraType.Custom
+	local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	if hum then cam.CameraSubject = hum end
+end
+
+function C.active() return enabled and wanted end
+
+-- swinging it round
+UIS.InputBegan:Connect(function(input, processed)
+	if processed then return end
+	if input.UserInputType == Enum.UserInputType.MouseButton2 then
+		dragging = true
+		UIS.MouseBehavior = Enum.MouseBehavior.LockCurrentPosition
+	end
+end)
+UIS.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton2 then
+		dragging = false
+		UIS.MouseBehavior = Enum.MouseBehavior.Default
+	end
+end)
+UIS.InputChanged:Connect(function(input, processed)
+	if not (enabled and wanted) then return end
+	if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
+		yawOff = math.clamp(yawOff - input.Delta.X * 0.006, -1.3, 1.3)
+		pitchOff = math.clamp(pitchOff - input.Delta.Y * 0.05, -6, 14)
+	elseif input.KeyCode == Enum.KeyCode.Thumbstick2 then
+		local v = input.Position
+		dragging = v.Magnitude > 0.2
+		if dragging then
+			yawOff = math.clamp(yawOff - v.X * 0.05, -1.3, 1.3)
+			pitchOff = math.clamp(pitchOff + v.Y * 0.4, -6, 14)
+		end
+	elseif input.UserInputType == Enum.UserInputType.Touch and not processed then
+		-- (a drag on the right half of the screen, away from the thumbstick)
+		if input.Position.X > workspace.CurrentCamera.ViewportSize.X * 0.5 then
+			dragging = true
+			yawOff = math.clamp(yawOff - input.Delta.X * 0.008, -1.3, 1.3)
+			pitchOff = math.clamp(pitchOff - input.Delta.Y * 0.06, -6, 14)
+			task.delay(0.15, function() dragging = false end)
+		end
+	end
+end)
+
+return C
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX8"><Properties><string name="Name">Fx</string><ProtectedString name="Source"><![CDATA[--==================================================
+-- BOSS FIGHT: EFFECTS (client)
+-- The fight's visual kit, built on the cutscene's Kit / SpiralKit:
+--   road      - the ring of violet galaxy he walks on, below the rim
+--   stomp     - a footfall: a mass of galaxy boils up under the foot + a blast
+--   zone      - a red telegraph (circle or line) that fills up to its impact
+--   blast     - an impact on the arena (flash, shockwave, sparks, dust)
+--   galaxy    - a violet galaxy whirlpool (the cutscene's green one, in his colours)
+--   bolt      - a parry's counter: spiral light from you into his chest
+--==================================================
+local Debris = game:GetService("Debris")
+
+local Fx = {}
+
+local UP = Vector3.yAxis
+local VIOLET = Color3.fromRGB(160, 70, 255)
+local VIOLET_HOT = Color3.fromRGB(232, 190, 255)
+local VIOLET_DEEP = Color3.fromRGB(72, 22, 150)
+local MAGENTA = Color3.fromRGB(255, 90, 220)
+local RED = Color3.fromRGB(255, 40, 55)
+local GREEN = Color3.fromRGB(70, 255, 120)
+local LIME = Color3.fromRGB(190, 255, 90)
+Fx.VIOLET, Fx.VIOLET_HOT, Fx.VIOLET_DEEP, Fx.MAGENTA, Fx.RED, Fx.GREEN, Fx.LIME = VIOLET, VIOLET_HOT, VIOLET_DEEP, MAGENTA, RED, GREEN, LIME
+
+local SPARK = "1851669703"
+local SMOKE = "10180479311"
+local SOFT = "14582794847"
+local SPIRAL_TEX, SPIRAL2_TEX = "14426232568", "124165682553877"
+local ENERGY = "10365550877"
+
+local K, SK, S, folder
+local shakeFn = function() end
+
+function Fx.init(kit, spiralKit, shared)
+	K, SK, S = kit, spiralKit, shared
+	folder = workspace:FindFirstChild("BossFightFx") or Instance.new("Folder")
+	folder.Name = "BossFightFx"
+	folder.Parent = workspace
+	Fx.Folder = folder
+end
+
+function Fx.onShake(fn) shakeFn = fn end
+function Fx.shake(amp, dur) shakeFn(amp, dur) end
+
+-- a 3-D sound at a point (heard from the arena)
+function Fx.sound(id, pos, vol, speed, range)
+	local host = K.part({ Name = "Snd", Size = Vector3.one, Transparency = 1, CFrame = CFrame.new(pos) }, folder)
+	local s = K.sfx(id, vol or 1, speed or 1, { Parent = host })
+	s.RollOffMaxDistance = range or 1500
+	s.RollOffMinDistance = (range or 1500) * 0.15
+	Debris:AddItem(host, 8)
+	return s
+end
+
+local function emitAt(pos, props, count, life)
+	local host = K.part({ Name = "FxHost", Size = props.HostSize or Vector3.one, Transparency = 1, CFrame = CFrame.new(pos) }, folder)
+	props.HostSize = nil
+	local e = K.emitter(host, props)
+	e:Emit(count)
+	Debris:AddItem(host, life or 4)
+	return e, host
+end
+Fx.emitAt = emitAt
+
+--------------------------------------------------------------------------
+-- THE GALAXY ROAD: a ring of violet space round the arena at his feet
+--------------------------------------------------------------------------
+function Fx.road(floorY)
+	local set = Instance.new("Folder")
+	set.Name = "GalaxyRoad"
+	set.Parent = folder
+	local c = Vector3.new(S.CENTER.X, floorY, S.CENTER.Z)
+	local host = K.part({ Name = "RoadHost", Size = Vector3.one, Transparency = 1, CFrame = CFrame.new(c) }, set)
+	-- a soft glowing band under his path
+	local band = K.softRing(host, 72, S.WALK_R - 150, S.WALK_R + 150, { Brightness = 1.6, Alpha = 0.55, Profile = { 0, 0, 0.25, 0.8, 0.5, 1, 0.75, 0.8, 1, 0 } })
+	for _, q in ipairs(band.Q) do q.Color = ColorSequence.new(VIOLET_DEEP, VIOLET) end
+	band.update(CFrame.lookAt(c + UP * 1, c + UP * 2), S.WALK_R - 150, S.WALK_R + 150, 0)
+	local rim = K.softRing(host, 72, S.WALK_R - 8, S.WALK_R + 8, { Brightness = 3, Alpha = 0.5 })
+	for _, q in ipairs(rim.Q) do q.Color = ColorSequence.new(VIOLET_HOT, VIOLET) end
+	rim.update(CFrame.lookAt(c + UP * 2, c + UP * 3), S.WALK_R - 8, S.WALK_R + 8, 0)
+	-- galaxies turning slowly in it
+	local swirls = {}
+	local n = 10
+	for i = 1, n do
+		local a = (i - 1) / n * math.pi * 2 + 0.3
+		local r = S.WALK_R + (i % 2 == 0 and 60 or -55)
+		local p = c + Vector3.new(math.cos(a) * r, 3, math.sin(a) * r)
+		local tex = K.GalaxyTex[(i - 1) % #K.GalaxyTex + 1]
+		local size = 170 + (i % 3) * 40
+		local q = K.quad(host, CFrame.lookAt(p, p + UP), size, size, tex, { Color = (i % 2 == 0) and Color3.fromRGB(200, 140, 255) or Color3.fromRGB(150, 110, 255), Brightness = 1.4, Transparency = 0.35 })
+		table.insert(swirls, { Q = q, P = p, Spin = (i % 2 == 0 and 1 or -1) * (0.05 + (i % 3) * 0.02) })
+	end
+	-- nebula and star motes drifting up off it
+	local hosts = {}
+	local segs = 16
+	for i = 1, segs do
+		local a = (i - 0.5) / segs * math.pi * 2
+		local p = c + Vector3.new(math.cos(a) * S.WALK_R, 20, math.sin(a) * S.WALK_R)
+		local seg = K.part({ Name = "RoadSeg", Size = Vector3.new(230, 20, 2 * math.pi * S.WALK_R / segs), Transparency = 1,
+			CFrame = CFrame.lookAt(p, p + Vector3.new(-math.sin(a), 0, math.cos(a))) }, set) -- (X across the road, Z along it)
+		K.emitter(seg, {
+			Texture = SMOKE, Color = ColorSequence.new(Color3.fromRGB(190, 120, 255), Color3.fromRGB(90, 40, 190)),
+			Size = K.ns(0, 60, 1, 170), Transparency = K.ns(0, 1, 0.3, 0.72, 0.7, 0.78, 1, 1), Lifetime = NumberRange.new(5, 8),
+			Speed = NumberRange.new(2, 8), SpreadAngle = Vector2.new(180, 180), Rotation = NumberRange.new(0, 360),
+			RotSpeed = NumberRange.new(-8, 8), Rate = 1.4, Shape = Enum.ParticleEmitterShape.Box, LightEmission = 0.8,
+		})
+		K.emitter(seg, {
+			Texture = SPARK, Color = ColorSequence.new(Color3.new(1, 1, 1), VIOLET_HOT), Size = K.ns(0, 0, 0.2, 9, 1, 0),
+			Lifetime = NumberRange.new(2, 4), Speed = NumberRange.new(4, 16), SpreadAngle = Vector2.new(30, 30),
+			Rate = 4, Brightness = 4, Acceleration = Vector3.new(0, 6, 0), Shape = Enum.ParticleEmitterShape.Box,
+		})
+		table.insert(hosts, seg)
+	end
+	local R = { Set = set }
+	function R.update(t)
+		for _, s in ipairs(swirls) do
+			K.moveQuad(s.Q, CFrame.lookAt(s.P, s.P + UP) * CFrame.Angles(0, 0, t * s.Spin))
+		end
+	end
+	return R
+end
+
+--------------------------------------------------------------------------
+-- STOMPS: where a foot comes down a mass of violet galaxy boils up
+-- under it (as in the cutscene's charge), with a blast as it lands
+--------------------------------------------------------------------------
+local pads, steps = {}, {}
+local PAD_R = 115
+
+local function buildStomps()
+	if #pads > 0 then return end
+	local base = S.CENTER - UP * 400
+	for i = 1, 6 do
+		local host = K.part({ Name = "PadHost", Size = Vector3.new(2 * PAD_R, 1, 2 * PAD_R), Transparency = 1, CFrame = CFrame.new(base) }, folder)
+		local disc = K.part({ Name = "PadDisc", Shape = Enum.PartType.Cylinder, Size = Vector3.new(3, 2 * PAD_R, 2 * PAD_R), Material = Enum.Material.Neon, Color = Color3.fromRGB(34, 12, 66), Transparency = 1, CFrame = CFrame.new(base) }, folder)
+		local swirl = K.quad(host, CFrame.lookAt(base, base + UP), 2 * PAD_R, 2 * PAD_R, SPIRAL_TEX, { Color = Color3.fromRGB(185, 110, 255), Brightness = 2.2, Transparency = 0.15 })
+		local swirl2 = K.quad(host, CFrame.lookAt(base, base + UP), 1.3 * PAD_R, 1.3 * PAD_R, SPIRAL2_TEX, { Color = Color3.fromRGB(235, 200, 255), Brightness = 1.6, Transparency = 0.35 })
+		swirl.Enabled, swirl2.Enabled = false, false
+		local rim = K.softRing(host, 40, PAD_R - 6, PAD_R + 6, { Brightness = 5, Alpha = 0 })
+		for _, q in ipairs(rim.Q) do q.Color = ColorSequence.new(Color3.fromRGB(245, 225, 255), VIOLET) end
+		rim.setTransparency(0.99)
+		local motes = K.emitter(host, {
+			Texture = SOFT, Color = ColorSequence.new(Color3.fromRGB(215, 150, 255), Color3.fromRGB(150, 70, 255)),
+			Size = K.ns(0, 0, 0.15, 7, 0.8, 5, 1, 0), Lifetime = NumberRange.new(1.6, 3), Speed = NumberRange.new(6, 30),
+			SpreadAngle = Vector2.new(20, 20), Brightness = 5, Shape = Enum.ParticleEmitterShape.Box, Acceleration = Vector3.new(0, 12, 0),
+		})
+		local cloud = K.emitter(host, {
+			Texture = SMOKE, Color = ColorSequence.new(Color3.fromRGB(200, 130, 255), Color3.fromRGB(100, 45, 200)),
+			Size = K.ns(0, 60, 1, 200), Transparency = K.ns(0, 0.45, 0.6, 0.65, 1, 1), Lifetime = NumberRange.new(0.9, 1.5),
+			Speed = NumberRange.new(10, 50), SpreadAngle = Vector2.new(60, 60), LightEmission = 1,
+			Rotation = NumberRange.new(0, 360), RotSpeed = NumberRange.new(-30, 30), Shape = Enum.ParticleEmitterShape.Box,
+		})
+		table.insert(pads, { Host = host, Disc = disc, Swirl = swirl, Swirl2 = swirl2, Rim = rim, Motes = motes, Cloud = cloud, Spin = math.random() * 6 })
+	end
+	for i = 1, 5 do
+		local host = K.part({ Name = "StepHost", Size = Vector3.new(260, 1, 260), Transparency = 1, CFrame = CFrame.new(base) }, folder)
+		local ring = K.softRing(host, 36, 50, 130, { Brightness = 4, Alpha = 0 })
+		for _, q in ipairs(ring.Q) do q.Color = ColorSequence.new(VIOLET_HOT, VIOLET) end
+		ring.setTransparency(0.99)
+		local sparks = K.emitter(host, {
+			Texture = SPARK, Color = ColorSequence.new(VIOLET_HOT, VIOLET), Size = K.ns(0, 30, 0.4, 50, 1, 0),
+			Lifetime = NumberRange.new(0.8, 1.5), Speed = NumberRange.new(120, 400), SpreadAngle = Vector2.new(35, 35),
+			Acceleration = Vector3.new(0, -300, 0), Brightness = 5, Shape = Enum.ParticleEmitterShape.Box,
+		})
+		local smoke = K.emitter(host, {
+			Texture = SMOKE, Color = ColorSequence.new(Color3.fromRGB(150, 80, 230), Color3.fromRGB(40, 15, 80)),
+			Size = K.ns(0, 110, 1, 380), Transparency = K.ns(0, 0.35, 1, 1), Lifetime = NumberRange.new(1.4, 2.4),
+			Speed = NumberRange.new(40, 180), SpreadAngle = Vector2.new(80, 80), LightEmission = 0.3,
+			Rotation = NumberRange.new(0, 360), RotSpeed = NumberRange.new(-40, 40), Drag = 2, Shape = Enum.ParticleEmitterShape.Box,
+		})
+		table.insert(steps, { Host = host, Ring = ring, Sparks = sparks, Smoke = smoke })
+	end
+end
+
+local nextPad, nextStep = 1, 1
+-- a footfall at `pos` (on his floor); power ~0.3 (a shuffle) .. 1.2 (a stamp) .. 3 (an attack)
+function Fx.stomp(pos, power)
+	buildStomps()
+	local P = pads[nextPad]
+	nextPad = nextPad % #pads + 1
+	P.At, P.Pos, P.Power = os.clock(), pos, power
+	local St = steps[nextStep]
+	nextStep = nextStep % #steps + 1
+	St.At, St.Pos, St.Power = os.clock(), pos, power
+	St.Host.CFrame = CFrame.new(pos + UP * 3)
+	St.Sparks:Emit(math.floor(24 * power))
+	St.Smoke:Emit(math.floor(8 * power))
+	Fx.sound(power > 1.5 and K.S.RockBoom or (math.random() < 0.5 and K.S.StepL or K.S.StepR), pos, math.clamp(0.5 + power * 0.4, 0.5, 1.6), 0.55 + math.random() * 0.1, 2500)
+	if power > 0.6 then Fx.sound(K.S.Thump, pos, 0.8 * power, 0.7, 2500) end
+	Fx.shake(0.35 + power * 0.55, 0.35 + power * 0.2)
+end
+
+function Fx.updateStomps()
+	local now = os.clock()
+	for _, P in ipairs(pads) do
+		if P.At then
+			local age = now - P.At
+			local form = K.E.outCubic(math.clamp(age / 0.25, 0, 1))
+			local fade = math.clamp((age - 0.7) / 1.6, 0, 1)
+			if fade >= 1 then
+				P.At = nil
+				P.Disc.Transparency = 1
+				P.Swirl.Enabled, P.Swirl2.Enabled = false, false
+				P.Rim.setTransparency(0.99)
+				P.Motes.Rate, P.Cloud.Rate = 0, 0
+			else
+				local r = PAD_R * math.clamp(0.55 + P.Power * 0.4, 0.5, 1.6) * (0.2 + 0.8 * form) * (1 + 0.1 * fade)
+				local vis = form * (1 - fade)
+				local at = P.Pos + UP * 2
+				P.Disc.Size = Vector3.new(3, 2 * r, 2 * r)
+				P.Disc.CFrame = CFrame.new(at) * CFrame.Angles(0, 0, math.pi / 2)
+				P.Disc.Transparency = 1 - 0.9 * vis
+				local flat = CFrame.lookAt(at + UP * 1.8, at + UP * 3)
+				P.Swirl.Enabled, P.Swirl2.Enabled = vis > 0.02, vis > 0.02
+				K.moveQuad(P.Swirl, flat * CFrame.Angles(0, 0, P.Spin + now * 0.5))
+				K.setQuadSize(P.Swirl, 2 * r * 0.98, 2 * r * 0.98)
+				K.moveQuad(P.Swirl2, flat * CFrame.Angles(0, 0, -P.Spin - now * 0.9))
+				K.setQuadSize(P.Swirl2, 1.3 * r, 1.3 * r)
+				P.Swirl.Transparency = NumberSequence.new(1 - 0.85 * vis)
+				P.Swirl2.Transparency = NumberSequence.new(1 - 0.65 * vis)
+				P.Rim.update(CFrame.lookAt(at + UP * 2.4, at + UP * 4), r - 5, r + 7, now * 0.4)
+				P.Rim.setTransparency(math.min(0.99, 1 - vis))
+				P.Host.Size = Vector3.new(1.6 * r, 1, 1.6 * r)
+				P.Host.CFrame = CFrame.new(at + UP * 3)
+				P.Motes.Rate = fade > 0 and 0 or 60 * form
+				P.Cloud.Rate = fade > 0 and 0 or 18 * form
+			end
+		end
+	end
+	for _, St in ipairs(steps) do
+		if St.At then
+			local u = (now - St.At) / (1.0 * math.sqrt(St.Power))
+			if u >= 1 then
+				St.At = nil
+				St.Ring.setTransparency(0.99)
+			else
+				local r = St.Power * 110 + St.Power * 600 * (1 - (1 - u) ^ 3)
+				St.Ring.update(CFrame.lookAt(St.Pos + UP * 5, St.Pos + UP * 6), r, r + 40 + r * 0.15, u)
+				St.Ring.setTransparency(math.min(0.99, 0.05 + u ^ 1.2 * 0.94))
+			end
+		end
+	end
+end
+
+--------------------------------------------------------------------------
+-- RED ZONES: a telegraph that fills up until its impact at T
+--------------------------------------------------------------------------
+local function flatDisc(name, pos, r, color, tr)
+	return K.part({ Name = name, Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.2, 2 * r, 2 * r), Material = Enum.Material.Neon,
+		Color = color, Transparency = tr, CFrame = CFrame.new(pos) * CFrame.Angles(0, 0, math.pi / 2) }, folder)
+end
+
+-- shape: circle / line (see Shared); t0 = when it appears; T = impact
+function Fx.zone(shape, t0, T)
+	local Z = { Parts = {} }
+	local y = S.CENTER.Y + 0.12
+	if shape.Kind == "circle" then
+		local p = Vector3.new(shape.P.X, y, shape.P.Z)
+		local base = flatDisc("ZoneBase", p, shape.R, RED, 0.78)
+		local fill = flatDisc("ZoneFill", p + UP * 0.03, 0.1, Color3.fromRGB(255, 70, 70), 0.45)
+		local host = K.part({ Name = "ZoneHost", Size = Vector3.one, Transparency = 1, CFrame = CFrame.new(p) }, folder)
+		local rim = K.softRing(host, 32, shape.R - 1.2, shape.R + 0.6, { Brightness = 3, Alpha = 0 })
+		for _, q in ipairs(rim.Q) do q.Color = ColorSequence.new(Color3.fromRGB(255, 120, 120), RED) end
+		table.insert(Z.Parts, base)
+		table.insert(Z.Parts, fill)
+		table.insert(Z.Parts, host)
+		function Z.update(now)
+			local u = K.remap(now, t0, T)
+			local r = math.max(shape.R * K.E.inQuad(u), 0.1)
+			fill.Size = Vector3.new(0.2, 2 * r, 2 * r)
+			local pulse = 0.5 + 0.5 * math.sin(now * (8 + 16 * u))
+			base.Transparency = 0.82 - 0.14 * pulse * u
+			rim.update(CFrame.lookAt(p + UP * 0.25, p + UP * 1), shape.R - 1.2, shape.R + 0.6, now)
+			rim.setTransparency(0.35 - 0.3 * pulse * u)
+		end
+	else
+		local a = Vector3.new(shape.A.X, y, shape.A.Z)
+		local b = Vector3.new(shape.B.X, y, shape.B.Z)
+		local mid, len = a:Lerp(b, 0.5), (b - a).Magnitude
+		local cf = CFrame.lookAt(mid, mid + (b - a))
+		local base = K.part({ Name = "ZoneBase", Size = Vector3.new(shape.W, 0.2, len), Material = Enum.Material.Neon, Color = RED, Transparency = 0.8, CFrame = cf }, folder)
+		local fill = K.part({ Name = "ZoneFill", Size = Vector3.new(0.1, 0.22, len), Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 70, 70), Transparency = 0.45, CFrame = cf + UP * 0.03 }, folder)
+		local edges = {}
+		for s = -1, 1, 2 do
+			table.insert(edges, K.part({ Name = "ZoneEdge", Size = Vector3.new(0.45, 0.24, len), Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 140, 140), Transparency = 0.2, CFrame = cf * CFrame.new(s * shape.W / 2, 0.05, 0) }, folder))
+		end
+		table.insert(Z.Parts, base)
+		table.insert(Z.Parts, fill)
+		for _, e in ipairs(edges) do table.insert(Z.Parts, e) end
+		function Z.update(now)
+			local u = K.remap(now, t0, T)
+			fill.Size = Vector3.new(math.max(shape.W * K.E.inQuad(u), 0.1), 0.22, len)
+			local pulse = 0.5 + 0.5 * math.sin(now * (8 + 16 * u))
+			base.Transparency = 0.84 - 0.14 * pulse * u
+			for _, e in ipairs(edges) do e.Transparency = 0.45 - 0.35 * pulse * u end
+		end
+	end
+	function Z.destroy()
+		for _, p in ipairs(Z.Parts) do p:Destroy() end
+		Z.Parts = {}
+	end
+	return Z
+end
+
+--------------------------------------------------------------------------
+-- IMPACTS
+--------------------------------------------------------------------------
+function Fx.blast(pos, radius, color, opts)
+	opts = opts or {}
+	color = color or VIOLET
+	local hot = opts.Hot or color:Lerp(Color3.new(1, 1, 1), 0.6)
+	local p = Vector3.new(pos.X, S.CENTER.Y + 0.3, pos.Z)
+	-- the flash
+	local ball = K.part({ Name = "Flash", Shape = Enum.PartType.Ball, Size = Vector3.one * radius * 0.6, Material = Enum.Material.Neon, Color = hot, Transparency = 0.05, CFrame = CFrame.new(p) }, folder)
+	K.tween(ball, 0.35, { Size = Vector3.one * radius * 2.4, Transparency = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	Debris:AddItem(ball, 0.4)
+	-- the shockwave on the floor
+	local host = K.part({ Name = "WaveHost", Size = Vector3.one, Transparency = 1, CFrame = CFrame.new(p) }, folder)
+	local ring = K.softRing(host, 32, radius * 0.5, radius, { Brightness = 4, Alpha = 0 })
+	for _, q in ipairs(ring.Q) do q.Color = ColorSequence.new(hot, color) end
+	local t0 = os.clock()
+	task.spawn(function()
+		while host.Parent do
+			local u = (os.clock() - t0) / 0.55
+			if u >= 1 then break end
+			local r = radius * (0.4 + 1.6 * K.E.outCubic(u))
+			ring.update(CFrame.lookAt(p + UP * 0.4, p + UP * 2), r * 0.8, r * 1.05 + 2, u)
+			ring.setTransparency(math.min(0.99, u ^ 1.3))
+			task.wait()
+		end
+		host:Destroy()
+	end)
+	-- sparks, dust, a column of light
+	emitAt(p + UP, {
+		Texture = SPARK, Color = ColorSequence.new(hot, color), Size = K.ns(0, radius * 0.35, 1, 0),
+		Lifetime = NumberRange.new(0.5, 1), Speed = NumberRange.new(radius * 2, radius * 5), SpreadAngle = Vector2.new(70, 70),
+		Acceleration = Vector3.new(0, -radius * 4, 0), Brightness = 5, EmissionDirection = Enum.NormalId.Top,
+	}, math.floor(20 + radius), 2)
+	emitAt(p + UP * 2, {
+		Texture = SMOKE, Color = ColorSequence.new(color:Lerp(Color3.new(0, 0, 0), 0.3), Color3.fromRGB(30, 15, 50)),
+		Size = K.ns(0, radius * 0.6, 1, radius * 2.2), Transparency = K.ns(0, 0.3, 1, 1), Lifetime = NumberRange.new(0.8, 1.6),
+		Speed = NumberRange.new(radius * 0.8, radius * 2), SpreadAngle = Vector2.new(90, 90), LightEmission = 0.4,
+		Rotation = NumberRange.new(0, 360), RotSpeed = NumberRange.new(-40, 40), Drag = 3,
+	}, 10, 3)
+	if opts.Column ~= false then
+		-- (a cylinder part lies along X: stood up on end)
+		local col = K.part({ Name = "Column", Shape = Enum.PartType.Cylinder, Size = Vector3.new(120, radius * 0.7, radius * 0.7), Material = Enum.Material.Neon, Color = hot, Transparency = 0.2,
+			CFrame = CFrame.new(p + UP * 60) * CFrame.Angles(0, 0, math.pi / 2) }, folder)
+		K.tween(col, 0.45, { Size = Vector3.new(160, radius * 0.05, radius * 0.05), Transparency = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+		Debris:AddItem(col, 0.5)
+	end
+	Fx.sound(opts.Sound or K.S.Impact, p, opts.Volume or 1, opts.Speed or (0.9 + math.random() * 0.2), 900)
+	local cam = workspace.CurrentCamera
+	local d = (cam.CFrame.Position - p).Magnitude
+	Fx.shake(math.clamp((opts.Shake or 1.2) * (1 - d / 400), 0.15, 2.5), 0.35)
+end
+
+--------------------------------------------------------------------------
+-- THE VIOLET GALAXY: SK.burst from the cutscene, in the Anti-Spiral's colours
+--------------------------------------------------------------------------
+function Fx.galaxy(host)
+	local G = {}
+	G.V1 = K.quad(host, CFrame.new(), 10, 10, SPIRAL_TEX, { Color = VIOLET, Brightness = 2.4, Transparency = 0.35 })
+	G.V2 = K.quad(host, CFrame.new(), 10, 10, SPIRAL2_TEX, { Color = MAGENTA, Brightness = 2.6, Transparency = 0.45 })
+	G.V3 = K.quad(host, CFrame.new(), 10, 10, SPIRAL_TEX, { Color = Color3.fromRGB(210, 170, 255), Brightness = 1.6, Transparency = 0.55 })
+	G.Arms = {}
+	local ARMS, SEGS = 4, 10
+	for a = 1, ARMS do
+		local list = {}
+		for i = 1, SEGS do
+			local b = K.ray(host, Vector3.zero, UP, 10, 10, ENERGY, {
+				Color = (a % 2 == 0) and MAGENTA or VIOLET, Brightness = 4, Transparency = 0.1, Segments = 2,
+				Mode = Enum.TextureMode.Wrap, Length = 300, Speed = -3,
+			})
+			b.Enabled = false
+			list[i] = b
+		end
+		G.Arms[a] = list
+	end
+	G.Glow = SK.glow(K, host, Vector3.zero, 10, VIOLET, 2.5, SOFT)
+	G.Core = SK.glow(K, host, Vector3.zero, 10, Color3.fromRGB(245, 230, 255), 5, SOFT)
+	G.Rays = {}
+	local r = Random.new(7)
+	for i = 1, 8 do
+		local b = K.ray(host, Vector3.zero, UP, 10, 1, "rbxasset://sky/sun.jpg", { Color = (i % 3 == 0) and Color3.new(1, 1, 1) or VIOLET, Brightness = 3, Transparency = K.ns(0, 0.1, 1, 1), Segments = 1 })
+		b.Enabled = false
+		G.Rays[i] = { B = b, D = r:NextUnitVector(), L = r:NextNumber(0.6, 1.3), P = r:NextNumber(0, 6) }
+	end
+	for _, q in ipairs({ G.V1, G.V2, G.V3 }) do q.Enabled = false end
+	-- pos: its heart; toward: the way it faces; size: across; amount 0..1
+	function G.set(pos, toward, size, amount, t)
+		local on = amount > 0.01
+		for _, q in ipairs({ G.V1, G.V2, G.V3 }) do q.Enabled = on end
+		for _, r2 in ipairs(G.Rays) do r2.B.Enabled = on end
+		for _, list in ipairs(G.Arms) do for _, b in ipairs(list) do b.Enabled = on end end
+		G.Glow.set(pos, size * 0.9 * (0.8 + 0.2 * amount), on and amount * 0.3 or 0)
+		G.Core.set(pos, size * 0.1 * (1 + 0.15 * math.sin(t * 17)), on and amount * 0.7 or 0)
+		if not on then return end
+		local dir0 = (toward - pos).Unit
+		local e1 = dir0:Cross(math.abs(dir0.Y) > 0.9 and Vector3.xAxis or UP).Unit
+		local e2 = dir0:Cross(e1)
+		local R = size * 0.62
+		local spin = t * 0.6
+		for a, list in ipairs(G.Arms) do
+			local a0 = (a - 1) / #G.Arms * math.pi * 2 + spin
+			local n = #list
+			local function at(u)
+				local th = a0 + (1 - u) * math.pi * 2.3
+				local rr = R * (0.08 + 0.92 * u) * math.min(1, amount * 1.4)
+				return pos + (e1 * math.cos(th) + e2 * math.sin(th)) * rr + dir0 * (1 - u) * size * 0.05
+			end
+			for i, b in ipairs(list) do
+				local u0, u1 = 1 - (i - 1) / n, 1 - i / n
+				b.Attachment0.WorldPosition = at(u0)
+				b.Attachment1.WorldPosition = at(u1)
+				b.Width0 = size * (0.035 + 0.06 * (1 - u0)) * amount
+				b.Width1 = size * (0.035 + 0.06 * (1 - u1)) * amount
+			end
+		end
+		local s = size * amount
+		K.moveQuad(G.V1, CFrame.lookAt(pos, pos + dir0) * CFrame.Angles(0, 0, t * 2))
+		K.setQuadSize(G.V1, s * 1.3, s * 1.3)
+		K.moveQuad(G.V2, CFrame.lookAt(pos + dir0 * s * 0.08, pos + dir0) * CFrame.Angles(0, 0, -t * 3.5))
+		K.setQuadSize(G.V2, s * 0.8, s * 0.8)
+		K.moveQuad(G.V3, CFrame.lookAt(pos + dir0 * s * 0.2, pos + dir0) * CFrame.Angles(0, 0, t * 5))
+		K.setQuadSize(G.V3, s * 0.45, s * 0.45)
+		for _, r2 in ipairs(G.Rays) do
+			local len = s * r2.L * (0.7 + 0.3 * math.sin(t * 9 + r2.P))
+			r2.B.Attachment0.WorldPosition = pos
+			r2.B.Attachment1.WorldPosition = pos + r2.D * len
+			r2.B.Width0 = s * 0.06
+		end
+	end
+	return G
+end
+
+--------------------------------------------------------------------------
+-- PARRY: a green burst at you, and a spiral bolt into his chest
+--------------------------------------------------------------------------
+function Fx.parryBurst(pos, perfect)
+	local col = perfect and Color3.fromRGB(255, 255, 160) or GREEN
+	local ball = K.part({ Name = "Parry", Shape = Enum.PartType.Ball, Size = Vector3.one * 4, Material = Enum.Material.Neon, Color = col, Transparency = 0, CFrame = CFrame.new(pos) }, folder)
+	K.tween(ball, 0.3, { Size = Vector3.one * (perfect and 26 or 18), Transparency = 1 })
+	Debris:AddItem(ball, 0.35)
+	emitAt(pos, {
+		Texture = "11381556016", FlipbookLayout = Enum.ParticleFlipbookLayout.Grid8x8, FlipbookMode = Enum.ParticleFlipbookMode.OneShot,
+		Color = ColorSequence.new(GREEN, LIME), Size = K.ns(0, 4, 1, 0), Lifetime = NumberRange.new(0.3, 0.6),
+		Speed = NumberRange.new(25, 70), SpreadAngle = Vector2.new(180, 180), Brightness = 4, Rotation = NumberRange.new(0, 360),
+	}, perfect and 40 or 24, 2)
+	Fx.sound(K.S.MetalHit, pos, 1.2, perfect and 1.25 or 1.05, 400)
+	Fx.sound(K.S.Ring, pos, 0.7, perfect and 1.6 or 1.3, 400)
+	if perfect then Fx.sound(K.S.Electric, pos, 0.8, 1.2, 400) end
+end
+
+function Fx.bolt(from, to, perfect)
+	local host = K.part({ Name = "BoltHost", Size = Vector3.one, Transparency = 1, CFrame = CFrame.new(from) }, folder)
+	local beams = {}
+	for i = 1, perfect and 3 or 2 do
+		local b, a0, a1 = K.ray(host, from, from, perfect and 5 or 3, 1.5, ENERGY, {
+			Color = (i % 2 == 0) and LIME or GREEN, Brightness = 5, Segments = 24, Mode = Enum.TextureMode.Wrap, Length = 20, Speed = 6,
+		})
+		b.CurveSize0 = (i % 2 == 0 and 1 or -1) * 40
+		b.CurveSize1 = (i % 2 == 0 and -1 or 1) * 60
+		table.insert(beams, { B = b, A0 = a0, A1 = a1 })
+	end
+	local t0 = os.clock()
+	local hitDone = false
+	task.spawn(function()
+		while host.Parent do
+			local u = (os.clock() - t0) / 0.3
+			local head = from:Lerp(to, K.E.outCubic(math.min(u, 1)))
+			for _, b in ipairs(beams) do
+				b.A1.WorldPosition = head
+				if u > 1 then b.B.Transparency = NumberSequence.new(math.min(1, (u - 1) / 0.6)) end
+			end
+			if u >= 1 and not hitDone then
+				hitDone = true
+				local g = K.part({ Name = "BoltHit", Shape = Enum.PartType.Ball, Size = Vector3.one * 20, Material = Enum.Material.Neon, Color = perfect and Color3.fromRGB(255, 255, 170) or GREEN, CFrame = CFrame.new(to) }, folder)
+				K.tween(g, 0.4, { Size = Vector3.one * (perfect and 120 or 80), Transparency = 1 })
+				Debris:AddItem(g, 0.45)
+				emitAt(to, {
+					Texture = SPARK, Color = ColorSequence.new(Color3.new(1, 1, 1), GREEN), Size = K.ns(0, 14, 1, 0),
+					Lifetime = NumberRange.new(0.5, 0.9), Speed = NumberRange.new(80, 220), SpreadAngle = Vector2.new(180, 180), Brightness = 5,
+				}, 30, 2)
+				Fx.sound(K.S.BigHit, to, 1.2, perfect and 1.1 or 1, 2500)
+			end
+			if u >= 1.6 then break end
+			task.wait()
+		end
+		host:Destroy()
+	end)
+end
+
+return Fx
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX9"><Properties><string name="Name">Rig</string><ProtectedString name="Source"><![CDATA[--==================================================
+-- THE ANTI-SPIRAL, ANIMATED (client)
+-- The server never moves him: it publishes a walk plan (the
+-- "Motion" attribute) and every client places his root from it
+-- on the synced clock, then poses him procedurally - the same
+-- two-bone leg solve as the cutscene's charge, so every planted
+-- foot stays planted. Feet step on their own whenever his body
+-- has moved (or turned) too far from them, so walking, turning
+-- on the spot and settling all come out of one rule. Each
+-- footfall is a stomp (Fx builds the galaxy floor under it).
+--
+-- Attacks take over parts of him with rig:act({ ... }):
+--   Until = t                    - when the action lets go
+--   Root = function(t) -> CFrame - an offset applied to his root (lean, crouch, recoil)
+--   Upper = function(t, rootCF)  - pose waist/neck/arms/hands (SB.body / SB.hand / SK.hang)
+--   Foot = { Right = function(t, plant) -> groundPos, pitch }  - drive a foot yourself
+--==================================================
+local Rig = {}
+Rig.__index = Rig
+
+local UP = Vector3.yAxis
+local rad = math.rad
+
+local function aimRot(localA, localRef, worldA, worldRef)
+	local la = localA.Unit
+	local lr = localRef - la * localRef:Dot(la)
+	lr = lr.Magnitude > 1e-3 and lr.Unit or la:Cross(Vector3.xAxis).Unit
+	local lc = la:Cross(lr)
+	local wa = worldA.Unit
+	local wr = worldRef - wa * worldRef:Dot(wa)
+	wr = wr.Magnitude > 1e-3 and wr.Unit or wa:Cross(Vector3.yAxis).Unit
+	local wc = wa:Cross(wr)
+	return CFrame.fromMatrix(Vector3.zero, wa, wr, wc) * CFrame.fromMatrix(Vector3.zero, la, lr, lc):Inverse()
+end
+
+-- (the cutscene's leg solve: hip -> knee -> ankle onto `target`, knee toward `pole`)
+local function solveLeg(g, lt, target, pole, footRot)
+	local sW = (lt * CFrame.new(g.HB.C0.Position)).Position
+	local toT = target - sW
+	local d = math.clamp(toT.Magnitude, math.abs(g.Lu - g.Ll) + 1, g.Lu + g.Ll - 0.5)
+	local dir = toT.Magnitude > 1e-3 and toT.Unit or -Vector3.yAxis
+	local a = (g.Lu * g.Lu - g.Ll * g.Ll + d * d) / (2 * d)
+	local h = math.sqrt(math.max(g.Lu * g.Lu - a * a, 0))
+	local bend = pole - dir * pole:Dot(dir)
+	bend = bend.Magnitude > 1e-3 and bend.Unit or dir:Cross(Vector3.xAxis).Unit
+	local eW = sW + dir * a + bend * h
+	local wW = sW + dir * d
+	local Rul = aimRot(g.eJ - g.sJ, g.FwdU, eW - sW, bend)
+	local ulCF = CFrame.new(sW - Rul * g.sJ) * Rul
+	local Rll = aimRot(g.wL - g.eL, g.FwdL, wW - eW, bend)
+	local llCF = CFrame.new(eW - Rll * g.eL) * Rll
+	g.Hip.C0 = CFrame.new(g.HB.C0.Position) * (lt:Inverse() * ulCF * g.HB.C1).Rotation
+	g.Knee.C0 = CFrame.new(g.KB.C0.Position) * (ulCF:Inverse() * llCF * g.KB.C1).Rotation
+	g.Ankle.C0 = CFrame.new(g.AB.C0.Position) * (llCF.Rotation:Inverse() * footRot * g.AB.C1.Rotation)
+	return wW
+end
+
+local function flatYaw(cf)
+	local look = Vector3.new(cf.LookVector.X, 0, cf.LookVector.Z)
+	if look.Magnitude < 1e-3 then look = Vector3.zAxis end
+	return CFrame.lookAt(Vector3.zero, look.Unit)
+end
+
+local function yawBetween(a, b)
+	local la, lb = a.LookVector, b.LookVector
+	return math.acos(math.clamp(la:Dot(lb), -1, 1))
+end
+
+function Rig.new(K, SK, S, model)
+	local self = setmetatable({}, Rig)
+	local root = model:WaitForChild("HumanoidRootPart")
+	for _, d in ipairs(model:GetDescendants()) do
+		if d:IsA("BasePart") then
+			d.CanCollide = false
+			d.CanTouch = false
+		end
+	end
+	self.K, self.SK, self.S = K, SK, S
+	self.Model, self.Root = model, root
+	self.Home = root.CFrame
+	local ctx = { Boss = model, BossRoot = root, BossHome = self.Home, kit = K }
+	self.Ctx = ctx
+	self.SB = SK.boss(ctx, K) -- (his giant jointed hands, as in the cutscene)
+	self.R = self.SB.R
+	self:_calibrate()
+	self.Feet = {}
+	for _, side in ipairs({ "Right", "Left" }) do
+		self.Feet[side] = { Plant = self:_ground(side, self.Home), Yaw = flatYaw(self.Home), LandT = 0, Pitch = 0 }
+	end
+	self.Action = nil
+	self.LastStep = "Left"
+	self.OnStep = nil -- function(side, pos, power)
+	self.Focus = nil  -- world point he looks at
+	return self
+end
+
+function Rig:_calibrate()
+	local R, SB, home = self.R, self.SB, self.Home
+	SB.reset()
+	local lt = R.cf("LowerTorso", home)
+	local L = {}
+	local floor = math.huge
+	for _, side in ipairs({ "Right", "Left" }) do
+		local hip = R.joint(side .. "Hip", side .. "UpperLeg")
+		local knee = R.joint(side .. "Knee", side .. "LowerLeg")
+		local ankle = R.joint(side .. "Ankle", side .. "Foot")
+		assert(hip and knee and ankle, "[BossFight] the Anti-Spiral's " .. side .. " leg joints are missing")
+		local hb, kb, ab = R.B[hip], R.B[knee], R.B[ankle]
+		local g = { Hip = hip, Knee = knee, Ankle = ankle, HB = hb, KB = kb, AB = ab }
+		g.sJ, g.eJ, g.eL, g.wL = hb.C1.Position, kb.C0.Position, kb.C1.Position, ab.C0.Position
+		g.Lu, g.Ll = (g.eJ - g.sJ).Magnitude, (g.wL - g.eL).Magnitude
+		local ul = lt * hb.C0 * hb.C1:Inverse()
+		local ll = ul * kb.C0 * kb.C1:Inverse()
+		local ft = ll * ab.C0 * ab.C1:Inverse()
+		local hipW = (lt * CFrame.new(hb.C0.Position)).Position
+		local ankW = ll:PointToWorldSpace(g.wL)
+		local foot = self.Model:FindFirstChild(side .. "Foot")
+		local sole = ft.Position.Y - (foot and foot.Size.Y or 40) / 2
+		floor = math.min(floor, sole)
+		g.AnkleUp = ankW.Y - sole
+		g.HipRel = home:PointToObjectSpace(hipW)
+		g.AnkRel = home:PointToObjectSpace(ankW)
+		g.FootRel = home.Rotation:Inverse() * ft.Rotation
+		g.ToeRel = home:VectorToObjectSpace(ft.Position - ankW)
+		g.FwdU = ul:VectorToObjectSpace(home.LookVector)
+		g.FwdL = ll:VectorToObjectSpace(home.LookVector)
+		g.Reach = g.Lu + g.Ll
+		g.Rest = hipW.Y - ankW.Y
+		L[side] = g
+	end
+	self.L = L
+	self.Floor = floor
+	self.LegLen = math.min(L.Right.Reach, L.Left.Reach)
+end
+
+-- the floor point under a foot's ankle for a root at `cf`
+function Rig:_ground(side, cf)
+	local g = self.L[side]
+	local p = cf:PointToWorldSpace(Vector3.new(g.AnkRel.X, 0, g.AnkRel.Z))
+	return Vector3.new(p.X, self.Floor, p.Z)
+end
+
+-- the middle of a footprint (for the stomp effects)
+function Rig:printAt(side, ground, yaw)
+	local g = self.L[side]
+	-- (ToeRel is in his home frame; a foot turned to `yaw` carries it round)
+	return ground + (yaw or flatYaw(self.Home)) * Vector3.new(g.ToeRel.X, 0, g.ToeRel.Z)
+end
+
+-- where a foot is now (floor point) - for effects
+function Rig:footGround(side)
+	return self.Feet[side].Now or self.Feet[side].Plant
+end
+
+function Rig:act(action)
+	self.Action = action
+end
+
+function Rig:setPlan(plan)
+	self.Plan = plan
+end
+
+function Rig:rootAt(t)
+	if not self.Plan then return self.Home, 0 end
+	return self.S.rootAt(self.Plan, t)
+end
+
+-- where his chest / head / hands are right now (after update)
+function Rig:partCF(name)
+	local p = self.Model:FindFirstChild(name)
+	return p and p.CFrame
+end
+
+--------------------------------------------------------------------------
+-- posing: poses are tables { Joint = { x, y, z } } (degrees) for the joints
+-- SB.body knows (Waist, Neck, RightShoulder, RightElbow, LeftShoulder, LeftElbow)
+--------------------------------------------------------------------------
+Rig.REST = {
+	Waist = { -3, 0, 0 }, RightShoulder = { 8, 0, 12 }, LeftShoulder = { 8, 0, -12 },
+	RightElbow = { 22, 0, 0 }, LeftElbow = { 22, 0, 0 },
+}
+
+-- apply the blend of pose a -> b at u (0..1)
+function Rig:pose(a, b, u)
+	local K = self.K
+	u = u or 0
+	local out = {}
+	for k, va in pairs(a) do
+		local vb = (b and b[k]) or va
+		out[k] = K.A(va[1] + (vb[1] - va[1]) * u, va[2] + (vb[2] - va[2]) * u, va[3] + (vb[3] - va[3]) * u)
+	end
+	if b then
+		for k, vb in pairs(b) do
+			if not a[k] then out[k] = K.A(vb[1] * u, vb[2] * u, vb[3] * u) end
+		end
+	end
+	self.SB.body(out)
+end
+
+-- blend through a list of { t, pose } keys at time t
+function Rig:posePath(keys, t, ease)
+	ease = ease or self.K.E.inOutSine
+	if t <= keys[1][1] then return self:pose(keys[1][2]) end
+	for i = 1, #keys - 1 do
+		local a, b = keys[i], keys[i + 1]
+		if t <= b[1] then
+			return self:pose(a[2], b[2], ease((t - a[1]) / math.max(b[1] - a[1], 1e-3)))
+		end
+	end
+	return self:pose(keys[#keys][2])
+end
+
+--------------------------------------------------------------------------
+-- stepping
+--------------------------------------------------------------------------
+local WALK_REF = 70 -- (the config walk speed: how "moving" he looks)
+
+function Rig:_steps(t, baseCF, speed)
+	local K = self.K
+	local move = math.clamp(speed / WALK_REF, 0, 1)
+	local dur = speed > 3 and math.clamp(1.05 - speed / 220, 0.62, 1.0) or 0.7
+	local vel = (self:rootAt(t + 0.1).Position - baseCF.Position) / 0.1
+	local action = self.Action
+	for _, side in ipairs({ "Right", "Left" }) do
+		local f = self.Feet[side]
+		local over = action and action.Foot and action.Foot[side]
+		if over then
+			f.Step = nil
+		elseif f.Step then
+			local st = f.Step
+			local w = (t - st.T0) / st.Dur
+			if w >= 1 then
+				f.Plant, f.Yaw, f.Step, f.LandT = st.To, st.YawTo, nil, t
+				f.LandPower = st.Power
+				self.LastStep = side
+				if self.OnStep then self.OnStep(side, self:printAt(side, st.To, st.YawTo), st.Power) end
+			end
+		end
+	end
+	-- start a step? (one foot at a time; the one that's furthest behind)
+	local stepping = false
+	for _, side in ipairs({ "Right", "Left" }) do
+		if self.Feet[side].Step then stepping = true end
+	end
+	if not stepping then
+		local best, bestErr = nil, 0
+		for _, side in ipairs({ "Right", "Left" }) do
+			local f = self.Feet[side]
+			if not (action and action.Foot and action.Foot[side]) and t - f.LandT > 0.08 then
+				local want = self:_ground(side, baseCF)
+				local err = (want - f.Plant).Magnitude
+				local turn = math.deg(yawBetween(f.Yaw, flatYaw(baseCF)))
+				local need = speed > 3 and (speed * dur * 0.45 + 12) or 16
+				local score = err / need + turn / (speed > 3 and 22 or 14)
+				-- (alternate feet while walking)
+				if side == self.LastStep and speed > 3 then score *= 0.6 end
+				if score > 1 and score > bestErr then best, bestErr = side, score end
+			end
+		end
+		if best then
+			local f = self.Feet[best]
+			local landCF = self:rootAt(t + dur)
+			local to = self:_ground(best, landCF) + Vector3.new(vel.X, 0, vel.Z) * dur * 0.35 * move
+			local dist = (to - f.Plant).Magnitude
+			f.Step = {
+				From = f.Plant, To = to, YawFrom = f.Yaw, YawTo = flatYaw(landCF), T0 = t, Dur = dur,
+				Lift = math.clamp(dist * 0.5, 28, 150), Power = math.clamp(0.3 + dist / 160, 0.35, 1.2),
+			}
+		end
+	end
+	-- each foot's ground point + pitch right now
+	for _, side in ipairs({ "Right", "Left" }) do
+		local f = self.Feet[side]
+		local over = action and action.Foot and action.Foot[side]
+		if over then
+			local pos, pitch, yaw = over(t, f.Plant)
+			f.Now, f.Pitch, f.NowYaw = pos, pitch or 0, yaw or f.Yaw
+		elseif f.Step then
+			local st = f.Step
+			local w = math.clamp((t - st.T0) / st.Dur, 0, 1)
+			local e = K.E.inOutSine(w)
+			f.Now = st.From:Lerp(st.To, e) + UP * st.Lift * math.sin(math.pi * w ^ 0.85)
+			f.Pitch = -26 * math.sin(math.pi * math.min(w * 1.3, 1)) + 14 * K.k(w, 0.55, 1)
+			f.NowYaw = st.YawFrom:Lerp(st.YawTo, e)
+		else
+			f.Now = f.Plant
+			f.Pitch = 14 * (1 - K.k(t - f.LandT, 0, 0.14))
+			f.NowYaw = f.Yaw
+		end
+	end
+	return move
+end
+
+--------------------------------------------------------------------------
+-- the frame
+--------------------------------------------------------------------------
+function Rig:update(t)
+	local K, SB, SK = self.K, self.SB, self.SK
+	local baseCF, speed = self:rootAt(t)
+	local action = self.Action
+	if action and action.Until and t > action.Until then
+		self.Action = nil
+		action = nil
+	end
+	local move = self:_steps(t, baseCF, speed)
+
+	-- the body: a slight crouch (more at a stride), a dip as each foot lands,
+	-- a rise through the swing, and sway over the planted foot
+	local crouch = self.LegLen * (0.035 + 0.05 * move)
+	local dip, rise, sway = 0, 0, 0
+	for _, side in ipairs({ "Right", "Left" }) do
+		local f = self.Feet[side]
+		local since = t - f.LandT
+		if since < 0.4 then dip += 16 * (f.LandPower or 0.5) * (1 - since / 0.4) ^ 2 end
+		if f.Step then
+			local w = math.clamp((t - f.Step.T0) / f.Step.Dur, 0, 1)
+			rise += 6 * math.sin(math.pi * w) * move
+			-- (lean away from the lifted foot, over the planted one)
+			sway += (side == "Right" and -1 or 1) * 9 * math.sin(math.pi * w) * move
+		end
+	end
+	local lean = 7 * move
+	local rootCF = CFrame.new(baseCF.Position + UP * (rise - crouch - dip) + baseCF.RightVector * sway)
+		* baseCF.Rotation * CFrame.Angles(-rad(lean), 0, rad(sway * 0.25))
+	if action and action.Root then rootCF = rootCF * action.Root(t) end
+	self.RootCF = rootCF
+	self.Root.CFrame = rootCF
+
+	SB.reset()
+	-- upper body
+	local handled = action and action.Upper and action.Upper(t, rootCF)
+	if not handled then
+		-- arms swinging against the legs; he turns his head to whoever he's hunting
+		local g = 0
+		local fr, fl = self.Feet.Right, self.Feet.Left
+		if fr.Step then g += math.sin(math.pi * math.clamp((t - fr.Step.T0) / fr.Step.Dur, 0, 1)) end
+		if fl.Step then g -= math.sin(math.pi * math.clamp((t - fl.Step.T0) / fl.Step.Dur, 0, 1)) end
+		local sw = 26 * move
+		local breathe = math.sin(t * 1.3) * 2
+		SB.body({
+			Waist = K.A(-3 + breathe * 0.5, g * 6 * move, 0),
+			RightShoulder = K.A(8 - g * sw, 0, 12 + breathe),
+			LeftShoulder = K.A(8 + g * sw, 0, -12 - breathe),
+			RightElbow = K.A(22 + 10 * move, 0, 0),
+			LeftElbow = K.A(22 + 10 * move, 0, 0),
+		})
+		SK.hang(SB, "Right", 0.55, 0.1)
+		SK.hang(SB, "Left", 0.55, 0.1)
+		if self.Focus then SB.lookAt(self.Focus, 0.8, rootCF) end
+	end
+
+	-- legs
+	local lt = SB.R.cf("LowerTorso", rootCF)
+	for _, side in ipairs({ "Right", "Left" }) do
+		local g = self.L[side]
+		local f = self.Feet[side]
+		local yaw = f.NowYaw or f.Yaw
+		local target = f.Now + UP * g.AnkleUp
+		local footRot = yaw * CFrame.Angles(rad(f.Pitch or 0), 0, 0) * g.FootRel
+		local look = rootCF.LookVector
+		local outward = rootCF.RightVector * (side == "Right" and 0.15 or -0.15)
+		solveLeg(g, lt, target, look + outward, footRot)
+	end
+end
+
+return Rig
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX10"><Properties><string name="Name">Warn</string><ProtectedString name="Source"><![CDATA[--==================================================
+-- BOSS FIGHT: WARNINGS + PARRY (client)
+-- Every hit the server schedules is registered here. For the
+-- ones aimed at you it draws the cutscene's lock-on: red target
+-- brackets clamped round what's coming, its name, IMPACT 1.2
+-- counting down, and a beep that quickens as it closes. For any
+-- hit you're standing in, a PARRY prompt (the dodge prompt's
+-- closing ring) shows when to swing: swing as the ring meets
+-- the circle and the Spiral Bat parries it.
+--==================================================
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+local W = {}
+
+local FONT = Font.new("rbxasset://fonts/families/Inconsolata.json", Enum.FontWeight.Bold)
+local RED = Color3.fromRGB(255, 40, 55)
+local GOOD = Color3.fromRGB(120, 255, 170)
+local BAD = Color3.fromRGB(255, 70, 90)
+local GOLD = Color3.fromRGB(255, 230, 120)
+local GREEN = Color3.fromRGB(70, 255, 120)
+local DEEP_GREEN = Color3.fromRGB(20, 110, 55)
+local BEEP = "rbxasset://sounds/electronicpingshort.wav"
+
+local K, S
+local player = Players.LocalPlayer
+local gui, root
+local hits = {}   -- [id] = hit
+local order = {}  -- ids, oldest first
+local lastBeep = 0
+
+local function smooth(x) x = math.clamp(x, 0, 1) return x * x * (3 - 2 * x) end
+local function tween(o, t, props, style, dir)
+	local tw = TweenService:Create(o, TweenInfo.new(t, style or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out), props)
+	tw:Play()
+	return tw
+end
+local function corner(p, r) local c = Instance.new("UICorner") c.CornerRadius = r or UDim.new(1, 0) c.Parent = p return c end
+local function stroke(p, color, th)
+	local s = Instance.new("UIStroke")
+	s.Color = color or Color3.new(0, 0, 0)
+	s.Thickness = th or 4
+	s.Parent = p
+	return s
+end
+local function grad(p, a, b, rot) local g = Instance.new("UIGradient") g.Color = ColorSequence.new(a, b) g.Rotation = rot or -90 g.Parent = p return g end
+local function frame(parent, props)
+	local f = Instance.new("Frame")
+	f.BorderSizePixel = 0
+	for k, v in pairs(props) do f[k] = v end
+	f.Parent = parent
+	return f
+end
+local function label(parent, props)
+	local t = Instance.new("TextLabel")
+	t.BackgroundTransparency = 1
+	t.FontFace = FONT
+	t.TextScaled = true
+	t.TextColor3 = Color3.new(1, 1, 1)
+	for k, v in pairs(props) do if k ~= "StrokeTh" then t[k] = v end end
+	t.Parent = parent
+	if (props.StrokeTh or 3) > 0 then stroke(t, Color3.new(0, 0, 0), props.StrokeTh or 3) end
+	return t
+end
+local function square(f) local a = Instance.new("UIAspectRatioConstraint") a.AspectRatio = 1 a.Parent = f return a end
+
+local function touchOnly() return UIS.TouchEnabled and not UIS.KeyboardEnabled end
+local function padOnly() return UIS.GamepadEnabled and not UIS.KeyboardEnabled end
+
+function W.init(kit, shared)
+	K, S = kit, shared
+	gui = Instance.new("ScreenGui")
+	gui.Name = "BossFightWarnings"
+	gui.ResetOnSpawn = false
+	gui.IgnoreGuiInset = true
+	gui.DisplayOrder = 520
+	gui.Parent = player:WaitForChild("PlayerGui")
+	root = frame(gui, { Name = "Root", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) })
+	W.Gui = gui
+end
+
+--------------------------------------------------------------------------
+-- pop text ("PARRY!", "PERFECT!", ...)
+--------------------------------------------------------------------------
+function W.pop(text, color, big, pos)
+	pos = pos or Vector2.new(0.5, 0.6)
+	local t = label(root, {
+		Text = text, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(pos.X, pos.Y), Size = UDim2.fromScale(big and 0.34 or 0.22, big and 0.085 or 0.058),
+		TextColor3 = color, ZIndex = 66, StrokeTh = 4,
+	})
+	local sc = Instance.new("UIScale")
+	sc.Scale = 0.4
+	sc.Parent = t
+	tween(sc, 0.2, { Scale = 1 }, Enum.EasingStyle.Back)
+	tween(t, 0.8, { Position = UDim2.fromScale(pos.X, pos.Y - 0.06) })
+	task.delay(0.6, function()
+		tween(t, 0.3, { TextTransparency = 1 })
+		local s = t:FindFirstChildOfClass("UIStroke")
+		if s then tween(s, 0.3, { Transparency = 1 }) end
+		task.delay(0.35, function() t:Destroy() end)
+	end)
+end
+
+--------------------------------------------------------------------------
+-- the lock-on (the cutscene's dodge warning)
+--------------------------------------------------------------------------
+local function makeLock(name)
+	local h = frame(root, { Name = "Lock", AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(200, 200), BackgroundTransparency = 1, ZIndex = 57 })
+	local bits = {}
+	for i = 0, 3 do
+		local cx, cy = i % 2, math.floor(i / 2)
+		local cf = frame(h, { AnchorPoint = Vector2.new(cx, cy), Position = UDim2.fromScale(cx, cy), Size = UDim2.fromScale(0.28, 0.28), BackgroundTransparency = 1, ZIndex = 57 })
+		local hb = frame(cf, { AnchorPoint = Vector2.new(cx, cy), Position = UDim2.fromScale(cx, cy), Size = UDim2.new(1, 0, 0, 5), BackgroundColor3 = RED, ZIndex = 57 })
+		local vb = frame(cf, { AnchorPoint = Vector2.new(cx, cy), Position = UDim2.fromScale(cx, cy), Size = UDim2.new(0, 5, 1, 0), BackgroundColor3 = RED, ZIndex = 57 })
+		stroke(hb, Color3.new(0, 0, 0), 1.5)
+		stroke(vb, Color3.new(0, 0, 0), 1.5)
+		table.insert(bits, hb)
+		table.insert(bits, vb)
+	end
+	for i = 0, 3 do
+		local horiz = i < 2
+		local at = ({ UDim2.fromScale(0, 0.5), UDim2.fromScale(1, 0.5), UDim2.fromScale(0.5, 0), UDim2.fromScale(0.5, 1) })[i + 1]
+		local tk = frame(h, { AnchorPoint = Vector2.new(0.5, 0.5), Position = at, Size = horiz and UDim2.fromOffset(16, 3) or UDim2.fromOffset(3, 16), BackgroundColor3 = RED, ZIndex = 57 })
+		stroke(tk, Color3.new(0, 0, 0), 1)
+		table.insert(bits, tk)
+	end
+	local dot = frame(h, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(11, 11), Rotation = 45, BackgroundColor3 = RED, ZIndex = 57 })
+	stroke(dot, Color3.new(0, 0, 0), 1.5)
+	table.insert(bits, dot)
+	local tag = label(h, { Text = "! " .. name .. " !", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 0, -8), Size = UDim2.fromOffset(260, 26), TextColor3 = RED, ZIndex = 58, StrokeTh = 2.5 })
+	local eta = label(h, { Text = "", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 1, 8), Size = UDim2.fromOffset(170, 22), TextColor3 = Color3.fromRGB(255, 205, 205), ZIndex = 58, StrokeTh = 2 })
+	return { H = h, Bits = bits, Tag = tag, Eta = eta }
+end
+
+local function endLock(h, good, text)
+	local L = h.Lock
+	if not L or L.Ending then return end
+	L.Ending = true
+	local col = good and GOOD or RED
+	for _, b in ipairs(L.Bits) do b.BackgroundColor3 = col end
+	L.Tag.TextColor3 = col
+	L.Eta.Text = text or (good and "EVADED" or "IMPACT")
+	L.Eta.TextColor3 = col
+	local sz = L.H.Size
+	tween(L.H, 0.35, { Size = UDim2.fromOffset(sz.X.Offset * (good and 1.5 or 0.7), sz.Y.Offset * (good and 1.5 or 0.7)) })
+	task.delay(0.15, function()
+		for _, d in ipairs(L.H:GetDescendants()) do
+			if d:IsA("Frame") then tween(d, 0.3, { BackgroundTransparency = 1 })
+			elseif d:IsA("TextLabel") then tween(d, 0.3, { TextTransparency = 1 })
+			elseif d:IsA("UIStroke") then tween(d, 0.3, { Transparency = 1 }) end
+		end
+		task.delay(0.35, function() L.H:Destroy() end)
+	end)
+end
+
+local function lockUpdate(h, now, T, cam, vs, wp, rad)
+	local L = h.Lock
+	if L.Ending then return end
+	if not wp then L.H.Visible = false return end
+	local v = cam:WorldToViewportPoint(wp)
+	if v.Z <= 0 then L.H.Visible = false return end
+	L.H.Visible = true
+	local tanh = math.tan(math.rad(cam.FieldOfView) / 2)
+	local sr = ((rad or 10) / (v.Z * tanh)) * vs.Y / 2
+	local want = math.clamp(sr * 2.3, 80, vs.Y * 0.6)
+	local k = 1 + 1.6 * (1 - smooth((now - h.LockT) / 0.35))
+	L.H.Size = UDim2.fromOffset(want * k, want * k)
+	L.H.Position = UDim2.fromOffset(math.clamp(v.X, 60, vs.X - 60), math.clamp(v.Y, 70, vs.Y - 70))
+	local rem = math.max(T - now, 0)
+	L.Eta.Text = string.format("IMPACT  %.1f", rem)
+	local blink = rem < 0.9 and math.floor(os.clock() * (rem < 0.45 and 16 or 9)) % 2 == 0
+	local col = blink and Color3.new(1, 1, 1) or RED
+	if col ~= L.Col then
+		L.Col = col
+		for _, b in ipairs(L.Bits) do b.BackgroundColor3 = col end
+	end
+end
+
+--------------------------------------------------------------------------
+-- the parry prompt: a closing ring that meets its circle in the sweet spot
+--------------------------------------------------------------------------
+local prompt -- (one at a time: the soonest threat)
+
+local function glyph()
+	if touchOnly() then return "TAP" end
+	if padOnly() then return "R2" end
+	return "CLICK"
+end
+
+local function makePrompt()
+	local holder = frame(root, { Name = "Parry", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.62), Size = UDim2.fromScale(0.1, 0.1), BackgroundTransparency = 1, ZIndex = 61 })
+	square(holder).DominantAxis = Enum.DominantAxis.Height
+	local ring = frame(holder, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(3, 3), BackgroundTransparency = 1, ZIndex = 61 })
+	corner(ring)
+	local rs = stroke(ring, Color3.new(1, 1, 1), 5)
+	local disc = frame(holder, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(1, 1, 1), ZIndex = 62 })
+	corner(disc)
+	stroke(disc, Color3.new(0, 0, 0), 5)
+	local dg = grad(disc, DEEP_GREEN, GREEN)
+	label(disc, { Text = glyph(), Size = UDim2.fromScale(0.78, 0.36), Position = UDim2.fromScale(0.11, 0.2), ZIndex = 63, StrokeTh = 3 })
+	label(disc, { Text = "PARRY", Size = UDim2.fromScale(0.6, 0.2), Position = UDim2.fromScale(0.2, 0.6), ZIndex = 63, TextColor3 = Color3.fromRGB(220, 255, 225), StrokeTh = 2 })
+	local sc = Instance.new("UIScale")
+	sc.Scale = 0.2
+	sc.Parent = holder
+	tween(sc, 0.16, { Scale = 1 }, Enum.EasingStyle.Back)
+	return { Holder = holder, Ring = ring, RingStroke = rs, Disc = disc, DiscGrad = dg, Scale = sc, Pos = Vector2.new(0.5, 0.62) }
+end
+
+local function closePrompt(good)
+	local ui = prompt
+	if not ui then return end
+	prompt = nil
+	local col = good and GOOD or BAD
+	ui.RingStroke.Color = col
+	ui.DiscGrad.Color = ColorSequence.new(col:Lerp(Color3.new(0, 0, 0), 0.25), col)
+	tween(ui.Ring, 0.25, { Size = UDim2.fromScale(good and 1.9 or 1.2, good and 1.9 or 1.2) })
+	tween(ui.RingStroke, 0.25, { Transparency = 1 })
+	tween(ui.Scale, 0.3, { Scale = good and 1.25 or 0.6 }, good and Enum.EasingStyle.Back or Enum.EasingStyle.Quad)
+	task.delay(0.12, function()
+		for _, d in ipairs(ui.Holder:GetDescendants()) do
+			if d:IsA("Frame") then tween(d, 0.25, { BackgroundTransparency = 1 })
+			elseif d:IsA("TextLabel") then tween(d, 0.25, { TextTransparency = 1 })
+			elseif d:IsA("UIStroke") then tween(d, 0.25, { Transparency = 1 }) end
+		end
+		task.delay(0.3, function() ui.Holder:Destroy() end)
+	end)
+end
+
+--------------------------------------------------------------------------
+-- hits
+--------------------------------------------------------------------------
+local function me()
+	local c = player.Character
+	local r = c and c:FindFirstChild("HumanoidRootPart")
+	local hum = c and c:FindFirstChildOfClass("Humanoid")
+	if not (r and hum and hum.Health > 0) then return nil end
+	return r.Position
+end
+
+local function impactT(h, pos)
+	if h.Shape.Kind == "ring" then return S.ringArrival(h.Shape, pos) end
+	return h.T
+end
+
+-- would it catch me where I stand? (rings: if I don't jump)
+local function inPath(h, pos, T)
+	if h.Shape.Kind == "ring" then return S.onArena(pos, -5) end
+	return S.inside(h.Shape, pos, T, 0)
+end
+
+-- h: { Id, T, Shape, Name, Target (userId), Pos = function(now) -> Vector3 (optional), Rad (optional), Parry (default true) }
+function W.add(h)
+	if hits[h.Id] then return end
+	hits[h.Id] = h
+	table.insert(order, h.Id)
+end
+
+function W.cancelAll()
+	for id, h in pairs(hits) do
+		if h.Lock then endLock(h, true, "") end
+		hits[id] = nil
+	end
+	table.clear(order)
+	closePrompt(false)
+end
+
+-- the server's verdict on a hit that caught (or would have caught) you
+function W.result(id, result)
+	local h = hits[id]
+	if h then
+		h.Result = result
+		if h.Lock then endLock(h, result ~= "hit", result == "hit" and "IMPACT" or (result == "evade" and "EVADED" or "PARRIED")) end
+		if prompt and prompt.Id == id then closePrompt(result ~= "hit") end
+	end
+	if result == "perfect" then
+		W.pop("PERFECT PARRY!", GOLD, true)
+	elseif result == "parry" then
+		W.pop("PARRY!", GOOD, true)
+	elseif result == "evade" then
+		W.pop("EVADED", Color3.fromRGB(170, 220, 255), false)
+	elseif result == "hit" then
+		K.vignette(0.5, Color3.fromRGB(180, 0, 30), 0.08)
+		task.delay(0.25, function() K.vignette(0, nil, 0.6) end)
+	end
+end
+
+-- did my swing claim this hit? (the parrier sees the deflection at once)
+function W.claimed(id)
+	local h = hits[id]
+	return h ~= nil and h.Claimed ~= nil
+end
+
+-- a swing just happened: which live hits does it parry? (and was it early?)
+function W.tryParry(now)
+	local pos = me()
+	if not pos then return {}, false end
+	local ids, early = {}, false
+	for _, id in ipairs(order) do
+		local h = hits[id]
+		if h and not h.Result and not h.Claimed and h.Parry ~= false then
+			local T = impactT(h, pos)
+			if inPath(h, pos, T) then
+				local dt = now - T
+				if dt >= -S.PARRY_EARLY and dt <= S.PARRY_LATE then
+					h.Claimed = now
+					table.insert(ids, id)
+				elseif dt < -S.PARRY_EARLY and dt > -0.85 then
+					early = true
+				end
+			end
+		end
+	end
+	if #ids > 0 then
+		if prompt then
+			prompt.RingStroke.Color = GOOD
+			tween(prompt.Scale, 0.15, { Scale = 1.15 }, Enum.EasingStyle.Back)
+		end
+	elseif early then
+		W.pop("TOO EARLY!", BAD, false, Vector2.new(0.5, 0.7))
+	end
+	return ids, early
+end
+
+function W.update(now)
+	local cam = workspace.CurrentCamera
+	local vs = cam.ViewportSize
+	local pos = me()
+	local soonest, soonestT
+	local best, bestT -- the parry prompt's hit
+	local myId = player.UserId
+	for i = #order, 1, -1 do
+		local id = order[i]
+		local h = hits[id]
+		local T = pos and impactT(h, pos) or h.T or now
+		if now > (h.T or T) + 2.5 or (h.Shape.Kind == "ring" and now > h.Shape.T0 + 12) then
+			if h.Lock then endLock(h, true, "") end
+			hits[id] = nil
+			table.remove(order, i)
+		else
+			-- the lock-on: things aimed at me
+			if h.Target == myId and pos then
+				if not h.Lock and not h.Result and now >= T - S.WARN_LOCK and now < T then
+					h.Lock = makeLock(h.Name or "INCOMING")
+					h.LockT = now
+					K.sfx(BEEP, 0.4, 0.8)
+				end
+				if h.Lock and not h.Lock.Ending then
+					if h.Result or now >= T then
+						endLock(h, h.Result ~= nil and h.Result ~= "hit" or not inPath(h, pos, T))
+					else
+						local wp = h.Pos and h.Pos(now) or S.shapeCentre(h.Shape, now)
+						lockUpdate(h, now, T, cam, vs, wp, h.Rad or 12)
+						if not soonestT or T < soonestT then soonest, soonestT = h, T end
+					end
+				end
+			end
+			-- the parry prompt: anything I'm standing in
+			if pos and not h.Result and not h.Claimed and h.Parry ~= false and now >= T - S.PROMPT_LEAD and now <= T + S.PARRY_LATE and inPath(h, pos, T) then
+				if not bestT or T < bestT then best, bestT = h, T end
+			end
+		end
+	end
+	-- prompt
+	if best then
+		if prompt and prompt.Id ~= best.Id then closePrompt(false) end
+		if not prompt then
+			prompt = makePrompt()
+			prompt.Id = best.Id
+		end
+		local J = bestT - (S.PARRY_EARLY - S.PARRY_LATE) / 2 -- (the middle of the window)
+		local s = 1 + 2 * math.max(0, (J - now) / (S.PROMPT_LEAD - (bestT - J)))
+		if now > J then s = 1 - 0.15 * math.min((now - J) / 0.2, 1) end
+		prompt.Ring.Size = UDim2.fromScale(s, s)
+		local near = 1 - math.clamp(math.abs(now - J) / 0.3, 0, 1)
+		prompt.RingStroke.Thickness = 4 + near * 4
+		prompt.RingStroke.Color = Color3.new(1, 1, 1):Lerp(GOLD, near)
+		-- (over the threat, kept clear of the middle of the screen)
+		local want = Vector2.new(0.5, 0.64)
+		local wp = best.Pos and best.Pos(now) or nil
+		if wp then
+			local v = cam:WorldToViewportPoint(wp)
+			if v.Z > 0 then want = Vector2.new(math.clamp(v.X / vs.X, 0.3, 0.7), math.clamp(v.Y / vs.Y, 0.3, 0.72)) end
+		end
+		prompt.Pos = prompt.Pos:Lerp(want, 0.2)
+		prompt.Holder.Position = UDim2.fromScale(prompt.Pos.X, prompt.Pos.Y)
+	elseif prompt then
+		local h = hits[prompt.Id]
+		closePrompt(h ~= nil and h.Claimed ~= nil)
+	end
+	-- the beep: faster and higher as the nearest lock closes
+	if soonest then
+		local rem = math.max(soonestT - now, 0)
+		local u = math.clamp(rem / S.WARN_LOCK, 0, 1)
+		local gap = 0.07 + 0.43 * u
+		if os.clock() - lastBeep >= gap then
+			lastBeep = os.clock()
+			K.sfx(BEEP, 0.26 + 0.2 * (1 - u), 1.35 + 0.8 * (1 - u))
+		end
+	end
+end
+
+return W
+]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX12"><Properties><string name="Name">Shared</string><ProtectedString name="Source"><![CDATA[--==================================================
+-- BOSS FIGHT: SHARED
+-- Everything the server and every client must agree on:
+-- the arena, the Anti-Spiral's walk around it (a plan both
+-- sides evaluate on the synced server clock), the shapes an
+-- attack can hit, and the parry timing.
+--==================================================
+local HttpService = game:GetService("HttpService")
+
+local S = {}
+
+S.CENTER = Vector3.new(0, 0.5, 20000) -- arena centre, on its surface
+S.ARENA_R = 225                       -- the disc players stand on
+S.WALK_R = 300                        -- the ring he walks round, outside the rim
+S.UP = Vector3.yAxis
+
+-- parry timing (seconds, relative to a hit's impact time T)
+S.PARRY_EARLY = 0.32   -- a swing this long before impact still parries
+S.PARRY_LATE = 0.08    -- ...or this long after
+S.PERFECT = 0.1        -- |swing - T| within this is a perfect parry
+S.GRACE = 0.2          -- the server waits this long after T for late parry claims
+S.WARN_LOCK = 2.4      -- the red lock-on shows this long before impact
+S.PROMPT_LEAD = 0.9    -- the click prompt shows this long before impact
+
+-- remotes (made by the server in ReplicatedStorage.BossFight.Net)
+S.NET = "Net"
+
+function S.now()
+	return workspace:GetServerTimeNow()
+end
+
+function S.flat(v)
+	return Vector3.new(v.X, 0, v.Z)
+end
+
+function S.onArena(p, margin)
+	return (S.flat(p) - S.flat(S.CENTER)).Magnitude <= S.ARENA_R - (margin or 0)
+end
+
+-- a point on the arena surface
+function S.surface(x, z)
+	return Vector3.new(x, S.CENTER.Y, z)
+end
+
+function S.ease(u)
+	u = math.clamp(u, 0, 1)
+	return -(math.cos(math.pi * u) - 1) / 2
+end
+
+--------------------------------------------------------------------------
+-- MOTION PLAN
+-- { T0, T1, A0, A1, F0, F1, FM, Y }: between T0 and T1 his angle round
+-- the ring eases from A0 to A1 (radians), and his facing from F0 to F1
+-- (0 = square to the arena centre, 1 = along the way he's walking), plus
+-- FM * sin(pi * u): a walk that turns into its stride and squares back up
+-- to the arena as it stops. Y is his root height. Outside T0..T1 he holds.
+--------------------------------------------------------------------------
+function S.encodePlan(plan)
+	return HttpService:JSONEncode(plan)
+end
+
+function S.decodePlan(str)
+	if type(str) ~= "string" or str == "" then return nil end
+	local ok, plan = pcall(HttpService.JSONDecode, HttpService, str)
+	return ok and plan or nil
+end
+
+local function ringPos(a, y)
+	return Vector3.new(S.CENTER.X + math.cos(a) * S.WALK_R, y, S.CENTER.Z + math.sin(a) * S.WALK_R)
+end
+S.ringPos = ringPos
+
+-- his root CFrame at time t, plus his speed (studs/s) and the plan's travel sign
+function S.rootAt(plan, t)
+	local u = plan.T1 > plan.T0 and math.clamp((t - plan.T0) / (plan.T1 - plan.T0), 0, 1) or 1
+	local e = S.ease(u)
+	local a = plan.A0 + (plan.A1 - plan.A0) * e
+	local f = plan.F0 + (plan.F1 - plan.F0) * e + (plan.FM or 0) * math.sin(math.pi * u)
+	local pos = ringPos(a, plan.Y)
+	local toCentre = S.flat(S.CENTER - pos).Unit
+	local dir = (plan.A1 >= plan.A0) and 1 or -1
+	local tangent = Vector3.new(-math.sin(a), 0, math.cos(a)) * dir
+	local face = toCentre:Lerp(tangent, f)
+	if face.Magnitude < 1e-3 then face = toCentre end
+	-- (angular speed of the eased move, times the radius)
+	local dur = math.max(plan.T1 - plan.T0, 1e-3)
+	local speed = 0
+	if u > 0 and u < 1 then
+		speed = math.abs(plan.A1 - plan.A0) * (math.pi / 2) * math.sin(math.pi * u) / dur * S.WALK_R
+	end
+	return CFrame.lookAt(pos, pos + face.Unit), speed
+end
+
+--------------------------------------------------------------------------
+-- HIT SHAPES
+-- circle: { Kind = "circle", P = Vector3, R = number }
+-- line:   { Kind = "line", A = Vector3, B = Vector3, W = number }
+-- ring:   { Kind = "ring", O = Vector3, R0 = number, Speed = number, W = number, H = number, T0 = number }
+--         (a shockwave: radius R0 + Speed * (t - T0), W thick, H tall; jump it)
+-- Positions are compared flat (XZ), against a character's root.
+--------------------------------------------------------------------------
+function S.ringRadius(shape, t)
+	return shape.R0 + shape.Speed * (t - shape.T0)
+end
+
+function S.inside(shape, pos, t, feetHeight)
+	local p = S.flat(pos)
+	if shape.Kind == "circle" then
+		return (p - S.flat(shape.P)).Magnitude <= shape.R + 1.5
+	elseif shape.Kind == "line" then
+		local a, b = S.flat(shape.A), S.flat(shape.B)
+		local ab = b - a
+		local u = math.clamp((p - a):Dot(ab) / math.max(ab:Dot(ab), 1e-6), 0, 1)
+		return (p - (a + ab * u)).Magnitude <= shape.W / 2 + 1.5
+	elseif shape.Kind == "ring" then
+		local r = S.ringRadius(shape, t)
+		local d = (p - S.flat(shape.O)).Magnitude
+		if math.abs(d - r) > shape.W / 2 + 1.5 then return false end
+		-- (jump it: feet clear of the wall's top)
+		return (feetHeight or 0) < shape.H
+	end
+	return false
+end
+
+-- when a ring shockwave reaches a point (for prompts)
+function S.ringArrival(shape, pos)
+	local d = (S.flat(pos) - S.flat(shape.O)).Magnitude
+	return shape.T0 + (d - shape.R0) / shape.Speed
+end
+
+-- a point to hang a warning on
+function S.shapeCentre(shape, t)
+	if shape.Kind == "circle" then return shape.P end
+	if shape.Kind == "line" then return shape.A:Lerp(shape.B, 0.5) end
+	return shape.O
+end
+
+return S
+]]></ProtectedString></Properties></Item></Item></roblox>

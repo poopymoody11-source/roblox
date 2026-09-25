@@ -343,11 +343,10 @@ function Fx.blast(pos, radius, color, opts)
 		Rotation = NumberRange.new(0, 360), RotSpeed = NumberRange.new(-40, 40), Drag = 3,
 	}, 10, 3)
 	if opts.Column ~= false then
-		local col = K.part({ Name = "Column", Size = Vector3.new(radius * 0.7, 120, radius * 0.7), Material = Enum.Material.Neon, Color = hot, Transparency = 0.2, CFrame = CFrame.new(p + UP * 60) }, folder)
-		local m = Instance.new("SpecialMesh")
-		m.MeshType = Enum.MeshType.Cylinder
-		m.Parent = col
-		K.tween(col, 0.45, { Size = Vector3.new(radius * 0.05, 160, radius * 0.05), Transparency = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+		-- (a cylinder part lies along X: stood up on end)
+		local col = K.part({ Name = "Column", Shape = Enum.PartType.Cylinder, Size = Vector3.new(120, radius * 0.7, radius * 0.7), Material = Enum.Material.Neon, Color = hot, Transparency = 0.2,
+			CFrame = CFrame.new(p + UP * 60) * CFrame.Angles(0, 0, math.pi / 2) }, folder)
+		K.tween(col, 0.45, { Size = Vector3.new(160, radius * 0.05, radius * 0.05), Transparency = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 		Debris:AddItem(col, 0.5)
 	end
 	Fx.sound(opts.Sound or K.S.Impact, p, opts.Volume or 1, opts.Speed or (0.9 + math.random() * 0.2), 900)

@@ -105,7 +105,7 @@ end
 
 -- a blade of starlight down the line
 function A.lance(ctx, e, parried)
-	local K, S, Fx = ctx.K, ctx.S, ctx.Fx
+	local K, Fx = ctx.K, ctx.Fx
 	local l = e.L
 	local a, b = l.A, l.B
 	local mid = a:Lerp(b, 0.5)
