@@ -127,7 +127,7 @@ function A.start(ctx, d)
 							K.tween(f, 0.35, { CFrame = f.CFrame + Vector3.new(0, 60, 0), Transparency = 1 })
 						end
 					else
-						Fx.blast(z.P, z.R * 1.4, Fx.VIOLET, { Sound = K.S.RockBoom, Shake = 2, Volume = 1.2 })
+						Fx.blast(z.P, z.R * 1.4, Fx.VIOLET, { Sound = K.S.RockBoom, Shake = 1.8, Volume = 1.2 })
 						if not firstDone then
 							firstDone = true
 							ctx.Fx.impact("W", 0.035)

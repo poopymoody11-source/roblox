@@ -544,9 +544,11 @@ function F.run()
 		while transitioning and F.Alive do task.wait(0.1) end
 		if not F.Alive then break end
 		-- walk on round the arena (now and then turning back)
-		if F.rng:NextNumber() < 0.3 then dir = -dir end
-		local arc = F.rng:NextNumber(Config.WalkArc[1], Config.WalkArc[2])
-		F.walk(arc * dir)
+		if F.rng:NextNumber() < (Config.WalkChance or 1) then
+			if F.rng:NextNumber() < 0.3 then dir = -dir end
+			local arc = F.rng:NextNumber(Config.WalkArc[1], Config.WalkArc[2])
+			F.walk(arc * dir)
+		end
 		if not F.Alive then break end
 		while transitioning and F.Alive do task.wait(0.1) end
 		local phase = F.phase()

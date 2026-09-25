@@ -11,14 +11,14 @@ A.Defaults = {
 	Waves = 2,
 	ExtraZones = 2,
 	ZoneR = 22,
-	Windup = 1.7,     -- first wave's warning
-	WaveWarn = 1.25,  -- later waves' warning
-	WaveGap = 0.55,   -- rest between one wave's last slam and the next wave's warning
+	Windup = 1.3,     -- first wave's warning
+	WaveWarn = 1.0,   -- later waves' warning
+	WaveGap = 0.3,   -- rest between one wave's last slam and the next wave's warning
 	Stagger = 0.16,   -- between slams in a wave
 	Damage = 35,
 	Hammer = true,     -- the finale: both fists, one huge zone over the crowd
 	HammerR = 50,
-	HammerWarn = 1.9,
+	HammerWarn = 1.6,
 	HammerDamage = 50,
 }
 
@@ -90,9 +90,6 @@ function A.Run(F, P, token)
 			Target = "all",
 			Knock = 110,
 			Big = true,
-			-- (a wind-up this big can be fought: three keys, one after another)
-			Qte = F.qte.sequence({ "CLICK", "Q", "E" }, 0.45),
-			Counter = 60, CounterPerfect = 100,
 		})
 		F.fx("FistHammer", { T0 = waveT, T = hit.T, Id = hit.Id, P = p, R = P.HammerR })
 		waveT = hit.T + 0.6

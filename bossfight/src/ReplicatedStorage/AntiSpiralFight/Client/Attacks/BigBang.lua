@@ -144,8 +144,20 @@ function A.start(ctx, d)
 		b.Enabled = false
 		rivers[i] = { B = b, Sky = sky }
 	end
-	local zone = Fx.zone({ Kind = "circle", P = S.CENTER, R = S.ARENA_R }, d.ThrowT, d.T)
-	Warn.add({ Id = d.Id, T = d.T, Shape = { Kind = "circle", P = S.CENTER, R = S.ARENA_R + 40 }, Name = "BIG BANG", Target = "all", Rad = 90, Pos = function(now) return orbAt(now) end })
+	local R = d.R or 160
+	local zone = Fx.zone({ Kind = "circle", P = S.CENTER, R = R }, d.ThrowT - 1, d.T)
+	Warn.add({ Id = d.Id, T = d.T, Shape = { Kind = "circle", P = S.CENTER, R = R }, Name = "BIG BANG", Target = "all", Rad = 90, Pos = function(now) return orbAt(now) end })
+	-- the way out: the outer ring of the arena glows green
+	local safeHost = K.part({ Name = "SafeHost", Size = Vector3.one, Transparency = 1, CFrame = CFrame.new(S.CENTER) }, host)
+	local safe = K.softRing(safeHost, 64, R + 4, S.ARENA_R, { Brightness = 2, Alpha = 0, Profile = { 0, 0, 0.1, 0.6, 0.5, 0.25, 0.9, 0.6, 1, 0 } })
+	for _, q in ipairs(safe.Q) do q.Color = ColorSequence.new(Fx.GREEN, Fx.LIME) end
+	safe.update(CFrame.lookAt(S.CENTER + UP * 0.3, S.CENTER + UP * 2), R + 4, S.ARENA_R, 0)
+	safe.setTransparency(0.99)
+	task.delay(math.max(d.ThrowT - 1 - S.now(), 0), function()
+		if ctx.epoch() ~= epoch then return end
+		safe.setTransparency(0.35)
+		Warn.callout("GET TO THE EDGE!")
+	end)
 	local lastBolt = 0
 	local done = false
 	local conn
@@ -209,8 +221,8 @@ function A.start(ctx, d)
 				K.flash(1, Color3.new(1, 1, 1), 1)
 				Fx.impact("WBWBWB", 0.05)
 				ctx.Cam.punch(-24, 0.8)
-				Fx.blast(S.CENTER, 120, Fx.VIOLET, { Shake = 5, Volume = 1.6, Sound = K.S.Boom })
-				Fx.blast(S.CENTER, 220, Fx.MAGENTA, { Column = false, Shake = 0, Volume = 0, Pack = false })
+				Fx.blast(S.CENTER, R * 0.8, Fx.VIOLET, { Shake = 5, Volume = 1.6, Sound = K.S.Boom })
+				Fx.blast(S.CENTER, R * 1.2, Fx.MAGENTA, { Column = false, Shake = 0, Volume = 0, Pack = false })
 				Fx.vfx("Explosion-01", S.CENTER + UP * 20, 12, 40, 6)
 				Fx.vfx("Big-Crack-01", S.CENTER, 5, nil, 8)
 				K.sfx(K.S.Hell, 1, 0.6)

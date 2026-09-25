@@ -210,6 +210,18 @@ function A.start(ctx, d)
 			K.setQuadSize(floorBurn, (far - near).Magnitude, first.W)
 			sparkHost.CFrame = CFrame.new(near)
 			sparks.Rate = 160
+			-- (it leaves the floor burning behind it)
+			if os.clock() - (ctx.BeamBurn or 0) > 0.07 then
+				ctx.BeamBurn = os.clock()
+				local at = near:Lerp(far, math.random())
+				if S.onArena(at, 2) then
+					Fx.vfx(math.random() < 0.5 and "Fire-01" or "Fire-02", at, 1.4, 6, 2)
+					Fx.emitAt(at + UP, {
+						Texture = "1851669703", Color = ColorSequence.new(Color3.new(1, 1, 1), Fx.MAGENTA), Size = K.ns(0, 2.5, 1, 0),
+						Lifetime = NumberRange.new(0.3, 0.6), Speed = NumberRange.new(10, 30), SpreadAngle = Vector2.new(50, 50), Brightness = 5,
+					}, 8, 1)
+				end
+			end
 			ctx.Cam.shake(0.6, 0.1)
 		else
 			sparks.Rate = 0

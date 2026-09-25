@@ -7,7 +7,7 @@
 local A = {}
 
 A.Defaults = {
-	Charge = 1.9,     -- the orb gathering
+	Charge = 1.5,     -- the orb gathering
 	Sweep = 2.3,      -- seconds to cross the arena
 	Arc = 100,        -- degrees swept
 	W = 16,           -- beam width on the floor

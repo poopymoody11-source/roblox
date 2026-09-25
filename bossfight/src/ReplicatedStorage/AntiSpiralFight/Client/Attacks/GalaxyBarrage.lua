@@ -192,6 +192,7 @@ function A.shot(ctx, d)
 				end)
 				trail.Color = ColorSequence.new(Fx.LIME, Fx.GREEN)
 			else
+				if d.Kind == "star" then Fx.vfx("Stars-01", d.To + Vector3.new(0, 2, 0), 1.5, 10, 2) end
 				Fx.blast(d.To, d.R * 1.6, d.Kind == "star" and Color3.fromRGB(230, 180, 255) or Fx.VIOLET, { Shake = d.Kind == "star" and 0.6 or (giant and 4 or 1.4), Volume = giant and 1.5 or 1 })
 				if giant then
 					ctx.Fx.impact("WBWB", 0.05)

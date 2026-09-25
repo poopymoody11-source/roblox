@@ -10,8 +10,8 @@ local A = {}
 A.Defaults = {
 	Portals = 2,
 	Shots = 14,
-	Interval = 0.34,   -- seconds between shots
-	Windup = 1.5,      -- the galaxies opening
+	Interval = 0.26,   -- seconds between shots
+	Windup = 1.1,      -- the galaxies opening
 	Travel = { 1.6, 2.1 },
 	Finale = true,     -- a planet the size of a house, at everyone
 }
@@ -100,7 +100,7 @@ function A.Run(F, P, token)
 			local land = S.surface(c.X, c.Z)
 			local tl = F.now()
 			local hit = F.hit({
-				T = tl + 2.9,
+				T = tl + 2.4,
 				Shape = { Kind = "circle", P = land, R = 32 },
 				Damage = 45,
 				Name = "JUPITER",

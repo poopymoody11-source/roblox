@@ -12,16 +12,17 @@ return {
 	MaxHealth = 5000,
 	HealthPerExtraPlayer = 0.7,
 
-	WalkSpeed = 70,          -- studs/s round the ring at full stride
-	WalkArc = { 35, 80 },    -- degrees he walks between attacks (random in range)
+	WalkSpeed = 115,         -- studs/s round the ring at full stride
+	WalkArc = { 18, 42 },    -- degrees he walks between attacks (random in range)
+	WalkChance = 0.45,       -- (the rest of the time he goes straight into the next attack)
 
 	-- the how-to-play cards after the cutscene, before his first attack (seconds)
-	IntroTime = 11,
+	IntroTime = 9,
 
 	-- HOW YOU HURT HIM: after this many attacks he's dazed - slumped over the rim,
 	-- head down on the arena - and for DazeTime seconds you can run up and punch him
-	AttacksBeforeDaze = 3,
-	DazeTime = 8,
+	AttacksBeforeDaze = 2,
+	DazeTime = 14,
 	PunchDamage = 55,
 	PunchRange = 30,      -- studs from his head (the glowing weak point)
 	PunchCooldown = 0.4,
@@ -45,7 +46,7 @@ return {
 		{
 			Name = "THE END OF ALL SPIRALS",
 			StartsAtHealthPct = 1,
-			AttackDelay = 1.1,  -- rest after an attack, before he walks on
+			AttackDelay = 0.35,  -- rest after an attack, before the next
 			Attacks = {
 				{ Module = "GalaxyBarrage", Weight = 3 },
 				{ Module = "FistSlam", Weight = 3 },
@@ -59,7 +60,7 @@ return {
 			-- (placeholder until phase 2 gets its own design: the same attacks, harder)
 			Name = "DESPAIR OF THE UNIVERSE",
 			StartsAtHealthPct = 0.5,
-			AttackDelay = 0.7,
+			AttackDelay = 0.15,
 			TransitionTime = 3.5,
 			DamageMultiplier = 1.25,
 			UltimateParams = { Speed = 1.2 },

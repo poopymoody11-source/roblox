@@ -7,7 +7,7 @@
 local A = {}
 
 A.Defaults = {
-	Charge = 1.9,     -- the orb gathering
+	Charge = 1.5,     -- the orb gathering
 	Sweep = 2.3,      -- seconds to cross the arena
 	Arc = 100,        -- degrees swept
 	W = 16,           -- beam width on the floor
@@ -61,7 +61,8 @@ return A
 local A = {}
 
 A.Defaults = {
-	Charge = 5.0,   -- rising + gathering the universe
+	Charge = 4.2,   -- rising + gathering the universe
+	R = 160,        -- where it lands (the outer ring of the arena is safe - or roll through it)
 	Fall = 2.2,     -- from his hands to the arena
 	Damage = 75,
 	Speed = 1,      -- (phase 2 hurls it faster)
@@ -72,26 +73,17 @@ function A.Run(F, P, token)
 	local t0 = F.now() + 0.2
 	local throwT = t0 + P.Charge / P.Speed
 	local T = throwT + P.Fall / P.Speed
-	local max = F.maxHealth()
 	local hit = F.hit({
 		T = T,
-		Shape = { Kind = "circle", P = S.CENTER, R = S.ARENA_R + 40 },
+		Shape = { Kind = "circle", P = S.CENTER, R = P.R },
 		Damage = P.Damage,
 		Name = "BIG BANG",
 		Target = "all",
 		Knock = 140,
 		Big = true,
-		-- five keys, one after another (the tightest windows in the fight)
-		Qte = (function()
-			local q = F.qte.sequence({ "CLICK", "Q", "E", "F", "CLICK" }, 0.42, "ultimate")
-			q.Early, q.Late, q.Perfect = 0.24, 0.15, 0.07
-			return q
-		end)(),
-		Counter = math.floor(max * 0.08),
-		CounterPerfect = math.floor(max * 0.12),
 	})
-	F.fx("BigBang", { T0 = t0, ThrowT = throwT, T = T, Id = hit.Id })
-	F.waitUntil(T + (F.Config.UltimateCounterDelay or 3.4) + 0.5)
+	F.fx("BigBang", { T0 = t0, ThrowT = throwT, T = T, Id = hit.Id, R = P.R })
+	F.waitUntil(T + 2.5)
 end
 
 return A
@@ -105,7 +97,7 @@ local A = {}
 
 A.Defaults = {
 	Lines = 6,
-	Windup = 1.9,
+	Windup = 1.4,
 	Stagger = 0.22,
 	W = 12,
 	Damage = 30,
@@ -175,14 +167,14 @@ A.Defaults = {
 	Waves = 2,
 	ExtraZones = 2,
 	ZoneR = 22,
-	Windup = 1.7,     -- first wave's warning
-	WaveWarn = 1.25,  -- later waves' warning
-	WaveGap = 0.55,   -- rest between one wave's last slam and the next wave's warning
+	Windup = 1.3,     -- first wave's warning
+	WaveWarn = 1.0,   -- later waves' warning
+	WaveGap = 0.3,   -- rest between one wave's last slam and the next wave's warning
 	Stagger = 0.16,   -- between slams in a wave
 	Damage = 35,
 	Hammer = true,     -- the finale: both fists, one huge zone over the crowd
 	HammerR = 50,
-	HammerWarn = 1.9,
+	HammerWarn = 1.6,
 	HammerDamage = 50,
 }
 
@@ -254,9 +246,6 @@ function A.Run(F, P, token)
 			Target = "all",
 			Knock = 110,
 			Big = true,
-			-- (a wind-up this big can be fought: three keys, one after another)
-			Qte = F.qte.sequence({ "CLICK", "Q", "E" }, 0.45),
-			Counter = 60, CounterPerfect = 100,
 		})
 		F.fx("FistHammer", { T0 = waveT, T = hit.T, Id = hit.Id, P = p, R = P.HammerR })
 		waveT = hit.T + 0.6
@@ -277,8 +266,8 @@ local A = {}
 A.Defaults = {
 	Portals = 2,
 	Shots = 14,
-	Interval = 0.34,   -- seconds between shots
-	Windup = 1.5,      -- the galaxies opening
+	Interval = 0.26,   -- seconds between shots
+	Windup = 1.1,      -- the galaxies opening
 	Travel = { 1.6, 2.1 },
 	Finale = true,     -- a planet the size of a house, at everyone
 }
@@ -367,7 +356,7 @@ function A.Run(F, P, token)
 			local land = S.surface(c.X, c.Z)
 			local tl = F.now()
 			local hit = F.hit({
-				T = tl + 2.9,
+				T = tl + 2.4,
 				Shape = { Kind = "circle", P = land, R = 32 },
 				Damage = 45,
 				Name = "JUPITER",
@@ -396,8 +385,8 @@ return A
 local A = {}
 
 A.Defaults = {
-	Corrupt = 3.2,     -- the galaxies turning
-	Storm = 9,         -- seconds of bombardment
+	Corrupt = 2.6,     -- the galaxies turning
+	Storm = 8,         -- seconds of bombardment
 	Galaxies = 7,      -- (the realm's hero galaxies, indexed on the client)
 	BoltGap = { 0.22, 0.09 }, -- seconds between bolts, start -> end of the storm
 	BoltWarn = 0.95,
@@ -487,8 +476,8 @@ return A
 local A = {}
 
 A.Defaults = {
-	Windup = 1.4,     -- the clap
-	Pull = 4.2,       -- seconds of pull before it collapses
+	Windup = 1.1,     -- the clap
+	Pull = 4.2,       -- seconds of pull before it collapses (the escape circles run through the end of it)
 	Strength = 10,    -- studs/s toward the centre (walk speed is 16)
 	R = 75,           -- the blast radius
 	Damage = 45,
@@ -507,8 +496,13 @@ function A.Run(F, P, token)
 		Knock = 90,
 		Target = "all",
 		Big = true,
-		Qte = F.qte.sequence({ "Q", "E", "CLICK" }, 0.45),
-		Counter = 70, CounterPerfect = 110,
+		-- (the one QTE in the fight: five circles, one after another, the last on the collapse)
+		Qte = (function()
+			local q = F.qte.sequence({ "Q", "E", "CLICK", "F", "SPACE" }, 0.55)
+			q.Early, q.Late, q.Perfect = 0.28, 0.18, 0.09
+			return q
+		end)(),
+		Counter = 90, CounterPerfect = 140,
 	})
 	F.fx("SpiralCollapse", { T0 = t0, OpenT = openT, BlastT = blastT, Id = hit.Id, R = P.R, Strength = P.Strength, Centre = S.CENTER })
 	F.waitUntil(blastT + 0.8)
@@ -527,8 +521,8 @@ local A = {}
 A.Defaults = {
 	Rings = 3,
 	Speed = 72,     -- studs/s
-	Gap = 0.85,     -- seconds between rings
-	Windup = 1.6,   -- the foot coming up
+	Gap = 0.75,     -- seconds between rings
+	Windup = 1.25,  -- the foot coming up
 	W = 6,          -- ring thickness
 	H = 4.5,        -- ring height (clear it with a jump)
 	Damage = 22,
@@ -579,16 +573,17 @@ return {
 	MaxHealth = 5000,
 	HealthPerExtraPlayer = 0.7,
 
-	WalkSpeed = 70,          -- studs/s round the ring at full stride
-	WalkArc = { 35, 80 },    -- degrees he walks between attacks (random in range)
+	WalkSpeed = 115,         -- studs/s round the ring at full stride
+	WalkArc = { 18, 42 },    -- degrees he walks between attacks (random in range)
+	WalkChance = 0.45,       -- (the rest of the time he goes straight into the next attack)
 
 	-- the how-to-play cards after the cutscene, before his first attack (seconds)
-	IntroTime = 11,
+	IntroTime = 9,
 
 	-- HOW YOU HURT HIM: after this many attacks he's dazed - slumped over the rim,
 	-- head down on the arena - and for DazeTime seconds you can run up and punch him
-	AttacksBeforeDaze = 3,
-	DazeTime = 8,
+	AttacksBeforeDaze = 2,
+	DazeTime = 14,
 	PunchDamage = 55,
 	PunchRange = 30,      -- studs from his head (the glowing weak point)
 	PunchCooldown = 0.4,
@@ -612,7 +607,7 @@ return {
 		{
 			Name = "THE END OF ALL SPIRALS",
 			StartsAtHealthPct = 1,
-			AttackDelay = 1.1,  -- rest after an attack, before he walks on
+			AttackDelay = 0.35,  -- rest after an attack, before the next
 			Attacks = {
 				{ Module = "GalaxyBarrage", Weight = 3 },
 				{ Module = "FistSlam", Weight = 3 },
@@ -626,7 +621,7 @@ return {
 			-- (placeholder until phase 2 gets its own design: the same attacks, harder)
 			Name = "DESPAIR OF THE UNIVERSE",
 			StartsAtHealthPct = 0.5,
-			AttackDelay = 0.7,
+			AttackDelay = 0.15,
 			TransitionTime = 3.5,
 			DamageMultiplier = 1.25,
 			UltimateParams = { Speed = 1.2 },
@@ -1187,9 +1182,11 @@ function F.run()
 		while transitioning and F.Alive do task.wait(0.1) end
 		if not F.Alive then break end
 		-- walk on round the arena (now and then turning back)
-		if F.rng:NextNumber() < 0.3 then dir = -dir end
-		local arc = F.rng:NextNumber(Config.WalkArc[1], Config.WalkArc[2])
-		F.walk(arc * dir)
+		if F.rng:NextNumber() < (Config.WalkChance or 1) then
+			if F.rng:NextNumber() < 0.3 then dir = -dir end
+			local arc = F.rng:NextNumber(Config.WalkArc[1], Config.WalkArc[2])
+			F.walk(arc * dir)
+		end
 		if not F.Alive then break end
 		while transitioning and F.Alive do task.wait(0.1) end
 		local phase = F.phase()

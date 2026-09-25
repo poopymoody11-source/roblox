@@ -41,6 +41,42 @@ end
 
 function Fx.onShake(fn) shakeFn = fn end
 function Fx.shake(amp, dur) shakeFn(amp, dur) end
+local rollFn = function() end
+function Fx.onRoll(fn) rollFn = fn end
+
+--------------------------------------------------------------------------
+-- A BIG HIT, felt through the whole screen: a blur, a bloom and sun-ray
+-- flare, a contrast punch and a kick of the camera's roll (level 1..3)
+--------------------------------------------------------------------------
+local posts = {}
+local function post(class, name, props)
+	local e = posts[name]
+	if not e or not e.Parent then
+		e = Instance.new(class)
+		e.Name = name
+		for k, v in pairs(props) do e[k] = v end
+		e.Parent = game:GetService("Lighting")
+		posts[name] = e
+	end
+	return e
+end
+function Fx.bigHit(level)
+	level = math.clamp(level or 1, 0.5, 3)
+	local blur = post("BlurEffect", "BF_Blur", { Size = 0 })
+	blur.Size = 5 * level
+	K.tween(blur, 0.35 + 0.1 * level, { Size = 0 })
+	local bloom = post("BloomEffect", "BF_Bloom", { Intensity = 0, Size = 40, Threshold = 0.85 })
+	bloom.Intensity = 0.8 * level
+	K.tween(bloom, 0.5, { Intensity = 0 })
+	local rays = post("SunRaysEffect", "BF_Rays", { Intensity = 0, Spread = 0.8 })
+	rays.Intensity = 0.12 * level
+	K.tween(rays, 0.6, { Intensity = 0 })
+	local cc = post("ColorCorrectionEffect", "BF_Punch", { Contrast = 0, Saturation = 0 })
+	cc.Contrast = 0.25 * level
+	cc.Saturation = 0.25 * level
+	K.tween(cc, 0.4, { Contrast = 0, Saturation = 0 })
+	rollFn((math.random() < 0.5 and -1 or 1) * 2.5 * level, 0.45)
+end
 
 --------------------------------------------------------------------------
 -- IMPACT FRAMES (the cutscene's): a few frames of the world flipped to a
@@ -481,6 +517,7 @@ function Fx.blast(pos, radius, color, opts)
 	local cam = workspace.CurrentCamera
 	local d = (cam.CFrame.Position - p).Magnitude
 	Fx.shake(math.clamp((opts.Shake or 1.2) * (1 - d / 400), 0.15, 2.5), 0.35)
+	if (opts.Shake or 1.2) >= 2 and d < 700 then Fx.bigHit((opts.Shake or 2) / 1.5) end
 end
 
 --------------------------------------------------------------------------

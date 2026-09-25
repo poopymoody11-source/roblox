@@ -193,6 +193,7 @@ function A.bolt(ctx, d)
 				Fx.parryBurst(d.To + UP * 3, false)
 			else
 				Fx.blast(d.To, d.R * 1.3, Fx.VIOLET, { Shake = 0.7, Volume = 0.7, Pack = false })
+				Fx.vfx("Lighting-01", d.To + UP * 6, 2, nil, 2)
 			end
 			star:Destroy()
 		end

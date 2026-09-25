@@ -45,6 +45,7 @@ Aura.init(K, SK)
 CharAnim.init(K)
 Music.init(K)
 Fx.onShake(Cam.shake)
+Fx.onRoll(Cam.roll)
 
 --------------------------------------------------------------------------
 -- HIM: the fight is drawn on our own copy of the Anti-Spiral (the cutscene's,
@@ -499,7 +500,11 @@ local function begin()
 		Warn.update(now)
 		Qte.update(now)
 	end)
-	Cam.start(ctx.chest, S.now)
+	-- (the shot frames between his chest and his head)
+	Cam.start(function()
+		local head = model:FindFirstChild("Head")
+		return head and ctx.chest():Lerp(head.Position, 0.5) or ctx.chest()
+	end, S.now)
 	Aura.setActive(true)
 	Moves.setActive(true)
 	ready = true

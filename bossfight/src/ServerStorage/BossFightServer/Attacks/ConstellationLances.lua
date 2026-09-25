@@ -8,7 +8,7 @@ local A = {}
 
 A.Defaults = {
 	Lines = 6,
-	Windup = 1.9,
+	Windup = 1.4,
 	Stagger = 0.22,
 	W = 12,
 	Damage = 30,

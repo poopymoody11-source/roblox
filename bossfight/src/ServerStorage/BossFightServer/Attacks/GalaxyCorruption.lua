@@ -8,8 +8,8 @@
 local A = {}
 
 A.Defaults = {
-	Corrupt = 3.2,     -- the galaxies turning
-	Storm = 9,         -- seconds of bombardment
+	Corrupt = 2.6,     -- the galaxies turning
+	Storm = 8,         -- seconds of bombardment
 	Galaxies = 7,      -- (the realm's hero galaxies, indexed on the client)
 	BoltGap = { 0.22, 0.09 }, -- seconds between bolts, start -> end of the storm
 	BoltWarn = 0.95,

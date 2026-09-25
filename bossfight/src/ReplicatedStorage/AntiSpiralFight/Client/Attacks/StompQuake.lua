@@ -78,10 +78,40 @@ function A.start(ctx, d)
 			q.Enabled = false
 			walls[i] = q
 		end
+		-- a white-hot core low on the wall, and a tall violet glow behind it
+		local cores, glows = {}, {}
+		for i = 1, SEGS do
+			local c = K.quad(host, host.CFrame, 1, r.Shape.H * 0.5, nil, { Color = Color3.new(1, 1, 1), Brightness = 5, Transparency = 0.1 })
+			c.Enabled = false
+			cores[i] = c
+			local g = K.quad(host, host.CFrame, 1, r.Shape.H * 2.6, "10180479311", { Color = Fx.VIOLET, Brightness = 2, Transparency = K.ns(0, 0.35, 0.5, 0.6, 1, 1) })
+			g.Enabled = false
+			glows[i] = g
+		end
 		local floor = K.softRing(host, SEGS, 1, 2, { Brightness = 3, Alpha = 0 })
 		for _, q in ipairs(floor.Q) do q.Color = ColorSequence.new(Fx.MAGENTA, Fx.VIOLET) end
 		floor.setEnabled(false)
-		table.insert(rings, { R = r, Walls = walls, Floor = floor })
+		-- the red line racing ahead of it: where it'll be in a moment
+		local ahead = K.softRing(host, SEGS, 1, 2, { Brightness = 3, Alpha = 0 })
+		for _, q in ipairs(ahead.Q) do q.Color = ColorSequence.new(Fx.RED) end
+		ahead.setEnabled(false)
+		-- dust and rubble thrown up along its front
+		local dust = {}
+		for i = 1, 12 do
+			local hp = K.part({ Name = "QuakeDust", Size = Vector3.new(8, 1, 8), Transparency = 1, CFrame = CFrame.new(d.Origin) }, host)
+			local e = K.emitter(hp, {
+				Texture = "10180479311", Color = ColorSequence.new(Color3.fromRGB(190, 160, 230), Color3.fromRGB(90, 60, 140)), Size = K.ns(0, 3, 1, 9),
+				Transparency = K.ns(0, 0.3, 1, 1), Lifetime = NumberRange.new(0.5, 0.9), Speed = NumberRange.new(8, 18), SpreadAngle = Vector2.new(35, 35),
+				Rate = 0, LightEmission = 0.3, Rotation = NumberRange.new(0, 360), EmissionDirection = Enum.NormalId.Top, Shape = Enum.ParticleEmitterShape.Box,
+			})
+			local chips = K.emitter(hp, {
+				Texture = "1851669703", Color = ColorSequence.new(Color3.new(1, 1, 1), Fx.VIOLET_HOT), Size = K.ns(0, 1.2, 1, 0),
+				Lifetime = NumberRange.new(0.4, 0.7), Speed = NumberRange.new(15, 35), SpreadAngle = Vector2.new(40, 40), Acceleration = Vector3.new(0, -60, 0),
+				Rate = 0, Brightness = 4, EmissionDirection = Enum.NormalId.Top, Shape = Enum.ParticleEmitterShape.Box,
+			})
+			dust[i] = { H = hp, D = e, C = chips }
+		end
+		table.insert(rings, { R = r, Walls = walls, Cores = cores, Glows = glows, Floor = floor, Ahead = ahead, Dust = dust })
 		Warn.add({ Id = r.Id, Shape = r.Shape, Name = "SHOCKWAVE" })
 	end
 	local stomped = false
@@ -117,13 +147,50 @@ function A.start(ctx, d)
 				local mid = (p0 + p1) / 2
 				local show = on and S.onArena(mid, -2)
 				q.Enabled = show
+				ring.Cores[i].Enabled = show
+				ring.Glows[i].Enabled = show
 				if show then
 					local along = (p1 - p0)
 					local len = along.Magnitude
 					local cf = CFrame.fromMatrix(mid + UP * sh.H / 2, along.Unit, UP)
 					K.moveQuad(q, cf)
 					K.setQuadSize(q, len * 1.02, sh.H)
+					K.moveQuad(ring.Cores[i], CFrame.fromMatrix(mid + UP * sh.H * 0.25, along.Unit, UP))
+					K.setQuadSize(ring.Cores[i], len * 1.02, sh.H * 0.5)
+					K.moveQuad(ring.Glows[i], CFrame.fromMatrix(mid + UP * sh.H * 1.3, along.Unit, UP))
+					K.setQuadSize(ring.Glows[i], len * 1.02, sh.H * 2.6)
 				end
+			end
+			-- the warning line ahead of it, and its dust
+			ring.Ahead.setEnabled(on)
+			if on then
+				local ra = r + 16 + 6 * math.sin(now * 20)
+				ring.Ahead.update(CFrame.lookAt(o + UP * 0.25, o + UP * 2), ra, ra + 1.4, 0)
+				ring.Ahead.setTransparency(0.25)
+				for i, q in ipairs(ring.Ahead.Q) do
+					local a = (i - 1) * da
+					q.Enabled = S.onArena(o + Vector3.new(math.cos(a) * ra, 0, math.sin(a) * ra), -2)
+				end
+			end
+			local inward = math.atan2(S.CENTER.Z - o.Z, S.CENTER.X - o.X)
+			for i, dd in ipairs(ring.Dust) do
+				local a = inward + ((i - 0.5) / #ring.Dust - 0.5) * math.rad(170)
+				local p = o + Vector3.new(math.cos(a) * r, 1, math.sin(a) * r)
+				local live = on and S.onArena(p, 2)
+				dd.H.CFrame = CFrame.new(p)
+				dd.D.Rate = live and 45 or 0
+				dd.C.Rate = live and 30 or 0
+			end
+			-- a thump as it goes through you
+			local mine = ctx.player.Character and ctx.player.Character:FindFirstChild("HumanoidRootPart")
+			if mine and on then
+				local md = S.flat(mine.Position - o).Magnitude
+				if ring.LastR and ring.LastR < md and r >= md then
+					K.sfx(K.S.Thump, 0.9, 0.9)
+					ctx.Cam.shake(1.2, 0.3)
+					ctx.Cam.roll(3, 0.35)
+				end
+				ring.LastR = r
 			end
 			ring.Floor.setEnabled(on)
 			if on then

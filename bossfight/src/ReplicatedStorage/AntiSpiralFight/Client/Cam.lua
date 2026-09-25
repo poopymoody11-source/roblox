@@ -14,9 +14,10 @@ local ContextActionService = game:GetService("ContextActionService")
 local C = {}
 
 local player = Players.LocalPlayer
-local DIST = 26
-local HEIGHT = 9
-local FOV = 72
+-- (far back and high, wide: he's hundreds of studs tall and the shot has to hold him and you)
+local DIST = 42
+local HEIGHT = 22
+local FOV = 80
 
 local enabled = false
 local wanted = true
@@ -39,6 +40,22 @@ function C.cut(fn, t0, t1, blend)
 	table.insert(cuts, { Fn = fn, T0 = t0, T1 = t1, B = blend or 0.25 })
 end
 function C.clearCuts() table.clear(cuts) end
+
+-- a kick of the camera's roll (degrees), easing back
+local rolls = {}
+function C.roll(deg, dur)
+	table.insert(rolls, { A = math.rad(deg), D = dur or 0.4, T0 = os.clock() })
+end
+local function rollOffset()
+	local now = os.clock()
+	local off = 0
+	for i = #rolls, 1, -1 do
+		local r = rolls[i]
+		local u = (now - r.T0) / r.D
+		if u >= 1 then table.remove(rolls, i) else off += r.A * (1 - u) ^ 2 * math.cos(u * 9) end
+	end
+	return off
+end
 
 -- a punch of the field of view (negative = zoom in)
 local punches = {}
@@ -126,13 +143,13 @@ local function step(dt)
 	local turned = CFrame.Angles(0, yawOff, 0):VectorToWorldSpace(away)
 	local want = me + turned * DIST + Vector3.new(0, HEIGHT + pitchOff, 0)
 	camPos = camPos and camPos:Lerp(want, 1 - math.exp(-dt * 9)) or want
-	-- aim between you and him (you in the lower part of the frame)
+	-- aim between you and him, leaning to him (you low in the frame, him filling the top)
 	local toMe = (me - camPos).Unit
 	local toBoss = (boss - camPos).Unit
-	local aim = (toMe * 1.1 + toBoss).Unit
+	local aim = (toMe * 0.55 + toBoss).Unit
 	aimDir = aimDir and aimDir:Lerp(aim, 1 - math.exp(-dt * 7)).Unit or aim
 	local pos = camPos + shakeOffset()
-	cam.CFrame = CFrame.lookAt(pos, pos + aimDir)
+	cam.CFrame = CFrame.lookAt(pos, pos + aimDir) * CFrame.Angles(0, 0, rollOffset())
 	cam.FieldOfView = cam.FieldOfView + (FOV - cam.FieldOfView) * (1 - math.exp(-dt * 4)) + punchOffset() * 0.25
 end
 
