@@ -33,16 +33,16 @@ function A.Run(F, P, token)
 	end
 	local list = {}
 	for _, r in ipairs(rings) do
-		local hit = { Id = F.newId("SQ"), Shape = r.Shape, Damage = P.Damage, Name = "SHOCKWAVE", Knock = 30 }
+		-- (SPACE: jump it, and a jump on the beat parries it)
+		local hit = { Id = F.newId("SQ"), Shape = r.Shape, Damage = P.Damage, Name = "SHOCKWAVE", Knock = 30, Qte = F.qte.single("SPACE"), Counter = 20, CounterPerfect = 32 }
 		r.Hit = hit
 		table.insert(list, { Id = hit.Id, Shape = r.Shape })
 	end
-	F.fx("StompQuake", { T0 = t0, StompT = stompT, Foot = foot, Origin = origin, Rings = list })
-	F.waitUntil(stompT + 0.1)
-	if F.cancelled(token) then return end
+	-- (announced now, so the prompts can lead them; a ring can't catch anyone before its start)
 	for _, r in ipairs(rings) do
-		F.ringHit(r.Hit, r.Until)
+		F.continuousHit(r.Hit, r.Until)
 	end
+	F.fx("StompQuake", { T0 = t0, StompT = stompT, Foot = foot, Origin = origin, Rings = list })
 	F.waitUntil(rings[#rings].Until - (S.ARENA_R / P.Speed) * 0.6)
 end
 

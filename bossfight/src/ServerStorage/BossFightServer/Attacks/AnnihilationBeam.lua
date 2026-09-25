@@ -34,16 +34,16 @@ function A.Run(F, P, token)
 			Kind = "sweep", O = origin, A0 = centreA - half * d, A1 = centreA + half * d,
 			T0 = t, T1 = t + P.Sweep, W = P.W, L = 2 * S.ARENA_R + 20,
 		}
-		local hit = { Id = F.newId("AB"), Shape = shape, Damage = P.Damage, Name = "ANNIHILATION BEAM", Knock = 50 }
+		local hit = { Id = F.newId("AB"), Shape = shape, Damage = P.Damage, Name = "ANNIHILATION BEAM", Knock = 50,
+			Qte = F.qte.randomChord(2), Counter = 70, CounterPerfect = 110 }
 		table.insert(sweeps, hit)
 		t = shape.T1 + 0.35
 	end
 	local list = {}
 	for _, h in ipairs(sweeps) do table.insert(list, { Id = h.Id, Shape = h.Shape }) end
 	F.fx("AnnihilationBeam", { T0 = t0, FireT = fireT, Hand = hand, Origin = origin, Sweeps = list })
+	-- (announced now so the prompts can lead them; a sweep can't catch anyone before it starts)
 	for _, h in ipairs(sweeps) do
-		F.waitUntil(h.Shape.T0 - 0.05)
-		if F.cancelled(token) then return end
 		F.continuousHit(h, h.Shape.T1 + 0.05)
 	end
 	F.waitUntil(sweeps[#sweeps].Shape.T1 + 0.6)

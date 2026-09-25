@@ -60,6 +60,14 @@ function A.start(ctx, d)
 		end,
 	})
 	Warn.callout("CONSTELLATION LANCES")
+	ctx.Fx.say("EVERY CONSTELLATION\nIS MY WEAPON.", 1.2)
+	-- the cut-in: flat on your back in the middle of the arena, looking up at the stars joining
+	ctx.Cam.cut(function(now)
+		local u = K.remap(now, d.T0, first - 0.3)
+		local from = S.CENTER + Vector3.new(0, 6, 0)
+		local toBoss = S.flat(ctx.chest() - S.CENTER).Unit
+		return CFrame.lookAt(from, S.CENTER + UP * HIGH + toBoss * (60 - 40 * u)), 85 - 10 * u
+	end, d.T0 + 0.25, first - 0.25, 0.3)
 	K.sfx(K.S.Choir, 0.5, 1.1)
 	K.sfx(K.S.Sting, 0.5, 1.2)
 	local conn
@@ -91,7 +99,7 @@ function A.start(ctx, d)
 				if now >= l.T then
 					e.Done = true
 					e.Zone.destroy()
-					A.lance(ctx, e, Warn.claimed(l.Id))
+					A.lance(ctx, e, ctx.Qte.claimed(l.Id))
 				end
 			elseif gone < 1 then
 				alive = true
@@ -132,6 +140,13 @@ function A.lance(ctx, e, parried)
 		end
 		blade:Destroy()
 	end)
+	if not ctx.LanceStruck then
+		ctx.LanceStruck = true
+		ctx.Fx.impact("W", 0.04)
+		ctx.Cam.punch(-8, 0.3)
+		task.delay(3, function() ctx.LanceStruck = nil end)
+	end
+	Fx.vfx("Lighting-03", mid + UP * 20, 3, nil, 3)
 	if parried then
 		Fx.parryBurst(mid + UP * 4, false)
 	else

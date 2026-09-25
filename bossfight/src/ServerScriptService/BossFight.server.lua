@@ -22,7 +22,6 @@ end
 
 local folder = ServerStorage:WaitForChild("BossFightServer")
 local F = require(folder:WaitForChild("Fight"))
-local Bat = require(folder:WaitForChild("BatServer"))
 
 local model = workspace:WaitForChild("BossFight"):WaitForChild("Anti-Spiral")
 -- (anything the old boss code left on him)
@@ -30,7 +29,28 @@ for _, d in ipairs(model:GetChildren()) do
 	if d:IsA("ForceField") then d:Destroy() end
 end
 F.init(model)
-Bat.init(F)
+
+-- (the Spiral Bat is gone: take it away wherever an old copy of the place left it)
+local StarterPack = game:GetService("StarterPack")
+local Players = game:GetService("Players")
+local function noBats(holder)
+	for _, c in ipairs(holder:GetChildren()) do
+		if c:IsA("Tool") and (c.Name == "SpiralBat" or c.Name == "VerityBat") then c:Destroy() end
+	end
+end
+noBats(StarterPack)
+local function hook(p)
+	local function clean()
+		task.wait(0.5)
+		if p.Character then noBats(p.Character) end
+		local bp = p:FindFirstChildOfClass("Backpack")
+		if bp then noBats(bp) end
+	end
+	p.CharacterAdded:Connect(clean)
+	task.spawn(clean)
+end
+Players.PlayerAdded:Connect(hook)
+for _, p in ipairs(Players:GetPlayers()) do hook(p) end
 
 local started = false
 local function check()

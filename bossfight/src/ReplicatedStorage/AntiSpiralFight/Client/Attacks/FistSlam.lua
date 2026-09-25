@@ -59,7 +59,11 @@ function A.start(ctx, d)
 		table.insert(zones, ent)
 		Warn.add({ Id = z.Id, T = z.T, Shape = shape, Name = "FIST", Target = z.Target, Rad = z.R, Pos = function() return z.P + Vector3.new(0, 4, 0) end })
 	end
-	if d.Wave == 1 then ctx.Warn.callout("FIST SLAM") end
+	if d.Wave == 1 then
+		ctx.Warn.callout("FIST SLAM")
+		ctx.Fx.say("KNEEL.", 0.9)
+	end
+	local firstDone = false
 	local windup, slam = poses(d.Hand)
 	local strike = first - 0.3
 	Rig:act({
@@ -118,7 +122,7 @@ function A.start(ctx, d)
 					e.Done = true
 					e.Zone.destroy()
 					local f = e.Fist
-					if Warn.claimed(z.Id) then
+					if ctx.Qte.claimed(z.Id) then
 						-- parried: the fist is knocked away and shatters into green light
 						Fx.parryBurst(z.P + Vector3.new(0, 6, 0), false)
 						if f then
@@ -127,6 +131,11 @@ function A.start(ctx, d)
 						end
 					else
 						Fx.blast(z.P, z.R * 1.4, Fx.VIOLET, { Sound = K.S.RockBoom, Shake = 2, Volume = 1.2 })
+						if not firstDone then
+							firstDone = true
+							ctx.Fx.impact("W", 0.035)
+							ctx.Cam.punch(-8, 0.3)
+						end
 						if f then
 							K.tween(f, 0.5, { Transparency = 1, Size = f.Size * 1.15 })
 						end
@@ -156,6 +165,16 @@ function A.hammer(ctx, d)
 	local zone = Fx.zone(shape, d.T0, d.T)
 	Warn.add({ Id = d.Id, T = d.T, Shape = shape, Name = "HAMMER OF DESPAIR", Target = "all", Rad = d.R, Pos = function() return d.P + Vector3.new(0, 6, 0) end })
 	Warn.callout("HAMMER OF DESPAIR")
+	ctx.Fx.say("BE CRUSHED BENEATH\nTHE WEIGHT OF DESPAIR.", 1.3, true)
+	-- the cut-in: low on the arena, up at him with both fists raised to the sky
+	ctx.Cam.cut(function(now)
+		local u = K.remap(now, d.T0, d.T - 0.3)
+		local chest = ctx.chest()
+		local toBoss = S.flat(chest - S.CENTER).Unit
+		local side = toBoss:Cross(Vector3.yAxis)
+		local from = S.CENTER + toBoss * (S.ARENA_R - 40) - side * 50 + Vector3.new(0, 6, 0) - toBoss * 30 * u
+		return CFrame.lookAt(from, chest + Vector3.new(0, 160 + 60 * u, 0)), 72 - 10 * u
+	end, d.T0 + 0.15, d.T - 0.55, 0.3)
 	local strike = d.T - 0.35
 	Rig:act({
 		Until = d.T + 1.2,
@@ -209,13 +228,16 @@ function A.hammer(ctx, d)
 		if not done and now >= d.T then
 			done = true
 			zone.destroy()
-			if Warn.claimed(d.Id) then
+			if ctx.Qte.claimed(d.Id) then
 				Fx.parryBurst(d.P + Vector3.new(0, 8, 0), true)
 				for _, f in ipairs(fists) do
 					f.Color = Fx.GREEN
 					K.tween(f, 0.5, { CFrame = f.CFrame + Vector3.new(0, 120, 0), Transparency = 1 })
 				end
 			else
+				ctx.Fx.impact("BWB", 0.05)
+				ctx.Cam.punch(-16, 0.5)
+				ctx.Fx.tint(Fx.VIOLET, 0.5, 1.2, 0.4)
 				Fx.blast(d.P, d.R * 1.3, Fx.VIOLET, { Sound = K.S.RockBoom, Shake = 4, Volume = 1.5 })
 				Fx.blast(d.P, d.R * 2.2, Fx.MAGENTA, { Column = false, Shake = 0, Volume = 0 })
 				Fx.sound(K.S.Boom, d.P, 1.2, 0.7, 3000)

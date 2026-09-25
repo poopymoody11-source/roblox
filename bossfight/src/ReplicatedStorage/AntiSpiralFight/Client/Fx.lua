@@ -42,6 +42,63 @@ end
 function Fx.onShake(fn) shakeFn = fn end
 function Fx.shake(amp, dur) shakeFn(amp, dur) end
 
+--------------------------------------------------------------------------
+-- IMPACT FRAMES (the cutscene's): a few frames of the world flipped to a
+-- flat card with every body in silhouette and speed lines, pattern letters
+-- W (white card) B (black) R G V Y (red, green, violet, gold cards)
+--------------------------------------------------------------------------
+local boss
+function Fx.setBoss(m) boss = m end
+function Fx.impact(pattern, frameTime, extra)
+	local subjects = { boss }
+	for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
+		if p.Character then table.insert(subjects, p.Character) end
+	end
+	for _, m in ipairs(extra or {}) do table.insert(subjects, m) end
+	task.spawn(K.impact, subjects, pattern or "WBW", frameTime or 0.05, { Outline = true })
+end
+
+-- one of the game's VFX pack effects (FinalCutscene.Assets.VFX), fired at pos
+function Fx.vfx(name, pos, scale, count, life)
+	local p: any = pos
+	local cf = if typeof(p) == "CFrame" then p else CFrame.new(p)
+	return K.vfx(name, cf, folder, scale or 1, count, life or 5)
+end
+
+-- a pulse of colour over the whole screen (post grade)
+local grade
+function Fx.tint(color, strength, dur, contrast)
+	grade = grade or Instance.new("ColorCorrectionEffect")
+	grade.Name = "BF_Tint"
+	grade.Parent = game:GetService("Lighting")
+	grade.Enabled = true
+	grade.TintColor = Color3.new(1, 1, 1):Lerp(color, strength)
+	grade.Contrast = contrast or 0.15
+	grade.Saturation = 0.1
+	K.tween(grade, dur or 0.6, { TintColor = Color3.new(1, 1, 1), Contrast = 0, Saturation = 0 })
+end
+-- hold a grade (the sky darkening for his ultimate); nil lets go
+function Fx.hold(color, strength, time)
+	grade = grade or Instance.new("ColorCorrectionEffect")
+	grade.Name = "BF_Tint"
+	grade.Parent = game:GetService("Lighting")
+	grade.Enabled = true
+	if color then
+		K.tween(grade, time or 0.8, { TintColor = Color3.new(1, 1, 1):Lerp(color, strength), Brightness = -0.08 * strength, Contrast = 0.2 * strength })
+	else
+		K.tween(grade, time or 0.8, { TintColor = Color3.new(1, 1, 1), Brightness = 0, Contrast = 0 })
+	end
+end
+
+-- him, speaking: the cutscene's lines (its font, its animation, his name plate)
+local LINE_COOLDOWN = 5
+local lastLine = 0
+function Fx.say(text, hold, force)
+	if not force and os.clock() - lastLine < LINE_COOLDOWN then return end
+	lastLine = os.clock()
+	task.spawn(K.say, text, hold or 1.1, { Scale = 0.066, Speaker = "Anti-Spiral" })
+end
+
 -- a 3-D sound at a point (heard from the arena)
 function Fx.sound(id, pos, vol, speed, range)
 	local host = K.part({ Name = "Snd", Size = Vector3.one, Transparency = 1, CFrame = CFrame.new(pos) }, folder)
@@ -150,7 +207,21 @@ local function buildStomps()
 			Speed = NumberRange.new(10, 50), SpreadAngle = Vector2.new(60, 60), LightEmission = 1,
 			Rotation = NumberRange.new(0, 360), RotSpeed = NumberRange.new(-30, 30), Shape = Enum.ParticleEmitterShape.Box,
 		})
-		table.insert(pads, { Host = host, Disc = disc, Swirl = swirl, Swirl2 = swirl2, Rim = rim, Motes = motes, Cloud = cloud, Spin = math.random() * 6 })
+		-- its inlay: dotted arms of light spiralling in, and a dotted ring (as in the cutscene)
+		local inlay = {}
+		for arm = 1, 3 do
+			for seg = 1, 8 do
+				local b = K.ray(host, base, base + UP, 6, 6, SOFT, { Color = Color3.fromRGB(230, 200, 255), Brightness = 5, Transparency = 0.1, Segments = 1, Mode = Enum.TextureMode.Wrap, Length = 7 })
+				b.Enabled = false
+				table.insert(inlay, { B = b, Arm = arm, Seg = seg })
+			end
+		end
+		for seg = 1, 16 do
+			local b = K.ray(host, base, base + UP, 5, 5, SOFT, { Color = Color3.fromRGB(200, 160, 255), Brightness = 4, Transparency = 0.2, Segments = 1, Mode = Enum.TextureMode.Wrap, Length = 7 })
+			b.Enabled = false
+			table.insert(inlay, { B = b, Ring = seg })
+		end
+		table.insert(pads, { Host = host, Disc = disc, Swirl = swirl, Swirl2 = swirl2, Rim = rim, Motes = motes, Cloud = cloud, Inlay = inlay, Spin = math.random() * 6 })
 	end
 	for i = 1, 5 do
 		local host = K.part({ Name = "StepHost", Size = Vector3.new(260, 1, 260), Transparency = 1, CFrame = CFrame.new(base) }, folder)
@@ -203,6 +274,7 @@ function Fx.updateStomps()
 				P.Swirl.Enabled, P.Swirl2.Enabled = false, false
 				P.Rim.setTransparency(0.99)
 				P.Motes.Rate, P.Cloud.Rate = 0, 0
+				for _, e in ipairs(P.Inlay) do e.B.Enabled = false end
 			else
 				local r = PAD_R * math.clamp(0.55 + P.Power * 0.4, 0.5, 1.6) * (0.2 + 0.8 * form) * (1 + 0.1 * fade)
 				local vis = form * (1 - fade)
@@ -223,7 +295,29 @@ function Fx.updateStomps()
 				P.Host.Size = Vector3.new(1.6 * r, 1, 1.6 * r)
 				P.Host.CFrame = CFrame.new(at + UP * 3)
 				P.Motes.Rate = fade > 0 and 0 or 60 * form
-				P.Cloud.Rate = fade > 0 and 0 or 18 * form
+				P.Cloud.Rate = fade > 0 and 0 or 9 * form
+				local on = vis > 0.02
+				local spin = P.Spin + now * 0.35
+				for _, e in ipairs(P.Inlay) do
+					e.B.Enabled = on
+					if on then
+						local p0, p1
+						if e.Ring then
+							local a0, a1 = (e.Ring - 1) / 16 * math.pi * 2 - spin * 0.6, e.Ring / 16 * math.pi * 2 - spin * 0.6
+							p0 = at + Vector3.new(math.cos(a0), 0, math.sin(a0)) * r * 0.55
+							p1 = at + Vector3.new(math.cos(a1), 0, math.sin(a1)) * r * 0.55
+						else
+							local function arm(u) -- u 0 at the heart, 1 at the rim
+								local th = (e.Arm - 1) / 3 * math.pi * 2 + spin + u * math.pi * 1.6
+								return at + Vector3.new(math.cos(th), 0, math.sin(th)) * r * (0.08 + 0.84 * u)
+							end
+							p0, p1 = arm((e.Seg - 1) / 8), arm(e.Seg / 8)
+						end
+						e.B.Attachment0.WorldPosition = p0 + UP * 2.6
+						e.B.Attachment1.WorldPosition = p1 + UP * 2.6
+						e.B.Transparency = NumberSequence.new(1 - 0.9 * vis)
+					end
+				end
 			end
 		end
 	end
@@ -349,6 +443,11 @@ function Fx.blast(pos, radius, color, opts)
 		K.tween(col, 0.45, { Size = Vector3.new(160, radius * 0.05, radius * 0.05), Transparency = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 		Debris:AddItem(col, 0.5)
 	end
+	-- (the VFX pack's explosion and cracks, for the heavier ones)
+	if opts.Pack ~= false and radius >= 12 then
+		Fx.vfx("Explosion-01", p + UP * 2, radius / 18, math.floor(8 + radius * 0.3), 4)
+		Fx.vfx(radius >= 30 and "Big-Crack-01" or "Crack-01", p + UP * 0.3, radius / (radius >= 30 and 40 or 16), nil, 5)
+	end
 	Fx.sound(opts.Sound or K.S.Impact, p, opts.Volume or 1, opts.Speed or (0.9 + math.random() * 0.2), 900)
 	local cam = workspace.CurrentCamera
 	local d = (cam.CFrame.Position - p).Magnitude
@@ -450,6 +549,7 @@ function Fx.parryBurst(pos, perfect)
 		Color = ColorSequence.new(GREEN, LIME), Size = K.ns(0, 4, 1, 0), Lifetime = NumberRange.new(0.3, 0.6),
 		Speed = NumberRange.new(25, 70), SpreadAngle = Vector2.new(180, 180), Brightness = 4, Rotation = NumberRange.new(0, 360),
 	}, perfect and 40 or 24, 2)
+	Fx.vfx("Shield-Break-01", pos, perfect and 1.4 or 1, nil, 3)
 	Fx.sound(K.S.MetalHit, pos, 1.2, perfect and 1.25 or 1.05, 400)
 	Fx.sound(K.S.Ring, pos, 0.7, perfect and 1.6 or 1.3, 400)
 	if perfect then Fx.sound(K.S.Electric, pos, 0.8, 1.2, 400) end

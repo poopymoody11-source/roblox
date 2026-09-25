@@ -4,8 +4,8 @@
 -- the remotes, and every hit: attacks schedule hits with an
 -- impact time and a shape; at impact the server checks who is
 -- inside, waits a moment for parry claims, then resolves each
--- one as a hit, a parry (he takes the damage instead) or an
--- evade (Spiral Dash i-frames).
+-- one as a hit or a parry (a completed QTE: he takes the
+-- damage instead).
 --
 -- Attack modules (./Attacks) get this module and use:
 --   F.now(), F.waitUntil(t), F.cancelled(token)
@@ -13,7 +13,8 @@
 --   F.rootAt(t)                 -> his root CFrame at t (from the walk plan)
 --   F.fx(kind, data)            -> every client runs the matching visual
 --   F.hit(hit)                  -> schedule a timed hit (circle / line shapes)
---   F.ringHit(hit, until)       -> a travelling shockwave ring (checked every frame)
+--   F.continuousHit(hit, until) -> a travelling hit (rings, sweeps: checked every frame)
+--   F.qte.single/chord(...)     -> QTE specs for a hit (hit.Qte; default: one click)
 --   F.newId(prefix), F.rng
 --==================================================
 local Players = game:GetService("Players")
@@ -42,9 +43,8 @@ local function remote(name)
 	r.Parent = net
 	return r
 end
-F.FxRemote = remote("Fx")        -- server -> clients: attack visuals, hit results
-F.BatRemote = remote("Bat")      -- client -> server: swings (with parry claims), dash, drill
-F.BatFxRemote = remote("BatFx")  -- server -> clients: other players' bat visuals
+F.FxRemote = remote("Fx")        -- server -> clients: attack visuals, hits, results
+F.QteRemote = remote("Qte")      -- client -> server: "I completed this hit's QTE" (id, time, grade)
 
 function F.fx(kind, data)
 	F.FxRemote:FireAllClients(kind, data)
@@ -72,6 +72,8 @@ end
 --------------------------------------------------------------------------
 local model, humanoid, root
 F.Token = 0 -- bumped on phase change / death: running attacks bail out
+F.SetPiecesUsed = {}
+F.Forced = {} -- set pieces waiting to go next
 F.Alive = true
 F.PhaseIndex = 0
 
@@ -131,6 +133,8 @@ local function publish()
 	shared:SetAttribute("BossHealth", humanoid.Health)
 	shared:SetAttribute("BossMaxHealth", humanoid.MaxHealth)
 end
+
+function F.maxHealth() return humanoid.MaxHealth end
 
 function F.setInvulnerable(on)
 	model:SetAttribute("Invulnerable", on)
@@ -198,8 +202,15 @@ function F.damageBoss(amount, player, source)
 		onDeath()
 		return true
 	end
+	-- (set pieces - his ultimate, the galaxy corruption - come out as he crosses their thresholds)
+	local pct = humanoid.Health / humanoid.MaxHealth
+	for i, fp in ipairs(Config.SetPieces or {}) do
+		if pct <= fp.At and not F.SetPiecesUsed[i] then
+			F.SetPiecesUsed[i] = true
+			table.insert(F.Forced, fp)
+		end
+	end
 	if not transitioning then
-		local pct = humanoid.Health / humanoid.MaxHealth
 		for i = #Config.Phases, 1, -1 do
 			if i > F.PhaseIndex and pct <= Config.Phases[i].StartsAtHealthPct then
 				task.spawn(setPhase, i)
@@ -211,30 +222,69 @@ function F.damageBoss(amount, player, source)
 end
 
 --------------------------------------------------------------------------
--- hits and parries
+-- hits and QTEs
+-- Every hit carries a QTE spec that the clients turn into prompts:
+--   { Kind = "single" | "chord" | "ultimate",
+--     Steps = { { At = seconds relative to impact, Keys = { "CLICK", "Q", ... } }, ... },
+--     Early = s, Late = s,  -- the window round each step
+--     Perfect = s }         -- |error| within this is perfect
+-- Keys: CLICK, SPACE, Q, E, F. A chord's keys all have to go down inside the
+-- window. A client that completes every step claims the hit; if the claim's
+-- time is in the window, it's a parry and he takes the counter damage.
 --------------------------------------------------------------------------
 local live = {}   -- [id] = hit (while it can still be parried)
-local claims = {} -- [player] = { [id] = client server-time of the swing }
-local SLACK = 0.12
+local claims = {} -- [player] = { [id] = { T = client server-time, Grade = "good" | "perfect" } }
+local SLACK = 0.14
+
+local QTE = {}
+F.qte = QTE
+function QTE.single(key)
+	return { Kind = "single", Steps = { { At = 0, Keys = { key or "CLICK" } } }, Early = S.PARRY_EARLY, Late = S.PARRY_LATE, Perfect = S.PERFECT }
+end
+function QTE.chord(keys)
+	return { Kind = "chord", Steps = { { At = 0, Keys = keys } }, Early = 0.34, Late = 0.1, Perfect = 0.1 }
+end
+-- a random chord of n keys (always with CLICK)
+local POOL = { "Q", "E", "F", "SPACE" }
+function QTE.randomChord(n)
+	local keys = { "CLICK" }
+	local pool = table.clone(POOL)
+	for _ = 2, n do
+		table.insert(keys, table.remove(pool, F.rng:NextInteger(1, #pool)))
+	end
+	return QTE.chord(keys)
+end
+function QTE.ultimate(steps)
+	return { Kind = "ultimate", Steps = steps, Early = 0.09, Late = 0.09, Perfect = 0.045 }
+end
 
 function F.isLive(id) return live[id] ~= nil end
 
-function F.claim(player, id, clientT)
-	if not live[id] then return end
+F.QteRemote.OnServerEvent:Connect(function(player, id, clientT, grade)
+	if type(id) ~= "string" or type(clientT) ~= "number" or not live[id] then return end
+	if math.abs(clientT - S.now()) > 1.5 then return end
 	claims[player] = claims[player] or {}
-	if not claims[player][id] then claims[player][id] = clientT end
-end
+	if not claims[player][id] then
+		claims[player][id] = { T = clientT, Grade = grade == "perfect" and "perfect" or "good" }
+	end
+end)
 
 local function resolve(hit, t, T)
 	local player = t.Player
 	local mine = claims[player] and claims[player][hit.Id]
+	local q = hit.Qte
 	local result
-	if hit.Parry ~= false and mine and mine >= T - S.PARRY_EARLY - SLACK and mine <= T + S.PARRY_LATE + SLACK then
-		local perfect = math.abs(mine - T) <= S.PERFECT + 0.03
+	if q and mine and mine.T >= T - q.Early - SLACK and mine.T <= T + q.Late + SLACK then
+		local perfect = mine.Grade == "perfect"
 		result = perfect and "perfect" or "parry"
-		F.damageBoss(perfect and Config.PerfectDamage or Config.ParryDamage, player, "parry")
-	elseif (player:GetAttribute("IFrameUntil") or 0) >= T - 0.05 then
-		result = "evade"
+		local base = hit.Counter or Config.ParryDamage
+		local dmg = perfect and (hit.CounterPerfect or base * 1.6) or base
+		if q.Kind == "ultimate" then
+			-- (the counter lands at the end of their cinematic)
+			task.delay(Config.UltimateCounterDelay or 3.2, function() F.damageBoss(dmg, player, "ultimate") end)
+		else
+			F.damageBoss(dmg, player, "parry")
+		end
 	else
 		result = "hit"
 		local mult = F.phase().DamageMultiplier or 1
@@ -245,13 +295,21 @@ local function resolve(hit, t, T)
 			t.Root.AssemblyLinearVelocity = away * hit.Knock + Vector3.new(0, hit.Knock * 0.5, 0)
 		end
 	end
-	F.fx("Resolve", { Id = hit.Id, User = player.UserId, Result = result, Pos = t.Root.Position })
+	F.fx("Resolve", { Id = hit.Id, User = player.UserId, Result = result, Pos = t.Root.Position, Kind = q and q.Kind or "none" })
 end
 
--- a timed hit: { Id, T, Shape, Damage, Name, Target (userId), Parry (default true), Knock }
+-- every hit is announced (its QTE, shape and timing) so each client can prompt it
+local function announce(hit)
+	if hit.Qte == nil then hit.Qte = QTE.single("CLICK") end
+	if hit.Qte == false then hit.Qte = nil end
+	F.fx("Hit", { Id = hit.Id, T = hit.T, Shape = hit.Shape, Name = hit.Name, Target = hit.Target, Qte = hit.Qte })
+end
+
+-- a timed hit: { Id, T, Shape, Damage, Name, Target (userId | "all"), Qte (spec | false), Counter, CounterPerfect, Knock }
 function F.hit(hit)
 	hit.Id = hit.Id or F.newId("H")
 	live[hit.Id] = hit
+	announce(hit)
 	local token = F.Token
 	task.spawn(function()
 		-- (sample a beat after impact: the server sees each player ~half a ping late)
@@ -268,10 +326,12 @@ function F.hit(hit)
 	return hit
 end
 
--- a shockwave ring that runs until `untilT`; each player can be caught once
-function F.ringHit(hit, untilT)
+-- a travelling hit (shockwave rings, sweeping beams) checked every frame until
+-- `untilT`; each player can be caught once
+function F.continuousHit(hit, untilT)
 	hit.Id = hit.Id or F.newId("R")
 	live[hit.Id] = hit
+	announce(hit)
 	local token = F.Token
 	local caught = {}
 	task.spawn(function()
@@ -291,6 +351,7 @@ function F.ringHit(hit, untilT)
 	end)
 	return hit
 end
+F.ringHit = F.continuousHit
 
 Players.PlayerRemoving:Connect(function(p) claims[p] = nil end)
 -- (old claims are dropped as their hits expire)
@@ -347,11 +408,6 @@ function F.init(bossModel)
 	print("[BossFight] server ready: " .. #script.Parent.Attacks:GetChildren() .. " attacks loaded")
 end
 
--- a travelling hit checked every frame (rings, sweeping beams)
-function F.continuousHit(hit, untilT)
-	return F.ringHit(hit, untilT)
-end
-
 local function pick(phase, last)
 	local pool, total = {}, 0
 	for _, e in ipairs(phase.Attacks) do
@@ -368,7 +424,23 @@ local function pick(phase, last)
 	return pool[#pool]
 end
 
+-- his health, scaled to the party: base + a share per extra player
+local function scaledHealth(n)
+	return math.floor(Config.MaxHealth * (1 + (Config.HealthPerExtraPlayer or 0.7) * math.max(n - 1, 0)))
+end
+
 function F.run()
+	local n = math.max(#Players:GetPlayers(), 1)
+	humanoid.MaxHealth = scaledHealth(n)
+	humanoid.Health = humanoid.MaxHealth
+	print(("[BossFight] %d player(s): %d health"):format(n, humanoid.MaxHealth))
+	-- (someone joining mid-fight adds their share)
+	Players.PlayerAdded:Connect(function()
+		if not F.Alive then return end
+		local add = Config.MaxHealth * (Config.HealthPerExtraPlayer or 0.7)
+		humanoid.MaxHealth += add
+		humanoid.Health += add
+	end)
 	setPhase(1)
 	F.setInvulnerable(false)
 	F.fx("Start", { T0 = S.now() })
@@ -387,6 +459,10 @@ function F.run()
 		while transitioning and F.Alive do task.wait(0.1) end
 		local phase = F.phase()
 		local entry = pick(phase, last)
+		local forced = table.remove(F.Forced, 1)
+		if forced and attacks[forced.Module] then
+			entry = { Module = forced.Module, Weight = 0, Params = forced.Params or (forced.Module == "BigBang" and phase.UltimateParams) or nil }
+		end
 		if entry and #F.targets() > 0 then
 			last = entry.Module
 			local mod = attacks[entry.Module]

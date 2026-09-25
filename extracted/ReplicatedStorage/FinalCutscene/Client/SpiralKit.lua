@@ -280,6 +280,13 @@ function SK.giantHand(K, lowerArm, wristC0, parent, opts)
 	pm.Scale = Vector3.new(1.05, 1.1, 1)
 	pm.Parent = palm
 	local wristW = weld(lowerArm, palm, wristC0 * CFrame.new(0, 0, 0))
+	-- the heel of the hand: a thick rounded wrist that overlaps back into the forearm,
+	-- so from any angle the hand grows out of the arm instead of sitting against it
+	local heel = part("Heel", Enum.PartType.Block, Vector3.new(palmW * 0.9, palmL * 0.75, palmT * 2.1))
+	local hm = Instance.new("SpecialMesh")
+	hm.MeshType = Enum.MeshType.Sphere
+	hm.Parent = heel
+	weld(palm, heel, CFrame.new(0, -palmL * 0.42, 0))
 	local H = { Model = model, Palm = palm, WristWeld = wristW, WristC0 = wristC0, Fingers = {}, Size = Vector3.new(palmW, palmL, palmT) }
 	-- fingers: x across the palm, length, radius
 	local defs = {
@@ -336,7 +343,7 @@ function SK.giantHand(K, lowerArm, wristC0, parent, opts)
 	hl.FillTransparency = 0.99
 	hl.OutlineColor = Color3.new(1, 1, 1)
 	hl.OutlineTransparency = 0
-	hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	hl.DepthMode = Enum.HighlightDepthMode.Occluded
 	hl.Parent = model
 	H.HL = hl
 	model.Parent = parent
@@ -823,7 +830,7 @@ function SK.rainbowShout(K, text, opts)
 	opts = opts or {}
 	local cam = workspace.CurrentCamera
 	local vp = cam.ViewportSize
-	local font = opts.Font or K.Fonts.Shout
+	local font = opts.Font or Font.new("rbxasset://fonts/families/LuckiestGuy.json", Enum.FontWeight.Regular)
 	local size = math.floor(math.clamp(vp.Y * (opts.Scale or 0.13), 34, 150))
 	local holder = K.frame("RainbowShout", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = opts.Position or UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(vp.X, size * 3), ZIndex = 62 }, K.Layer)
 	local lines = string.split(text, "\n")
@@ -1153,6 +1160,35 @@ function SK.powerUp(K, rig)
 	pl.Brightness = 0
 	pl.Parent = rig.Torso
 	SP.Light = pl
+	-- the aura: dotted rings of spiral light whirling round the body, top to toe
+	-- (the same dotted spiral that wraps them in the column of power)
+	SP.Rings = {}
+	for i = 1, 3 do
+		local atts, segs = {}, {}
+		for j = 1, 13 do
+			local a = Instance.new("Attachment")
+			a.Name = "AuraRing"
+			a.Parent = T
+			atts[j] = a
+		end
+		for j = 1, 12 do
+			local bm = Instance.new("Beam")
+			bm.Attachment0, bm.Attachment1 = atts[j], atts[j + 1]
+			bm.Texture = "rbxassetid://14582794847"
+			bm.TextureMode = Enum.TextureMode.Stretch
+			bm.FaceCamera = true
+			bm.Segments = 1
+			bm.LightEmission = 1
+			bm.LightInfluence = 0
+			bm.Brightness = 4
+			bm.Width0, bm.Width1 = 0.9, 0.9
+			bm.Color = ColorSequence.new(i == 3 and Color3.new(1, 1, 1) or SK.LIME)
+			bm.Transparency = NumberSequence.new(1)
+			bm.Parent = T
+			segs[j] = bm
+		end
+		SP.Rings[i] = { A = atts, B = segs }
+	end
 	return SP
 end
 
@@ -1174,6 +1210,25 @@ function SK.powerLevel(rig, t, amount)
 	SP.Glow.OutlineTransparency = 1 - amount * 0.85
 	for _, e in ipairs(SP.Eyes) do e.Transparency = 1 - math.clamp(amount * 1.4 - 0.2, 0, 1) end
 	SP.Light.Brightness = amount * 3
+	-- the aura: the rings whirl round and round the body
+	if SP.Rings then
+		local vis = math.clamp(amount, 0, 1)
+		for i, R in ipairs(SP.Rings) do
+			for j, att in ipairs(R.A) do
+				local u = (j - 1) / 12
+				local ang = u * math.pi * 2 * 2.2 + t * 5.5 + i * 2.094
+				local r = 4.2 + 2.2 * math.sin(u * math.pi)
+				att.Position = Vector3.new(math.cos(ang) * r, -6 + u * 13, math.sin(ang) * r)
+			end
+			for j, bm in ipairs(R.B) do
+				bm.Enabled = vis > 0.02
+				if bm.Enabled then
+					local u = (j - 0.5) / 12
+					bm.Transparency = NumberSequence.new(1 - vis * (0.15 + 0.8 * math.sin(u * math.pi) ^ 0.6))
+				end
+			end
+		end
+	end
 end
 
 -- the Spiral Bat: the Verity bat becomes a glowing green drill
@@ -1389,4 +1444,223 @@ end
 -- where slot 1 meets the fist when he snatches them
 SK.SNATCH = Vector3.new(SK.CATCH.X, 420, SK.CATCH.Z + 17)
 
+--------------------------------------------------------------------------
+-- THE AURA SHOUT: the line slams in word by word, every word burning with
+-- its own aura of spiral power (flickering, rising, glowing copies of it).
+-- opts: Scale, Position, Per (seconds between words), Font, Aura, Aura2,
+-- Speaker, SpeakerColor. Returns { stop = fn }.
+--------------------------------------------------------------------------
+function SK.auraShout(K, text, opts)
+	opts = opts or {}
+	local TweenService = game:GetService("TweenService")
+	local RunService = game:GetService("RunService")
+	local TextService = game:GetService("TextService")
+	local vp = workspace.CurrentCamera.ViewportSize
+	local size = math.floor(math.clamp(vp.Y * (opts.Scale or 0.1), 30, 130))
+	local font = opts.Font or K.Fonts.Shout
+	local aura = opts.Aura or SK.GREEN
+	local aura2 = opts.Aura2 or SK.LIME
+	local per = opts.Per or 0.16
+	local holder = Instance.new("Frame")
+	holder.Name = "AuraShout"
+	holder.BackgroundTransparency = 1
+	holder.AnchorPoint = Vector2.new(0.5, 0.5)
+	holder.Position = opts.Position or UDim2.fromScale(0.5, 0.8)
+	holder.Size = UDim2.fromOffset(vp.X, size * 3)
+	holder.ZIndex = 70
+	holder.Parent = K.Layer
+	local function width(s)
+		local p = Instance.new("GetTextBoundsParams")
+		p.Text = s
+		p.Font = font
+		p.Size = size
+		p.Width = 100000
+		local ok, v = pcall(function() return TextService:GetTextBoundsAsync(p) end)
+		return ok and v.X or #s * size * 0.55
+	end
+	-- lay the words out
+	local words = {}
+	local lines = string.split(text, "\n")
+	local gap = size * 1.15
+	local top = -(#lines - 1) * gap / 2
+	local spaceW = size * 0.3
+	for li, line in ipairs(lines) do
+		local row, total = {}, 0
+		for _, w in ipairs(string.split(line, " ")) do
+			if w ~= "" then
+				local x = width(w)
+				table.insert(row, { w, x })
+				total += x
+			end
+		end
+		total += spaceW * math.max(#row - 1, 0)
+		local x = -total / 2
+		for _, e in ipairs(row) do
+			table.insert(words, { Text = e[1], W = e[2], Base = UDim2.new(0.5, x + e[2] / 2, 0.5, top + (li - 1) * gap) })
+			x += e[2] + spaceW
+		end
+	end
+	local function label(txt, z, parent)
+		local l = Instance.new("TextLabel")
+		l.BackgroundTransparency = 1
+		l.AnchorPoint = Vector2.new(0.5, 0.5)
+		l.Position = UDim2.fromScale(0.5, 0.5)
+		l.Size = UDim2.fromScale(1, 1)
+		l.FontFace = font
+		l.TextSize = size
+		l.Text = txt
+		l.TextTransparency = 1
+		l.ZIndex = z
+		l.Parent = parent
+		return l
+	end
+	for i, W in ipairs(words) do
+		local g = Instance.new("Frame")
+		g.BackgroundTransparency = 1
+		g.AnchorPoint = Vector2.new(0.5, 0.5)
+		g.Position = W.Base
+		g.Size = UDim2.fromOffset(W.W + size * 1.2, size * 2)
+		g.ZIndex = 70
+		g.Parent = holder
+		local sc = Instance.new("UIScale")
+		sc.Scale = 2.6
+		sc.Parent = g
+		-- the aura: glowing copies, flickering and rising off the word like flame
+		local auras = {}
+		for k = 1, 3 do
+			local a = label(W.Text, 70 + k, g)
+			a.TextColor3 = (k == 2) and aura2 or aura
+			local st = Instance.new("UIStroke")
+			st.Thickness = size * (0.07 + k * 0.06)
+			st.Color = (k == 2) and aura2 or aura
+			st.LineJoinMode = Enum.LineJoinMode.Round
+			st.Transparency = 1
+			st.Parent = a
+			local gr = Instance.new("UIGradient")
+			gr.Rotation = -90
+			gr.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.55, 0.25), NumberSequenceKeypoint.new(1, 1) })
+			gr.Parent = st
+			auras[k] = { L = a, S = st, G = gr, T = 0.2 + k * 0.17, Th = st.Thickness }
+		end
+		-- the word itself: white-hot, fading to spiral green at its foot
+		local main = label(W.Text, 76, g)
+		main.TextColor3 = Color3.new(1, 1, 1)
+		local ms = Instance.new("UIStroke")
+		ms.Thickness = math.max(3, size / 9)
+		ms.Color = Color3.new(0, 0, 0)
+		ms.LineJoinMode = Enum.LineJoinMode.Round
+		ms.Transparency = 1
+		ms.Parent = main
+		local mg = Instance.new("UIGradient")
+		mg.Rotation = 90
+		mg.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
+			ColorSequenceKeypoint.new(0.45, Color3.fromRGB(215, 255, 170)),
+			ColorSequenceKeypoint.new(1, aura),
+		})
+		mg.Parent = main
+		W.G, W.Scale, W.Auras, W.Main, W.MainStroke, W.On = g, sc, auras, main, ms, false
+	end
+	-- who's shouting
+	local untag
+	if opts.Speaker then
+		-- (a pill, like the rest of the UI: gradient, round ends, chunky black outline)
+		local ts = math.floor(math.max(14, size * 0.3))
+		local pill = Instance.new("TextLabel")
+		pill.AnchorPoint = Vector2.new(0.5, 1)
+		pill.Position = UDim2.new(0.5, 0, 0.5, top - size * 0.62)
+		pill.AutomaticSize = Enum.AutomaticSize.X
+		pill.Size = UDim2.fromOffset(0, ts * 1.7)
+		pill.BackgroundColor3 = Color3.new(1, 1, 1)
+		pill.FontFace = Font.new("rbxasset://fonts/families/Inconsolata.json", Enum.FontWeight.Bold)
+		pill.TextSize = ts
+		pill.Text = string.upper(opts.Speaker)
+		pill.TextColor3 = Color3.new(1, 1, 1)
+		pill.ZIndex = 80
+		pill.Parent = holder
+		local pad = Instance.new("UIPadding")
+		pad.PaddingLeft, pad.PaddingRight = UDim.new(0, ts), UDim.new(0, ts)
+		pad.Parent = pill
+		Instance.new("UICorner", pill).CornerRadius = UDim.new(1, 0)
+		local pg = Instance.new("UIGradient")
+		pg.Rotation = -90
+		pg.Color = ColorSequence.new(Color3.fromRGB(40, 150, 60), aura2)
+		pg.Parent = pill
+		local po = Instance.new("UIStroke")
+		po.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		po.Thickness = math.max(3, ts / 5)
+		po.Color = Color3.new(0, 0, 0)
+		po.Parent = pill
+		local pt = Instance.new("UIStroke")
+		pt.Thickness = math.max(2, ts / 8)
+		pt.Color = Color3.new(0, 0, 0)
+		pt.Parent = pill
+		local psc = Instance.new("UIScale")
+		psc.Scale = 0.2
+		psc.Parent = pill
+		TweenService:Create(psc, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+		untag = function()
+			TweenService:Create(psc, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0 }):Play()
+		end
+	end
+	-- word by word
+	local alive = true
+	local t0 = os.clock()
+	for i, W in ipairs(words) do
+		task.delay((i - 1) * per, function()
+			if not alive then return end
+			W.On = os.clock()
+			W.G.Rotation = math.random(-12, 12)
+			TweenService:Create(W.Scale, TweenInfo.new(0.24, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+			TweenService:Create(W.G, TweenInfo.new(0.2, Enum.EasingStyle.Quad), { Rotation = 0 }):Play()
+			TweenService:Create(W.Main, TweenInfo.new(0.1), { TextTransparency = 0 }):Play()
+			TweenService:Create(W.MainStroke, TweenInfo.new(0.1), { Transparency = 0 }):Play()
+			for _, A in ipairs(W.Auras) do
+				TweenService:Create(A.L, TweenInfo.new(0.15), { TextTransparency = 0.55 }):Play()
+			end
+			K.shake(0.9, 0.16, 20, true)
+			if opts.Sound ~= false then K.sfx(K.S.TonalHit, 0.35, 0.9 + i * 0.05) end
+		end)
+	end
+	-- the aura burns while it holds
+	local conn = RunService.RenderStepped:Connect(function()
+		if not alive then return end
+		local t = os.clock() - t0
+		for i, W in ipairs(words) do
+			if W.On then
+				local since = os.clock() - W.On
+				local flare = math.exp(-since / 0.25) -- (each word flares as it lands)
+				for k, A in ipairs(W.Auras) do
+					local flick = 0.5 + 0.5 * math.noise(t * 7 + i * 3.1, k * 1.7)
+					A.S.Thickness = A.Th * (0.8 + 0.45 * flick + flare * 1.4)
+					A.S.Transparency = math.clamp(A.T + (1 - flick) * 0.25 - flare * 0.3, 0, 0.95)
+					-- the flames licking upward
+					A.G.Offset = Vector2.new(0, -((t * (0.9 + k * 0.25) + i * 0.37) % 1) * 0.35)
+					A.L.Position = UDim2.new(0.5, math.noise(t * 5, i, k) * size * 0.04, 0.5, -size * 0.03 * k * (0.6 + 0.4 * flick))
+				end
+				W.Main.Position = UDim2.new(0.5, math.noise(t * 11, i) * size * 0.015, 0.5, math.noise(i, t * 11) * size * 0.015)
+			end
+		end
+	end)
+	local S = {}
+	function S.stop()
+		if not alive then return end
+		alive = false
+		if untag then untag() end
+		for _, W in ipairs(words) do
+			TweenService:Create(W.Scale, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 1.35 }):Play()
+			TweenService:Create(W.Main, TweenInfo.new(0.3), { TextTransparency = 1 }):Play()
+			TweenService:Create(W.MainStroke, TweenInfo.new(0.3), { Transparency = 1 }):Play()
+			for _, A in ipairs(W.Auras) do
+				TweenService:Create(A.L, TweenInfo.new(0.3), { TextTransparency = 1 }):Play()
+				TweenService:Create(A.S, TweenInfo.new(0.3), { Transparency = 1, Thickness = A.Th * 3 }):Play()
+			end
+		end
+		task.delay(0.4, function()
+			conn:Disconnect()
+			holder:Destroy()
+		end)
+	end
+	return S
+end
 return SK

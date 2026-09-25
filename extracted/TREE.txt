@@ -57,7 +57,7 @@ ReplicatedStorage [ReplicatedStorage]
   FinalCutscene [Folder]
     Timeline [ModuleScript]  (115 lines)
     Client [Folder]
-      Kit [ModuleScript]  (2059 lines)
+      Kit [ModuleScript]  (2110 lines)
       ChGrass [ModuleScript]  (1444 lines)
       ChSpace [ModuleScript]  (672 lines)
       ChHole [ModuleScript]  (119 lines)
@@ -66,22 +66,33 @@ ReplicatedStorage [ReplicatedStorage]
       ChRise [ModuleScript]  (1187 lines)
       ChSolar [ModuleScript]  (1936 lines)
       Dodge [ModuleScript]  (564 lines)
-      SpiralKit [ModuleScript]  (1393 lines)
-      ChEntry [ModuleScript]  (1779 lines)
+      SpiralKit [ModuleScript]  (1667 lines)
+      ChEntry [ModuleScript]  (1930 lines)
       ChHand [ModuleScript]  (925 lines)
-      ChAwaken [ModuleScript]  (1437 lines)
+      ChAwaken [ModuleScript]  (1798 lines)
     … 2106×Folder, 1×RemoteEvent
+  AntiSpiralFight [Folder]
+    Client [Folder]
+      Attacks [Folder]
+        ConstellationLances [ModuleScript]  (146 lines)
+        FistSlam [ModuleScript]  (142 lines)
+        GalaxyBarrage [ModuleScript]  (162 lines)
+        StompQuake [ModuleScript]  (145 lines)
+      Bat [ModuleScript]  (391 lines)
+      Cam [ModuleScript]  (155 lines)
+      Fx [ModuleScript]  (495 lines)
+      Rig [ModuleScript]  (367 lines)
+      Warn [ModuleScript]  (404 lines)
+    Shared [ModuleScript]  (139 lines)
 Selection [Selection]
 SerializationService [SerializationService]
 ServerScriptService [ServerScriptService]
   CutsceneStreamingService [Script]  (135 lines)
-  BossService [Script]  (72 lines)
-  SpiralEnergyService [Script]  (224 lines)
   PrivatePartyRouter [Script]  (139 lines)
   GalaxyRotation [Script]  (17 lines)
-  BatService [Script]  (333 lines)
   FinalCutsceneServer [Script]  (344 lines)
   FinalBossLink [Script]  (125 lines)
+  BossFight [Script]  (53 lines)
 ServerStorage [ServerStorage]
   MoonAnimator2Saves [Folder]
     … 1089×StringValue
@@ -503,22 +514,35 @@ ServerStorage [ServerStorage]
     ChAwaken [ModuleScript]  (1384 lines)
   RemovedTrueLapis [Folder]
     … 273×Model
+  FC_Backup_PreStorm [Folder]
+    ChAwaken [ModuleScript]  (1450 lines)
+    SpiralKit [ModuleScript]  (1581 lines)
+    ChEntry [ModuleScript]  (1929 lines)
+    Kit [ModuleScript]  (2110 lines)
+  BossFightServer [Folder]
+    Attacks [Folder]
+      ConstellationLances [ModuleScript]  (68 lines)
+      FistSlam [ModuleScript]  (77 lines)
+      GalaxyBarrage [ModuleScript]  (94 lines)
+      StompQuake [ModuleScript]  (50 lines)
+    BatServer [ModuleScript]  (328 lines)
+    Config [ModuleScript]  (59 lines)
+    Fight [ModuleScript]  (385 lines)
 ServiceVisibilityService [ServiceVisibilityService]
 SoundService [SoundService]
 StarterGui [StarterGui]
 StarterPack [StarterPack]
-  VerityBat [Tool]
-    … 10×UnionOperation, 2×Part
 StarterPlayer [StarterPlayer]
   StarterPlayerScripts [StarterPlayerScripts]
-    BossHealthBar [LocalScript]  (719 lines)
-    BatClient [LocalScript]  (128 lines)
     StingerAimClient [LocalScript]  (36 lines)
     BossScreenShakeClient [LocalScript]  (50 lines)
     SpiralClient [LocalScript]  (313 lines)
     BossMinionClient [LocalScript]  (59 lines)
-    FinalCutsceneClient [LocalScript]  (799 lines)
+    FinalCutsceneClient [LocalScript]  (804 lines)
     GalaxyRealmClient [LocalScript]  (142 lines)
+    ArenaGalaxySpin [LocalScript]  (20 lines)
+    BossFightClient [LocalScript]  (269 lines)
+    BossHealthBar [LocalScript]  (717 lines)
   StarterCharacterScripts [StarterCharacterScripts]
 StudioData [StudioData]
 Teams [Teams]
@@ -574,7 +598,7 @@ Workspace [Workspace]
   smoke flipbook [Part]
     … 1×Decal
   BossFight [Folder]
-    … 10026×Model, 25×Folder
+    … 10067×Model, 25×Folder
   ArenaSpawn [SpawnLocation]
   smoke flipbook 2 [Part]
     … 1×Decal

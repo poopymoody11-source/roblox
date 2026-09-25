@@ -1,4 +1,4 @@
-<roblox version="4"><Item class="LocalScript" referent="RBX28"><Properties><string name="Name">BossFightClient</string><ProtectedString name="Source"><![CDATA[--==================================================
+<roblox version="4"><Item class="LocalScript" referent="RBX33"><Properties><string name="Name">BossFightClient</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- BOSS FIGHT (client entry)
 -- Once the cutscene hands over (player attribute CutsceneDone),
 -- brings the Anti-Spiral to life (walk plan -> procedural rig),
@@ -17,7 +17,7 @@ local shared = ReplicatedStorage:WaitForChild("AntiSpiralFight")
 local S = require(shared:WaitForChild("Shared"))
 local client = shared:WaitForChild("Client")
 local net = shared:WaitForChild(S.NET)
-local Net = { Fx = net:WaitForChild("Fx"), Bat = net:WaitForChild("Bat"), BatFx = net:WaitForChild("BatFx") }
+local Net = { Fx = net:WaitForChild("Fx"), Qte = net:WaitForChild("Qte") }
 
 local FC = ReplicatedStorage:WaitForChild("FinalCutscene")
 local K = require(FC:WaitForChild("Client"):WaitForChild("Kit"))
@@ -27,7 +27,9 @@ local Rig = require(client:WaitForChild("Rig"))
 local Fx = require(client:WaitForChild("Fx"))
 local Warn = require(client:WaitForChild("Warn"))
 local Cam = require(client:WaitForChild("Cam"))
-local Bat = require(client:WaitForChild("Bat"))
+local Qte = require(client:WaitForChild("Qte"))
+local Aura = require(client:WaitForChild("Aura"))
+local CharAnim = require(client:WaitForChild("CharAnim"))
 local attacks = {}
 for _, m in ipairs(client:WaitForChild("Attacks"):GetChildren()) do
 	if m:IsA("ModuleScript") then attacks[m.Name] = require(m) end
@@ -35,6 +37,9 @@ end
 
 Fx.init(K, SK, S)
 Warn.init(K, S)
+Qte.init(K, S, Warn, Net.Qte)
+Aura.init(K, SK)
+CharAnim.init(K)
 Fx.onShake(Cam.shake)
 
 --------------------------------------------------------------------------
@@ -145,14 +150,19 @@ end
 local epoch = 0 -- (bumped on a phase change / his death: running visuals stop)
 local rig, road
 
-local ctx = { K = K, SK = SK, S = S, Fx = Fx, Warn = Warn, Cam = Cam, Net = Net, player = player }
+local ctx = { K = K, SK = SK, S = S, Fx = Fx, Warn = Warn, Cam = Cam, Qte = Qte, Net = Net, player = player }
 function ctx.epoch() return epoch end
 function ctx.chest()
 	local ut = model:FindFirstChild("UpperTorso")
 	return ut and ut.Position or model:GetPivot().Position
 end
-
-Bat.init(ctx)
+function ctx.part(name) return model:FindFirstChild(name) end
+-- his palm (the giant hand's), for effects that come out of it
+function ctx.handPos(side)
+	local h = rig and rig.SB.Hands[side]
+	return h and h.H.Palm.Position or ctx.chest()
+end
+Fx.setBoss(model)
 
 --------------------------------------------------------------------------
 -- feedback on him
@@ -171,7 +181,7 @@ local function damageNumber(amount, source)
 	t.FontFace = Font.new("rbxasset://fonts/families/Inconsolata.json", Enum.FontWeight.Bold)
 	t.TextScaled = true
 	t.Text = tostring(math.floor(amount + 0.5))
-	t.TextColor3 = source == "parry" and Color3.fromRGB(140, 255, 170) or source == "drill" and Color3.fromRGB(200, 255, 110) or Color3.new(1, 1, 1)
+	t.TextColor3 = source == "ultimate" and Color3.fromRGB(255, 235, 120) or source == "parry" and Color3.fromRGB(140, 255, 170) or Color3.new(1, 1, 1)
 	t.Parent = bb
 	local st = Instance.new("UIStroke") st.Thickness = 3 st.Parent = t
 	K.tween(host, 0.9, { CFrame = host.CFrame + Vector3.new(0, 30, 0) })
@@ -218,6 +228,28 @@ local function roar(t0, dur)
 	K.flash(0.5, Color3.fromRGB(170, 90, 255), 0.5)
 end
 
+-- a counter lands hard: he staggers
+function ctx.bossRecoil()
+	if not rig then return end
+	local t0 = S.now()
+	local prev = rig.Action
+	rig:act({
+		Until = t0 + 1.6,
+		Root = function(t)
+			local u = K.k(t, t0, t0 + 0.15, K.E.outCubic) * (1 - K.k(t, t0 + 0.4, t0 + 1.6))
+			return CFrame.new(0, -30 * u, 0) * CFrame.Angles(math.rad(22 * u), 0, math.rad(6 * u))
+		end,
+		Upper = function(t)
+			local u = K.k(t, t0, t0 + 0.15) * (1 - K.k(t, t0 + 0.4, t0 + 1.6))
+			rig:pose(Rig.REST, { Waist = { 25, 0, 8 }, Neck = { 30, 0, 0 }, RightShoulder = { 40, 0, 60 }, LeftShoulder = { 40, 0, -60 }, RightElbow = { 20, 0, 0 }, LeftElbow = { 20, 0, 0 } }, u)
+			SK.hang(rig.SB, "Right", 0.4, 0.5)
+			SK.hang(rig.SB, "Left", 0.4, 0.5)
+			return true
+		end,
+	})
+	task.delay(1.6, function() if rig.Action == nil and prev and prev.Until and prev.Until > S.now() then rig:act(prev) end end)
+end
+
 local function collapse(t0)
 	if not rig then return end
 	local parts = {}
@@ -261,6 +293,7 @@ local handlers = {}
 
 handlers.Start = function(d)
 	roar(d.T0, 2.2)
+	Fx.say("COME, SPIRAL APES.\nKNOW DESPAIR.", 1.6, true)
 end
 
 handlers.GalaxyBarrage = function(d) attacks.GalaxyBarrage.start(ctx, d) end
@@ -271,17 +304,65 @@ handlers.ConstellationLances = function(d) attacks.ConstellationLances.start(ctx
 handlers.FistHammer = function(d) attacks.FistSlam.hammer(ctx, d) end
 handlers.AnnihilationBeam = function(d) attacks.AnnihilationBeam.start(ctx, d) end
 handlers.SpiralCollapse = function(d) attacks.SpiralCollapse.start(ctx, d) end
+handlers.BigBang = function(d) attacks.BigBang.start(ctx, d) end
+handlers.GalaxyCorruption = function(d) attacks.GalaxyCorruption.start(ctx, d) end
+handlers.CorruptBolt = function(d) attacks.GalaxyCorruption.bolt(ctx, d) end
+handlers.CorruptLance = function(d) attacks.GalaxyCorruption.lance(ctx, d) end
+handlers.CorruptFinale = function(d) attacks.GalaxyCorruption.finale(ctx, d) end
+
+-- every hit: its prompts, and its lock-on
+handlers.Hit = function(d)
+	Qte.add(d)
+	Warn.add({ Id = d.Id, T = d.T, Shape = d.Shape, Name = d.Name, Target = d.Target })
+end
+
+-- a parry, on whoever made it: the move, the burst, the counter-bolt into him
+local animated = {} -- (my own parries animate the moment I land them)
+local function parryMove(char, kind, perfect)
+	if not char then return end
+	if kind == "chord" then
+		CharAnim.play(char, CharAnim.Guard)
+	elseif perfect then
+		CharAnim.play(char, CharAnim.Spin)
+	else
+		CharAnim.play(char, CharAnim.Deflect)
+	end
+	Aura.flare(char, kind == "chord" and 1 or 0.7)
+end
+
+Qte.OnSuccess = function(h, grade)
+	local kind = h.Qte.Kind
+	if kind == "ultimate" then return end -- (the cutscene is the move)
+	animated[h.Id] = true
+	local char = player.Character
+	parryMove(char, kind, grade == "perfect")
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if root then Fx.parryBurst(root.Position + root.CFrame.LookVector * 2 + Vector3.new(0, 1, 0), grade == "perfect") end
+	if kind == "chord" or grade == "perfect" then
+		Fx.impact(kind == "chord" and "GWG" or "G", 0.04)
+		Cam.punch(-10, 0.35)
+		Fx.tint(Fx.GREEN, 0.35, 0.5, 0.3)
+	end
+end
 
 handlers.Resolve = function(d)
-	if d.User == player.UserId then Warn.result(d.Id, d.Result) end
+	local mine = d.User == player.UserId
+	local who = Players:GetPlayerByUserId(d.User)
+	local char = who and who.Character
+	if mine then Warn.result(d.Id, d.Result) end
 	if d.Result == "parry" or d.Result == "perfect" then
 		local perfect = d.Result == "perfect"
-		if d.User ~= player.UserId then Fx.parryBurst(d.Pos, perfect) end
-		Fx.bolt(d.Pos + Vector3.new(0, 2, 0), ctx.chest(), perfect)
-		if perfect and d.User == player.UserId then
-			K.flash(0.25, Color3.fromRGB(255, 255, 190), 0.35)
-			Bat.impactFrame(true)
+		if not (mine and animated[d.Id]) and d.Kind ~= "ultimate" then
+			parryMove(char, d.Kind, perfect)
+			Fx.parryBurst(d.Pos, perfect)
 		end
+		animated[d.Id] = nil
+		if d.Kind ~= "ultimate" then Fx.bolt(d.Pos + Vector3.new(0, 2, 0), ctx.chest(), perfect) end
+		if math.random() < 0.12 then Fx.say(({ "IMPOSSIBLE.", "...WHAT?", "INSOLENT APE." })[math.random(1, 3)], 0.9) end
+	elseif d.Result == "hit" then
+		CharAnim.play(char, CharAnim.Reel)
+		Aura.dim(char)
+		if mine then Cam.punch(6, 0.3) end
 	end
 end
 
@@ -293,14 +374,21 @@ end
 handlers.Phase = function(d)
 	epoch += 1
 	Warn.cancelAll()
+	Qte.cancelAll()
+	Cam.clearCuts()
 	roar(d.T0, d.Dur)
+	Fx.say("YOU PERSIST...\nTHEN KNOW TRUE DESPAIR.", 2, true)
+	Fx.impact("VBV", 0.06)
 end
 
 handlers.Defeated = function(d)
 	epoch += 1
 	Warn.cancelAll()
-	Bat.setActive(false)
+	Qte.cancelAll()
+	Cam.clearCuts()
 	collapse(d.T0)
+	Fx.impact("WBWBW", 0.06)
+	Fx.say("HOW... CAN A SPIRAL...\nSURPASS... ME...", 2.5, true)
 end
 
 -- (events that arrive before the fight is set up on this client wait for it)
@@ -348,9 +436,10 @@ local function begin()
 		Fx.updateStomps()
 		road.update(now)
 		Warn.update(now)
+		Qte.update(now)
 	end)
-	Cam.start(ctx.chest)
-	Bat.setActive(not shared:GetAttribute("BossDefeated"))
+	Cam.start(ctx.chest, S.now)
+	Aura.setActive(true)
 	ready = true
 	-- (late: anything announced while we were getting ready)
 	for _, q in ipairs(queue) do
@@ -368,7 +457,7 @@ end
 player:GetAttributeChangedSignal("CutsceneDone"):Connect(check)
 workspace:GetAttributeChangedSignal("FC_State"):Connect(check)
 check()
-]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX29"><Properties><string name="Name">BossHealthBar</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX34"><Properties><string name="Name">BossHealthBar</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- BOSS HUD  (CLIENT)
 --
 -- Anti-Spiral boss bar (top centre). (The Spiral Energy

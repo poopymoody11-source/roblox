@@ -6,33 +6,31 @@
 --==================================================
 return {
 	DisplayName = "Anti-Spiral",
-	MaxHealth = 6000,
+
+	-- his health: MaxHealth for one player, plus this share of it per extra player
+	-- (2 players = 1.7x, 4 players = 3.1x ...)
+	MaxHealth = 4000,
+	HealthPerExtraPlayer = 0.7,
 
 	WalkSpeed = 70,          -- studs/s round the ring at full stride
 	WalkArc = { 35, 80 },    -- degrees he walks between attacks (random in range)
 
-	-- what a parry does to him (perfect = within Shared.PERFECT of impact)
-	ParryDamage = 45,
-	PerfectDamage = 80,
+	-- a parried hit's damage to him, if the attack doesn't set its own Counter
+	ParryDamage = 40,
 
-	-- the Spiral Bat
-	Bat = {
-		SwingCooldown = 0.28,
-		ComboReset = 0.9,     -- seconds before the combo starts over
-		MeleeDamage = 20,     -- on anything with a Humanoid in reach (minions, his body if you get close)
-		MeleeRange = 11,
-		DrillDamage = 60,     -- E: Drill Break, thrown at his core
-		DrillCooldown = 7,
-		DrillSpeed = 260,     -- studs/s
-		DashCooldown = 2.2,   -- Q: Spiral Dash
-		DashIFrames = 0.35,
+	-- set pieces: each comes out once, next, as his health crosses At
+	SetPieces = {
+		{ At = 0.72, Module = "BigBang" },            -- his ultimate
+		{ At = 0.58, Module = "GalaxyCorruption" },   -- the end of phase 1
+		{ At = 0.3, Module = "BigBang" },
 	},
+	UltimateCounterDelay = 3.4, -- (the Big Bang counter cinematic's length: its damage lands at the end)
 
 	Phases = {
 		{
 			Name = "THE END OF ALL SPIRALS",
 			StartsAtHealthPct = 1,
-			AttackDelay = 1.2,  -- rest after an attack, before he walks on
+			AttackDelay = 1.1,  -- rest after an attack, before he walks on
 			Attacks = {
 				{ Module = "GalaxyBarrage", Weight = 3 },
 				{ Module = "FistSlam", Weight = 3 },
@@ -49,6 +47,7 @@ return {
 			AttackDelay = 0.7,
 			TransitionTime = 3.5,
 			DamageMultiplier = 1.25,
+			UltimateParams = { Speed = 1.2 },
 			Attacks = {
 				{ Module = "GalaxyBarrage", Weight = 3, Params = { Shots = 22, Interval = 0.26, Portals = 3 } },
 				{ Module = "FistSlam", Weight = 3, Params = { Waves = 3, ExtraZones = 4 } },

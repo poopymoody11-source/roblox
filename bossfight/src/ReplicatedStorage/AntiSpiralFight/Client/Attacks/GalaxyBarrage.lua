@@ -34,6 +34,23 @@ function A.start(ctx, d)
 	ctx.Barrage = { Id = d.Id, Pulse = 0, Gals = gals }
 	Warn = ctx.Warn
 	Warn.callout("GALAXY BARRAGE")
+	ctx.Fx.say("THE STARS THEMSELVES\nREJECT YOU.", 1.2)
+	-- the cut-in: from the arena, up past him to the sky tearing open
+	local mid = d.Portals[1]:Lerp(d.Portals[#d.Portals], 0.5)
+	ctx.Barrage.Mid = mid
+	ctx.Cam.cut(function(now)
+		local u = K.remap(now, d.T0, d.OpenT + 0.4)
+		local from = S.CENTER + (S.flat(mid - S.CENTER).Unit * -60) + Vector3.new(0, 12 + 20 * u, 0)
+		return CFrame.lookAt(from, mid:Lerp(ctx.chest(), 0.35 - 0.2 * u)), 62 - 8 * u
+	end, d.T0 + 0.2, d.OpenT + 0.5, 0.3)
+	task.delay(math.max(d.OpenT - S.now(), 0), function()
+		for _, p in ipairs(d.Portals) do
+			ctx.Fx.vfx("Portal-01", p, 7, nil, 3)
+			ctx.Fx.vfx("Lighting-03", p, 5, nil, 3)
+		end
+		ctx.Fx.impact("V", 0.045)
+		ctx.Cam.punch(-10, 0.4)
+	end)
 	local B = ctx.Barrage
 	Rig:act({
 		Until = d.CloseT + 0.8,
@@ -137,6 +154,18 @@ function A.shot(ctx, d)
 		Id = d.Id, T = d.T, Shape = { Kind = "circle", P = d.To, R = d.R }, Name = d.Name, Target = d.Target, Rad = d.Size,
 		Pos = function(now) return at(K.remap(now, d.T0, d.T) ^ 1.25) end,
 	})
+	ctx.Qte.track(d.Id, function(now) return at(K.remap(now, d.T0, d.T) ^ 1.25) end)
+	if giant then
+		local mid = (B and B.Mid) or (S.CENTER + Vector3.new(0, 150, 0))
+		-- the cut-in: the world coming down on you
+		ctx.Fx.say("BEHOLD... THE LAST WORLD\nYOU WILL EVER SEE.", 1.3, true)
+		ctx.Cam.cut(function(now)
+			local b = at(K.remap(now, d.T0, d.T) ^ 1.25)
+			local from = d.To + S.flat(d.To - mid).Unit * 70 + Vector3.new(0, 8, 0)
+			return CFrame.lookAt(from, b), 70
+		end, d.T0 + 0.1, d.T0 + 1.5, 0.3)
+		ctx.Fx.hold(Fx.VIOLET, 0.35, 0.8)
+	end
 	K.sfx(d.Kind == "star" and K.S.FireWhoosh or K.S.Whoosh, 0.5, d.Kind == "star" and 1.4 or 0.7)
 	local spin = CFrame.Angles(0, 0, 0)
 	local conn
@@ -156,7 +185,7 @@ function A.shot(ctx, d)
 		if now >= d.T then
 			conn:Disconnect()
 			zone.destroy()
-			if Warn.claimed(d.Id) then
+			if ctx.Qte.claimed(d.Id) then
 				-- batted back: it flies home into his chest
 				local from = body.Position
 				local t0 = os.clock()
@@ -174,6 +203,10 @@ function A.shot(ctx, d)
 			else
 				Fx.blast(d.To, d.R * 1.6, d.Kind == "star" and Color3.fromRGB(230, 180, 255) or Fx.VIOLET, { Shake = d.Kind == "star" and 0.6 or (giant and 4 or 1.4), Volume = giant and 1.5 or 1 })
 				if giant then
+					ctx.Fx.impact("WBWB", 0.05)
+					ctx.Cam.punch(-18, 0.5)
+					ctx.Fx.hold(nil, 0, 1.2)
+					ctx.Fx.vfx("Big-Crack-01", d.To, 2.2, nil, 6)
 					Fx.blast(d.To, d.R * 2.6, Fx.MAGENTA, { Column = false, Shake = 0, Volume = 0 })
 					Fx.sound(K.S.Boom, d.To, 1.3, 0.6, 3000)
 					K.flash(0.4, Color3.fromRGB(255, 220, 255), 0.5)

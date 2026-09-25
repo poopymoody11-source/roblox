@@ -59,6 +59,14 @@ function A.start(ctx, d)
 	local hole = c + UP * HOLE_H
 	local clapT = d.OpenT - 0.15
 	Warn.callout("SPIRAL COLLAPSE")
+	ctx.Fx.say("ALL SPIRALS END\nIN THE VOID.", 1.2)
+	-- the cut-in: the hole tearing open over the arena
+	ctx.Cam.cut(function(now)
+		local u = K.remap(now, d.OpenT - 0.2, d.OpenT + 1.4)
+		local toBoss = S.flat(ctx.chest() - c).Unit
+		local from = c - toBoss * (150 - 30 * u) + UP * (20 + 15 * u)
+		return CFrame.lookAt(from, hole:Lerp(ctx.chest(), 0.2)), 72 - 8 * u
+	end, d.OpenT - 0.25, d.OpenT + 1.5, 0.3)
 
 	Rig:act({
 		Until = d.BlastT + 1.2,
@@ -145,6 +153,10 @@ function A.start(ctx, d)
 			K.sfx(K.S.Thunder, 0.9, 0.6)
 			K.flash(0.25, Color3.new(1, 1, 1), 0.5)
 			ctx.Cam.shake(2.2, 0.6)
+			ctx.Fx.impact("WB", 0.05)
+			ctx.Cam.punch(-12, 0.4)
+			Fx.vfx("Tornado-01", c + UP * 5, 4, nil, 6)
+			Fx.vfx("Portal-Enter-01", hole, 8, nil, 3)
 			roar = K.loop(K.S.Rush, 0.7, 0.8, 0.6)
 		end
 		zone.update(now)
@@ -201,13 +213,15 @@ function A.start(ctx, d)
 		if not blasted and now >= d.BlastT then
 			blasted = true
 			if roar then K.fadeSound(roar, 0, 0.2, true) roar = nil end
-			if Warn.claimed(d.Id) then
+			if ctx.Qte.claimed(d.Id) then
 				Fx.parryBurst(hole, true)
 				K.flash(0.4, Fx.GREEN, 0.5)
 			else
 				local flash = K.part({ Name = "Collapse", Shape = Enum.PartType.Ball, Size = Vector3.one * 10, Material = Enum.Material.Neon, Color = Color3.fromRGB(245, 225, 255), CFrame = CFrame.new(hole) }, Fx.Folder)
 				K.tween(flash, 0.5, { Size = Vector3.one * d.R * 2.6, Transparency = 1 })
 				Debris:AddItem(flash, 0.55)
+				ctx.Fx.impact("BWBW", 0.045)
+				ctx.Cam.punch(-18, 0.6)
 				Fx.blast(c, d.R, Fx.VIOLET, { Sound = K.S.Boom, Shake = 3.5, Volume = 1.4 })
 				Fx.sound(K.S.Hell, c, 0.8, 0.8, 3000)
 				K.flash(0.5, Fx.VIOLET_HOT, 0.6)

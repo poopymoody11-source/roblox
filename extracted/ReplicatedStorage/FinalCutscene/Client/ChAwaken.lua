@@ -13,6 +13,17 @@ local UP = Vector3.yAxis
 local WHITE = Color3.new(1, 1, 1)
 local GREEN, LIME = SK.GREEN, SK.LIME
 
+-- (no Spiral Bat in these scenes: any bat they're carrying stays hidden)
+local function hideBat(rig)
+	local b = rig.Bat
+	if not b then return end
+	if b:IsA("BasePart") then b.LocalTransparencyModifier = 1 end
+	for _, d in ipairs(b:GetDescendants()) do
+		if d:IsA("BasePart") then d.LocalTransparencyModifier = 1
+		elseif d:IsA("ParticleEmitter") or d:IsA("Beam") or d:IsA("Trail") or d:IsA("Light") then d.Enabled = false end
+	end
+end
+
 -- the body inside: a giant (S x) version of your body, far away on its own
 local V = Vector3.new(-22000, 16000, 16000)
 local S = 70
@@ -314,6 +325,65 @@ function Ch.build(ctx)
 	A.Wave.setTransparency(0.99)
 	A.Glow = SK.glow(K, host, SK.CATCH, 100, GREEN, 3)
 	A.Glow.set(SK.CATCH, 1, 0)
+
+	-- the storm of spiral power round them as they float: a giant drill of spiral
+	-- arms around them and a tight spiral whipping round the party, a tunnel of
+	-- turning galaxies above and below, heartbeat shockwaves, lightning, and
+	-- streaks of light racing up past them
+	local St = { Strands = {}, Layers = {}, Beats = {}, BeatT = {}, Arcs = {} }
+	A.Storm = St
+	local stH = K.part({ Name = "StormHost", Size = Vector3.one, Transparency = 1, CFrame = CFrame.new(SK.CATCH) }, aw)
+	for s = 1, 6 do
+		local inner = s <= 3
+		local strand = {}
+		for i = 1, (inner and 16 or 22) do
+			local b = K.ray(stH, SK.CATCH, SK.CATCH + UP, 2, 2, inner and "14582794847" or "10365550877", { Color = (s % 3 == 0) and WHITE or (inner and LIME or GREEN), Brightness = inner and 5 or 3.5, Transparency = 1, Segments = 1, Mode = inner and Enum.TextureMode.Stretch or Enum.TextureMode.Wrap, Length = 20, Speed = 3 })
+			b.Enabled = false
+			strand[i] = b
+		end
+		St.Strands[s] = strand
+	end
+	for i, L in ipairs({
+		{ -42, 170, "14426232568", GREEN, 1.3, 0.8 },
+		{ -18, 110, "124165682553877", LIME, -2.1, 0.75 },
+		{ 16, 90, "14426232568", Color3.fromRGB(150, 255, 220), 2.8, 0.5 },
+		{ 52, 140, "124165682553877", GREEN, -1.4, 0.65 },
+		{ 110, 90, "14426232568", LIME, 3.2, 0.65 },
+	}) do
+		local q = K.quad(stH, CFrame.new(SK.CATCH), L[2], L[2], L[3], { Color = L[4], Brightness = 2.2, Transparency = 1 })
+		q.Enabled = false
+		St.Layers[i] = { Q = q, Y = L[1], S = L[2], W = L[5], A = L[6] }
+	end
+	for i = 1, 3 do
+		local r = K.softRing(stH, 48, 10, 30, { Brightness = 3, Alpha = 0 })
+		for _, q in ipairs(r.Q) do q.Color = ColorSequence.new(WHITE, GREEN) end
+		r.setTransparency(0.99)
+		St.Beats[i] = r
+		St.BeatT[i] = -10
+	end
+	for i = 1, 10 do
+		local arc = {}
+		for j = 1, 4 do
+			local b = K.ray(stH, SK.CATCH, SK.CATCH + UP, 0.9, 0.5, nil, { Color = (i % 2 == 0) and WHITE or LIME, Brightness = 6, Segments = 1 })
+			b.Enabled = false
+			arc[j] = b
+		end
+		St.Arcs[i] = arc
+	end
+	local sb = K.part({ Name = "StormBase", Size = Vector3.new(130, 1, 130), Transparency = 1, CFrame = CFrame.new(SK.CATCH) }, aw)
+	St.Base = sb
+	St.Streaks = K.emitter(sb, {
+		Texture = "14582794847", Color = ColorSequence.new(WHITE, LIME), Size = K.ns(0, 2.2, 1, 0.6),
+		Squash = NumberSequence.new(-2.5), Orientation = Enum.ParticleOrientation.VelocityParallel,
+		Lifetime = NumberRange.new(0.8, 1.4), Speed = NumberRange.new(130, 230), EmissionDirection = Enum.NormalId.Top,
+		SpreadAngle = Vector2.new(3, 3), Shape = Enum.ParticleEmitterShape.Box, Brightness = 5,
+	})
+	St.Motes = K.emitter(sb, {
+		Texture = "131679330853412", Color = ColorSequence.new(LIME, GREEN), Size = K.ns(0, 0, 0.2, 1.4, 1, 0),
+		Lifetime = NumberRange.new(1.5, 2.6), Speed = NumberRange.new(20, 70), EmissionDirection = Enum.NormalId.Top,
+		SpreadAngle = Vector2.new(25, 25), Shape = Enum.ParticleEmitterShape.Box, Brightness = 4,
+		Rotation = NumberRange.new(0, 360), RotSpeed = NumberRange.new(-200, 200),
+	})
 
 	-- the shout's burst of light (warm rays behind the pose, like the old poster)
 	local sh = K.part({ Name = "BurstHost", Size = Vector3.one, Transparency = 1, CFrame = CFrame.new(SK.CATCH) }, aw)
@@ -672,6 +742,15 @@ local function shrineFx(ctx, on)
 end
 Ch.shrineFx = shrineFx
 
+-- who "WE" are: the party's names (or just yours)
+local function partyName()
+	local names = {}
+	for _, p in ipairs(game:GetService("Players"):GetPlayers()) do table.insert(names, p.DisplayName) end
+	if #names == 0 then return "Everyone" end
+	if #names > 3 then return names[1] .. ", " .. names[2] .. ", " .. names[3] .. " + " .. (#names - 3) end
+	return table.concat(names, " & ")
+end
+
 local function standCF(ctx, slot)
 	local p = ctx.TL.ArenaStand(slot)
 	local home = ctx.BossHome
@@ -792,9 +871,6 @@ function Ch.Transform(ctx, t0, dur)
 				-- head bowed, limp... then the eyes open and the power stands them up
 				local wake = K.k(t, 4.5, 5.2, K.E.outBack)
 				pose = K.mixPose(K.mixPose(K.Poses.Float, { Neck = K.A(-35, 0, 0), RS = K.A(10, 0, 25), LS = K.A(10, 0, -25) }, 1 - wake), K.Poses.Hero, wake)
-				-- the bat raised to the sky
-				local lift = K.k(t, 5.9, 6.5, K.E.outBack) * (1 - K.k(t, 7.4, 7.8))
-				if lift > 0 then pose.RS = (pose.RS or CFrame.new()):Lerp(K.A(168, 0, 12), lift) end
 			end
 			rig:setCF(cf)
 			rig:setPose(pose)
@@ -807,11 +883,10 @@ function Ch.Transform(ctx, t0, dur)
 			-- the bat forms in the hand, then becomes the Spiral Bat
 			if t >= 5.8 and not batIn[slot] then
 				batIn[slot] = true
-				if not rig.Bat then rig:giveBat() end
-				if rig.Bat then rig.Bat.LocalTransparencyModifier = 1 end
+				hideBat(rig)
 			end
 			if rig.Bat and batIn[slot] then
-				rig.Bat.LocalTransparencyModifier = 1 - K.k(t, 5.8, 6.3)
+				hideBat(rig)
 			end
 			if rig == me then myPos = cf.Position end
 		end
@@ -839,7 +914,7 @@ function Ch.Transform(ctx, t0, dur)
 			local a = u * math.pi * 6 + t * 3 + strand * math.pi
 			local r = 16 + math.sin(u * math.pi) * 6
 			b.CFrame = CFrame.new(col + Vector3.new(math.cos(a) * r, u * 120 * rise, math.sin(a) * r))
-			b.Transparency = on and (0.05 + fade) or 1
+			b.Transparency = 1 -- (the storm's spiral arms took over from these)
 		end
 		for _, d in ipairs(A.Discs) do
 			d.Q.Enabled = on and fade < 0.99
@@ -862,6 +937,118 @@ function Ch.Transform(ctx, t0, dur)
 			end
 		end
 		A.Glow.set(t < BLAST + 0.5 and fist or centre, t < BLAST + 0.5 and (60 + burst * 260) or 90, t < BLAST + 0.5 and burst or power * 0.18 * (1 - fade))
+
+		----------------------------------------------------------------
+		-- the storm of spiral power round them
+		----------------------------------------------------------------
+		local St = A.Storm
+		if St then
+			local vis = on and power * (1 - fade) or 0
+			local grow = K.lerp(0.35, 1, rise)
+			-- the heart still beating: every beat a shockwave, a kick, a flare
+			local BEAT0, PER = BLAST + 0.55, 0.62
+			local beatK = 0
+			if t >= BEAT0 and t < LAND0 then
+				local n = math.floor((t - BEAT0) / PER)
+				beatK = math.exp(-((t - BEAT0) - n * PER) / 0.12)
+				cue("stormBeat" .. n, true, function()
+					St.BeatT[(n % 3) + 1] = t
+					K.sfx(K.S.Heartbeat, 0.5, 1.25)
+					K.kick(2.5, 0.18)
+					K.shake(0.6, 0.15)
+					for _, rig in pairs(ctx.rigs) do
+						if rig.SP then
+							rig.SP.Sparks:Emit(8)
+							if rig.SP.Flame then rig.SP.Flame:Emit(6) end
+						end
+					end
+				end)
+			end
+			for i, R in ipairs(St.Beats) do
+				local u = (t - St.BeatT[i]) / 0.8
+				if u >= 0 and u < 1 and vis > 0.01 then
+					local r0 = 8 + 170 * (1 - (1 - u) ^ 3)
+					R.update(CFrame.lookAt(centre - UP * 2, centre + UP), r0, r0 + 14 + 30 * u, u * 2)
+					R.setTransparency(math.min(0.99, 0.1 + 0.9 * u ^ 1.2))
+				else
+					R.setTransparency(0.99)
+				end
+			end
+			-- the drill round them and the spiral whipping round the party
+			for s, strand in ipairs(St.Strands) do
+				local inner = s <= 3
+				local k = inner and s or s - 3
+				local nseg = #strand
+				if inner then
+					for _, b in ipairs(strand) do b.Enabled = false end
+					continue
+				end
+				local prev
+				for i = 0, nseg do
+					local u = i / nseg
+					local a = u * (inner and 3.4 or 2.3) * math.pi * 2 + t * (inner and 5.5 or -2.4) + k * 2.094
+					local r = inner and (8 + 6 * math.sin(u * math.pi)) or (6 + 80 * (1 - u) ^ 1.3)
+					local y = inner and (-18 + u * 46) or ((-70 + u * 290) * grow)
+					local p = centre + Vector3.new(math.cos(a) * r, y, math.sin(a) * r)
+					if prev then
+						local b = strand[i]
+						b.Enabled = vis > 0.01
+						if b.Enabled then
+							b.Attachment0.WorldPosition = prev
+							b.Attachment1.WorldPosition = p
+							local w = (inner and (1.6 * (1 - u * 0.4)) or (1 + 6 * (1 - u))) * (1 + beatK * 0.4)
+							b.Width0, b.Width1 = w, w
+							b.Transparency = NumberSequence.new(1 - vis * (0.2 + 0.8 * math.sin(u * math.pi) ^ 0.6))
+						end
+					end
+					prev = p
+				end
+			end
+			-- the tunnel of galaxies
+			for _, L in ipairs(St.Layers) do
+				L.Q.Enabled = vis > 0.01
+				if L.Q.Enabled then
+					local y = L.Y * grow
+					K.moveQuad(L.Q, CFrame.lookAt(centre + UP * y, centre + UP * (y + 1)) * CFrame.Angles(0, 0, t * L.W))
+					local s = L.S * (0.5 + 0.5 * vis) * (1 + beatK * 0.12)
+					K.setQuadSize(L.Q, s, s)
+					L.Q.Transparency = NumberSequence.new(1 - vis * L.A)
+				end
+			end
+			-- lightning, from the drill in to the spiral round the party
+			if vis > 0.2 then
+				if os.clock() - (St.ArcT or 0) > 0.06 then
+					St.ArcT = os.clock()
+					local rng = Random.new()
+					for _, arc in ipairs(St.Arcs) do
+						local show = rng:NextNumber() < 0.5 * vis
+						for _, b in ipairs(arc) do b.Enabled = show end
+						if show then
+							local a = rng:NextNumber() * math.pi * 2
+							local from = centre + Vector3.new(math.cos(a) * 55, rng:NextNumber(-25, 60), math.sin(a) * 55)
+							local a2 = a + rng:NextNumber(-0.6, 0.6)
+							local to = centre + Vector3.new(math.cos(a2) * 12, rng:NextNumber(-6, 10), math.sin(a2) * 12)
+							local pts = { from }
+							for j = 1, #arc - 1 do
+								local u = j / #arc
+								table.insert(pts, from:Lerp(to, u) + rng:NextUnitVector() * 7 * (1 - math.abs(u - 0.5)))
+							end
+							table.insert(pts, to)
+							for j, b in ipairs(arc) do
+								b.Attachment0.WorldPosition = pts[j]
+								b.Attachment1.WorldPosition = pts[j + 1]
+							end
+						end
+					end
+				end
+			else
+				for _, arc in ipairs(St.Arcs) do for _, b in ipairs(arc) do b.Enabled = false end end
+			end
+			-- light racing up the column past them
+			St.Base.CFrame = CFrame.new(centre - UP * 55)
+			St.Streaks.Rate = vis * 140
+			St.Motes.Rate = vis * 70
+		end
 
 		----------------------------------------------------------------
 		-- camera
@@ -954,23 +1141,6 @@ function Ch.Transform(ctx, t0, dur)
 				if rig.SP then rig.SP.Sparks:Emit(40) end
 			end
 		end)
-		cue("batIn", t >= 5.8, function()
-			K.sfx(K.S.Ring, 0.8, 1.1)
-			K.sfx(K.S.FireWhoosh, 0.7, 1.3)
-		end)
-		cue("spiralBat", t >= 6.7, function()
-			for _, rig in pairs(ctx.rigs) do
-				SK.spiralBat(K, rig)
-				if rig.Bat then rig.Bat.LocalTransparencyModifier = 0 end
-			end
-			task.spawn(K.impact, SK.models(ctx), "GBG", 0.05)
-			K.sfx(K.S.BigHit, 1)
-			K.sfx(K.S.Broly, 0.8, 1.1)
-			K.sfx(K.S.Overdrive, 0.8, 1.2)
-			K.flash(0.5, GREEN, 0.7)
-			K.shake(2.5, 1)
-			K.kick(12, 0.7)
-		end)
 		K.stream(col)
 	end)
 	for _, s in ipairs(A.Shafts) do s.B.Enabled = false end
@@ -979,6 +1149,14 @@ function Ch.Transform(ctx, t0, dur)
 	for _, b in ipairs(A.Helix) do b.Transparency = 1 end
 	for _, d in ipairs(A.Discs) do d.Q.Enabled = false end
 	A.Glow.set(SK.CATCH, 1, 0)
+	local St = A.Storm
+	if St then
+		for _, strand in ipairs(St.Strands) do for _, b in ipairs(strand) do b.Enabled = false end end
+		for _, L in ipairs(St.Layers) do L.Q.Enabled = false end
+		for _, R in ipairs(St.Beats) do R.setTransparency(0.99) end
+		for _, arc in ipairs(St.Arcs) do for _, b in ipairs(arc) do b.Enabled = false end end
+		St.Streaks.Rate, St.Motes.Rate = 0, 0
+	end
 end
 
 ------------------------------------------------------------------------
@@ -1001,8 +1179,7 @@ function Ch.Shout(ctx, t0, dur)
 	local order = {}
 	for slot, rig in pairs(ctx.rigs) do
 		SK.powerUp(K, rig)
-		if not rig.Bat then rig:giveBat() end
-		SK.spiralBat(K, rig)
+		hideBat(rig)
 		if rig ~= me then table.insert(order, slot) end
 	end
 	table.sort(order)
@@ -1139,7 +1316,9 @@ function Ch.Shout(ctx, t0, dur)
 			K.shake(2, 0.6)
 		end)
 		cue("shout", t >= HERO + 0.25, function()
-			shoutText = SK.rainbowShout(K, "JUST WHO THE HELL\nDO YOU THINK WE ARE!", { Scale = 0.11, Position = UDim2.fromScale(0.5, 0.83), Per = 0.03 })
+			shoutText = SK.auraShout(K, "JUST WHO THE HELL\nDO YOU THINK WE ARE!", {
+				Scale = 0.1, Position = UDim2.fromScale(0.5, 0.8), Per = 0.13, Speaker = partyName(),
+			})
 			K.sfx(K.S.Broly, 1, 1)
 			K.sfx(K.S.Overdrive, 0.9, 1)
 			K.sfx(K.S.GreenAura, 0.8, 1.1)
@@ -1233,6 +1412,7 @@ end
 ------------------------------------------------------------------------
 function Ch.IAm(ctx, t0, dur)
 	local K = ctx.kit
+	workspace:SetAttribute("FC_IAmT0", t0) -- (Studio review: lets FC_FreezeAt target moments in this chapter)
 	local A = ctx.Aw
 	if ctx.restoreArena then ctx.restoreArena() end
 	ctx.hideBoss(true)
@@ -1251,11 +1431,15 @@ function Ch.IAm(ctx, t0, dur)
 	local spice = shoutSpice(ctx)
 	for _, rig in pairs(ctx.rigs) do
 		SK.powerUp(K, rig)
-		if not rig.Bat then rig:giveBat() end
-		SK.spiralBat(K, rig)
+		hideBat(rig)
 	end
 	local text
-	local DROP, LAND = 2.7, 3.75 -- the fall, and the moment everyone hits the arena together
+	-- the line; the wind-up (up and over, each to your own side); the dive, both of
+	-- you straight down, side by side; and the moment everyone hits the arena
+	local WIND0, DROP, LAND = 2.6, 3.5, 5.6
+	local BOSS_UP = 380 -- (how high he heaves himself before the dive)
+	local PARTY_UP = 330 -- (how high above your spot you are when you tip over into the dive)
+	local VIOLET, VIOLET_HOT = SK.VIOLET, Color3.fromRGB(215, 170, 255)
 	K.lighting("Arena", 0)
 	K.vignette(0.3, Color3.new(0, 0, 0), 0.3)
 	local speed = K.frame("IAmLines", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 44 }, K.Gui)
@@ -1270,101 +1454,259 @@ function Ch.IAm(ctx, t0, dur)
 	lines.SizeConstraint = Enum.SizeConstraint.RelativeXX
 	lines.ZIndex = 44
 	lines.Parent = speed
+
+	----------------------------------------------------------------
+	-- the dive's own effects: a green comet-trail behind each of you, a
+	-- purple one behind him, and his purple aura
+	----------------------------------------------------------------
+	local fxHost = K.part({ Name = "DiveHost", Size = Vector3.one, Transparency = 1, CFrame = CFrame.new(AC) }, A.FX)
+	local function trail(n, w0, c0, c1, bright)
+		local T = { Pts = {}, B = {}, N = n, W = w0, Last = 0 }
+		for i = 1, n do
+			local b = K.ray(fxHost, AC, AC + UP, w0, w0, nil, { Color = c0, Brightness = bright, Segments = 1 })
+			b.Color = ColorSequence.new(c0, c1)
+			b.Enabled = false
+			T.B[i] = b
+		end
+		function T.push(p, now)
+			if now - T.Last < 0.03 and #T.Pts > 0 then T.Pts[1] = p return end
+			T.Last = now
+			table.insert(T.Pts, 1, p)
+			if #T.Pts > T.N + 1 then table.remove(T.Pts) end
+		end
+		function T.draw(alpha)
+			for i, b in ipairs(T.B) do
+				local p0, p1 = T.Pts[i], T.Pts[i + 1]
+				b.Enabled = alpha > 0.01 and p0 ~= nil and p1 ~= nil and (p0 - p1).Magnitude > 0.05
+				if b.Enabled then
+					b.Attachment0.WorldPosition = p0
+					b.Attachment1.WorldPosition = p1
+					local u0, u1 = (i - 1) / T.N, i / T.N
+					b.Width0, b.Width1 = T.W * (1 - u0), T.W * (1 - u1)
+					b.Transparency = NumberSequence.new(1 - alpha * (1 - u0) * 0.9, 1 - alpha * (1 - u1) * 0.9)
+				end
+			end
+		end
+		function T.clear()
+			T.Pts = {}
+			for _, b in ipairs(T.B) do b.Enabled = false end
+		end
+		return T
+	end
+	local trails = {}
+	for slot in pairs(ctx.rigs) do trails[slot] = trail(14, 9, Color3.new(1, 1, 1), SK.GREEN, 4) end
+	local bossTrail = trail(14, 80, Color3.fromRGB(160, 100, 255), Color3.fromRGB(90, 30, 200), 1)
+	local bossGlow = SK.glow(K, fxHost, AC, 600, VIOLET, 1.4)
+	bossGlow.set(AC, 1, 0)
+	local partyGlow = SK.glow(K, fxHost, AC, 60, SK.GREEN, 2.5)
+	partyGlow.set(AC, 1, 0)
+	-- his aura: purple fire pouring off the whole of him
+	local bossFx = {}
+	for _, name in ipairs({ "UpperTorso", "LowerTorso", "Head", "LeftUpperArm", "RightUpperArm", "LeftUpperLeg", "RightUpperLeg" }) do
+		local p = ctx.Boss:FindFirstChild(name, true)
+		if p and p:IsA("BasePart") then
+			local big = name == "UpperTorso" or name == "LowerTorso"
+			table.insert(bossFx, K.emitter(p, {
+				Texture = "11381556016", FlipbookLayout = Enum.ParticleFlipbookLayout.Grid8x8, FlipbookMode = Enum.ParticleFlipbookMode.OneShot,
+				Color = ColorSequence.new(Color3.fromRGB(150, 80, 255), Color3.fromRGB(70, 15, 170)), Size = K.ns(0, big and 260 or 160, 0.6, big and 200 or 120, 1, 30),
+				Transparency = K.ns(0, 0.72, 0.7, 0.85, 1, 1), Lifetime = NumberRange.new(0.4, 0.7), Speed = NumberRange.new(60, 140),
+				SpreadAngle = Vector2.new(20, 20), EmissionDirection = Enum.NormalId.Top, Brightness = 0.8,
+				Rotation = NumberRange.new(-30, 30), Shape = Enum.ParticleEmitterShape.Box, Acceleration = Vector3.new(0, 250, 0),
+			}))
+			table.insert(bossFx, K.emitter(p, {
+				Texture = "1851669703", Color = ColorSequence.new(Color3.new(1, 1, 1), VIOLET), Size = K.ns(0, 0, 0.3, 26, 1, 0),
+				Lifetime = NumberRange.new(0.5, 1), Speed = NumberRange.new(40, 160), SpreadAngle = Vector2.new(180, 180),
+				Brightness = 5, Shape = Enum.ParticleEmitterShape.Box, Rotation = NumberRange.new(0, 90),
+			}))
+		end
+	end
+	local function bossAura(a)
+		for i, e in ipairs(bossFx) do e.Rate = a * (i % 2 == 1 and 14 or 16) end
+	end
+
+	local rushHost = K.part({ Name = "RushHost", Size = Vector3.new(70, 1, 70), Transparency = 1, CFrame = CFrame.new(AC) }, A.FX)
+	local rush = K.emitter(rushHost, {
+		Texture = "14582794847", Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(200, 255, 210)),
+		Size = K.ns(0, 0.8, 1, 0.3), Squash = NumberSequence.new(-2.8), Orientation = Enum.ParticleOrientation.VelocityParallel,
+		Transparency = K.ns(0, 0.25, 1, 0.8), Lifetime = NumberRange.new(0.35, 0.6), Speed = NumberRange.new(300, 420),
+		EmissionDirection = Enum.NormalId.Top, SpreadAngle = Vector2.new(2, 2), Shape = Enum.ParticleEmitterShape.Box, Brightness = 3,
+	})
 	local from = {}
 	SK.run(K, t0, dur, function(t, dt)
+		local now = os.clock()
+		local wind = K.k(t, WIND0, DROP, K.E.inOutSine)
+		local u = K.k(t, DROP, LAND) -- (the dive)
+		local fallE = u * u -- (accelerating all the way down)
+		local diving = t >= DROP and t < LAND
+
 		----------------------------------------------------------------
-		-- him: hovering... heaving himself up... and dropping onto the arena
+		-- him: hovering... heaving himself up... then straight down, feet first
 		----------------------------------------------------------------
-		local rise = K.k(t, DROP - 0.5, DROP, K.E.outQuad)
-		local fall = K.k(t, DROP, LAND, K.E.inQuad)
-		local y = t < DROP and (K.lerp(60, 150, rise) + math.sin(t * 1.3) * 2 * (1 - rise)) or K.lerp(150, 0, fall)
 		local hit = t >= LAND and math.exp(-(t - LAND) / 0.25) * math.min((t - LAND) / 0.06, 1) or 0
-		local rootCF = home * CFrame.new(0, y - hit * 16, K.lerp(25, 0, fall))
+		local y
+		if t < DROP then
+			y = K.lerp(60 + math.sin(t * 1.3) * 2, BOSS_UP, K.k(t, WIND0, DROP, K.E.outQuad))
+		elseif t < LAND then
+			y = BOSS_UP * (1 - fallE)
+		else
+			y = -hit * 16
+		end
+		local lean = diving and math.sin(math.pi * u) or 0
+		local rootCF = home * CFrame.new(0, y, K.lerp(25, 0, K.k(t, WIND0, DROP))) * CFrame.Angles(math.rad(-10) * lean, 0, 0)
 		ctx.BossRoot.CFrame = rootCF
 		SB.reset()
 		local stance = K.k(t, LAND + 0.1, LAND + 1.1, K.E.outBack)
-		local brace = fall * (1 - K.k(t, LAND, LAND + 0.4))
+		local brace = K.k(t, LAND - 0.5, LAND) * (1 - K.k(t, LAND, LAND + 0.4))
+		-- (arms thrown up and back as he drops, legs tucked... then braced for the impact)
+		local heave = K.k(t, WIND0, DROP, K.E.outBack) -- (arms swung up for the leap)
+		local stream = diving and K.k(t, DROP, DROP + 0.6, K.E.inOutSine) or 0 -- (then flung up and back by the fall)
+		local reach = math.max(heave * 0.6, stream) * (1 - K.k(t, LAND - 0.45, LAND - 0.05, K.E.inOutSine))
+		local flap = diving and math.sin(t * 11) * 6 * (1 - brace) or 0
 		SB.body({
-			Waist = K.A(K.lerp(4, -10, stance) - brace * 8 - hit * 10, 0, 0),
-			RightShoulder = K.A(-4 + stance * 20 + brace * 35, 0, 14 + stance * 40 + brace * 35),
-			LeftShoulder = K.A(-4 + stance * 20 + brace * 35, 0, -14 - stance * 40 - brace * 35),
-			RightElbow = K.A(12 + stance * 30, 0, 0), LeftElbow = K.A(12 + stance * 30, 0, 0),
+			Waist = K.A(K.lerp(4, -10, stance) - brace * 16 - hit * 10 + reach * 10, 0, 0),
+			Root = K.A(-brace * 10, 0, 0),
+			Neck = K.A(-reach * 18 + brace * 12, 0, 0),
+			RightShoulder = K.A(-4 + stance * 20 + brace * 45 + reach * 145 + flap, 0, 14 + stance * 40 + brace * 45 + reach * 25),
+			LeftShoulder = K.A(-4 + stance * 20 + brace * 45 + reach * 145 - flap, 0, -14 - stance * 40 - brace * 45 - reach * 25),
+			RightElbow = K.A(12 + stance * 30 + reach * 10 + brace * 25, 0, 0), LeftElbow = K.A(12 + stance * 30 + reach * 10 + brace * 25, 0, 0),
 		})
 		SK.hang(SB, "Right", K.lerp(0.55, 0.85, stance), 0.2)
 		SK.hang(SB, "Left", K.lerp(0.55, 0.85, stance), 0.2)
 		local face = SB.R.cf("Head", rootCF).Position
-		SB.lookAt(t < LAND and hoverCF(ctx, mine, t).Position or standCF(ctx, mine).Position, 1, rootCF)
+		local chest = SB.R.cf("UpperTorso", rootCF).Position
 
 		----------------------------------------------------------------
-		-- the party: you point the Spiral Bat at him... then everyone drops
+		-- the party: you point the Spiral Bat at him... up and over to your own
+		-- side... then straight down, head first, flipping to land
 		----------------------------------------------------------------
 		local myPos
+		local partyMid = Vector3.zero
+		local count = 0
 		for slot, rig in pairs(ctx.rigs) do
 			local stand = standCF(ctx, slot)
+			local top = stand.Position + UP * PARTY_UP
 			local cf, pose
-			if t < DROP then
+			if t < WIND0 then
 				cf = hoverCF(ctx, slot, t)
 				from[slot] = cf
 				if slot == mine then
-					local u = K.k(t, 0.15, 0.45, K.E.outBack)
-					pose = K.mixPose(K.Poses.PointUp, K.Poses.Reach, u)
-					pose.RS = (pose.RS or CFrame.new()):Lerp(K.A(95, 0, -6), u)
-					pose.Neck = K.A(K.lerp(20, 8, u), 0, 0)
+					local e = K.k(t, 0.15, 0.45, K.E.outBack)
+					pose = K.mixPose(K.Poses.PointUp, K.Poses.Reach, e)
+					pose.RS = (pose.RS or CFrame.new()):Lerp(K.A(95, 0, -6), e)
+					pose.Neck = K.A(K.lerp(20, 8, e), 0, 0)
 				else
 					pose = K.Poses.PointUp
 				end
 			elseif t < LAND then
-				-- the drop: a short hop out of the line, then straight down with him
-				local u = K.k(t, DROP, LAND, K.E.inQuad)
-				local p0 = (from[slot] or hoverCF(ctx, slot, t)).Position
-				local p2 = stand.Position
-				local p1 = p0:Lerp(p2, 0.35) + UP * 30
-				local p = p0:Lerp(p1, u):Lerp(p1:Lerp(p2, u), u)
-				local ahead = Vector3.new(p2.X - p0.X, 0, p2.Z - p0.Z)
-				ahead = ahead.Magnitude > 1e-3 and ahead.Unit or stand.LookVector
-				cf = CFrame.lookAt(p, p + ahead) * CFrame.Angles(math.rad(-30) * math.sin(math.pi * u), 0, 0)
-				pose = K.mixPose(K.Poses.Launch, K.Poses.Crouch, K.k(u, 0.55, 1))
+				-- up and over to the top of your drop... tip forward into a head-first
+				-- dive, arms locked out ahead, straight down... then a front flip onto your feet
+				local faceDir = Vector3.new(stand.LookVector.X, 0, stand.LookVector.Z)
+				local p
+				if t < DROP then
+					local p0 = (from[slot] or hoverCF(ctx, slot, t)).Position
+					local p1 = p0:Lerp(top, 0.5) + UP * 55
+					p = p0:Lerp(p1, wind):Lerp(p1:Lerp(top, wind), wind)
+				else
+					p = top:Lerp(stand.Position + UP * 2.5, fallE)
+				end
+				local tip = K.k(t, DROP - 0.25, DROP + 0.3, K.E.inOutSine) -- (0 upright -> 1 head down)
+				local flip = K.k(t, LAND - 0.42, LAND - 0.06, K.E.inOutQuad) -- (1 -> back on your feet)
+				local pitch = -math.pi * (tip + flip)
+				local wob = diving and (1 - flip) * math.sin(t * 13) * math.rad(2.5) or 0
+				cf = CFrame.lookAt(p, p + faceDir) * CFrame.Angles(pitch + wob, 0, 0)
+				-- the pose: a crouch for the leap, arms-overhead dive, a tuck through the flip
+				local tuck = math.sin(math.pi * flip)
+				local flut = math.sin(t * 17) * 5
+				local divePose = {
+					Neck = K.A(-25, 0, 0),
+					RS = K.A(172, 0, 7), LS = K.A(172, 0, -7),
+					RH = K.A(flut, 0, 3), LH = K.A(-flut, 0, -3),
+				}
+				pose = K.mixPose(K.Poses.Launch, K.Poses.Crouch, K.k(t, DROP - 0.4, DROP - 0.1))
+				pose = K.mixPose(pose, divePose, tip)
+				pose = K.mixPose(pose, K.Poses.Crouch, tuck)
+				if flip >= 1 then pose = K.Poses.Crouch end
 			else
-				-- the landing: down on one knee... and up, bat ready
-				local up2 = K.k(t, LAND + 0.45, LAND + 1.2, K.E.inOutSine)
+				-- the landing: down on one knee, fist to the floor... and up, bat ready
+				local up2 = K.k(t, LAND + 0.5, LAND + 1.3, K.E.inOutSine)
 				cf = stand * CFrame.new(0, K.lerp(-1.2, 0, up2), 0)
 				pose = K.mixPose(K.Poses.Kneel, K.Poses.Hero, up2)
 			end
 			rig:setCF(cf)
 			rig:setPose(pose)
 			rig:apply()
-			SK.powerLevel(rig, t, 1)
+			local charge = 1 -- (the rings stay on them right to the end)
+			SK.powerLevel(rig, t, charge)
 			if rig.SP then
-				rig.SP.Aura.Rate = 14
-				rig.SP.Sparks.Rate = 20
+				rig.SP.Aura.Rate = diving and 40 or 14
+				rig.SP.Sparks.Rate = diving and 45 or 20
 			end
+			local tr = trails[slot]
+			if tr then
+				if t >= WIND0 and t < LAND then tr.push(cf.Position, now) tr.draw(K.k(t, WIND0, WIND0 + 0.3)) else tr.clear() end
+			end
+			partyMid += cf.Position
+			count += 1
 			if rig == me then myPos = cf.Position end
 		end
-		myPos = myPos or hoverCF(ctx, mine, t).Position
-		-- (the drill and the rings die away as they drop)
-		spice(t, 0, 1 - K.k(t, DROP - 0.4, DROP))
+		partyMid = count > 0 and partyMid / count or hoverCF(ctx, mine, t).Position
+		myPos = myPos or partyMid
+		-- (the drill and the rings die away as they go)
+		spice(t, 0, 1 - K.k(t, WIND0 - 0.3, WIND0 + 0.1))
+
+		-- his aura, trail and glow; yours
+		local auraOn = K.k(t, WIND0, DROP) * (1 - K.k(t, LAND + 0.3, LAND + 1.5))
+		bossAura(auraOn)
+		if t >= DROP and t < LAND then
+			bossTrail.push(chest, now)
+			bossTrail.draw(0.55 * K.k(t, DROP, DROP + 0.3))
+		else
+			bossTrail.clear()
+		end
+		-- (the glows are for seeing you from afar - up close they'd just white the lens out)
+		local camPos = workspace.CurrentCamera.CFrame.Position
+		local farB = math.clamp(((camPos - chest).Magnitude - 900) / 500, 0, 1)
+		local farP = math.clamp(((camPos - partyMid).Magnitude - 120) / 300, 0, 1)
+		bossGlow.set(chest, 650, auraOn * 0.22 * farB)
+		partyGlow.set(partyMid, diving and 110 or 45, auraOn * (diving and 0.55 or 0.3) * farP)
+		rushHost.CFrame = CFrame.new(myPos - UP * 110)
+		rush.Rate = diving and (80 + 320 * u) or 0
 
 		----------------------------------------------------------------
 		-- camera
 		----------------------------------------------------------------
-		if t < DROP then
+		local side = -right -- (the arena seen from the side the final shot is on)
+		if t < WIND0 then
 			if shot ~= 1 then shot = 1 cam.cut() end
 			-- you, low and close, the drill of light above, him beyond
 			local hov = hoverCF(ctx, mine, t)
 			local head = me and me:head() and me:head().CFrame or hov * CFrame.new(0, 1.5, 0)
-			local e = K.k(t, 0, DROP, K.E.outSine)
+			local e = K.k(t, 0, WIND0, K.E.outSine)
 			local p = head.Position + hov.LookVector * K.lerp(6, 9, e) - UP * K.lerp(2, 1.2, e) + hov.RightVector * K.lerp(2.2, 3.4, e)
 			local tgt = head.Position + (face - head.Position).Unit * K.lerp(0.3, 1.6, e) - UP * 0.4
 			cam.go(CFrame.lookAt(p, tgt) * CFrame.Angles(0, 0, -0.08), K.lerp(46, 56, e), dt, 12)
-		elseif t < LAND then
+		elseif t < DROP + 0.9 then
 			if shot ~= 2 then shot = 2 cam.cut() end
-			-- dropping with you, him dropping beyond: nothing below yet but the void
-			local to = Vector3.new(face.X - myPos.X, 0, face.Z - myPos.Z).Unit
-			local sd = to:Cross(UP).Unit
-			local p = myPos - to * 22 + UP * 9 + sd * 8
-			cam.go(CFrame.lookAt(p, myPos:Lerp(face, 0.25)), 62, dt, 10, myPos)
-		else
+			-- side on, wide: the two of you at the top of the drop... and over, down you go
+			local mid3 = Vector3.new((myPos.X + chest.X) / 2, 0, (myPos.Z + chest.Z) / 2)
+			local h = K.lerp(myPos.Y, chest.Y, 0.35)
+			local p = mid3 + side * 1050 + UP * (h + 40)
+			cam.go(CFrame.lookAt(p, mid3 + UP * (h - 30)), 60, dt, 6)
+		elseif t < LAND - 0.3 then
 			if shot ~= 3 then shot = 3 cam.cut() end
+			-- falling with you, just below and ahead: you diving at the lens, him dropping beyond
+			local toB = Vector3.new(chest.X - myPos.X, 0, chest.Z - myPos.Z).Unit
+			local sd = toB:Cross(UP).Unit
+			local p = myPos - UP * 16 - toB * 14 + sd * 10
+			cam.go(CFrame.lookAt(p, myPos:Lerp(chest, 0.12) + UP * 4) * CFrame.Angles(0, 0, math.sin(t * 5) * 0.05), K.lerp(68, 95, u), dt, 16, myPos)
+		elseif t < LAND then
+			if shot ~= 4 then shot = 4 cam.cut() end
+			-- down at the floor (still nothing there), looking up: here they come
+			local st = standCF(ctx, mine)
+			local p = Vector3.new(st.Position.X, AC.Y + 6, st.Position.Z) + side * 60 - st.LookVector * 40
+			cam.go(CFrame.lookAt(p, myPos:Lerp(chest, 0.25)), 80, dt, 20)
+		else
+			if shot ~= 5 then shot = 5 cam.cut() end
 			-- THE final look: the arena, the titan and the party, facing off
 			local e = K.k(t, LAND, dur, K.E.outSine)
 			local a = K.lerp(-0.55, -0.35, e)
@@ -1372,14 +1714,17 @@ function Ch.IAm(ctx, t0, dur)
 			local p = AC + dir * K.lerp(640, 560, e) + UP * K.lerp(190, 150, e)
 			cam.go(CFrame.lookAt(p, AC + UP * K.lerp(90, 70, e)), K.lerp(58, 54, e), dt, 6)
 		end
-		lines.ImageTransparency = (t > 0.35 and t < DROP - 0.2) and (0.5 + 0.15 * math.sin(t * 20)) or 1
+		local lineOn = (t > 0.35 and t < WIND0 - 0.2) or (diving and t > DROP + 0.9)
+		lines.ImageColor3 = diving and Color3.fromRGB(230, 255, 230) or Color3.fromRGB(190, 255, 200)
+		lines.ImageTransparency = lineOn and (K.lerp(0.5, 0.25, diving and u or 0) + 0.15 * math.sin(t * 20)) or 1
 		lines.Rotation = t * 25
+		if diving then K.shake(0.3 + u * 1.2, 0.1, 20, true) end
 
 		----------------------------------------------------------------
 		-- beats
 		----------------------------------------------------------------
 		cue("line", t >= 0.35, function()
-			text = SK.rainbowShout(K, "JUST WHO THE HELL\nDO YOU THINK I AM!", { Scale = 0.12, Position = UDim2.fromScale(0.5, 0.8), Per = 0.03 })
+			text = SK.auraShout(K, "JUST WHO THE HELL\nDO YOU THINK I AM!", { Scale = 0.11, Position = UDim2.fromScale(0.5, 0.8), Per = 0.12, Speaker = game:GetService("Players").LocalPlayer.DisplayName })
 			K.sfx(K.S.Broly, 1, 1.05)
 			K.sfx(K.S.Overdrive, 0.9, 1.1)
 			K.sfx(K.S.TonalHit, 1, 1.1)
@@ -1388,39 +1733,51 @@ function Ch.IAm(ctx, t0, dur)
 			K.flash(0.3, Color3.fromRGB(220, 255, 220), 0.8)
 			task.spawn(K.impact, { me and me.Model }, "GWG", 0.05)
 		end)
-		cue("drop", t >= DROP - 0.5, function()
+		cue("wind", t >= WIND0, function()
 			if text then text.stop() end
 			K.sfx(K.S.Hell, 0.8, 0.5, { Reverb = 3 })
 			K.sfx(K.S.Whoosh, 1, 0.7)
+			K.sfx(K.S.GreenAura, 0.9, 0.9)
 		end)
 		cue("fall", t >= DROP, function()
 			K.sfx(K.S.FireWhoosh, 0.9, 0.8)
-			K.sfx(K.S.Rush, 0.7, 1.2)
+			K.sfx(K.S.Rush, 0.8, 1.1)
+			K.kick(8, 0.5)
+		end)
+		cue("brace", t >= LAND - 0.4, function()
+			K.sfx(K.S.Riser, 0.8, 2)
+			K.sfx(K.S.Whoosh, 0.8, 1.4)
 		end)
 		cue("land", t >= LAND, function()
-			-- and there it is, under all of you
+			-- BOOM - both of you at once, and there it is, under all of you
 			ctx.arenaMap(true)
-			K.flash(0.5, WHITE, 1)
+			K.flash(0.6, WHITE, 1)
 			K.sfx(K.S.Boom, 1, 0.7, { Reverb = 3 })
 			K.sfx(K.S.BigHit, 1, 0.6)
 			K.sfx(K.S.RockBoom, 1, 0.5)
 			K.sfx(K.S.Thump, 1)
-			K.shake(5, 1.5, 12)
-			K.kick(-10, 0.6)
+			K.sfx(K.S.Cannon, 0.9, 0.6)
+			K.shake(6, 1.8, 12)
+			K.kick(-14, 0.7)
+			local m = SK.models(ctx)
+			table.insert(m, ctx.Boss)
+			task.spawn(K.impact, m, "GBG", 0.06)
 			local c = AC + UP * 1
 			local t1 = os.clock()
 			local conn
 			conn = game:GetService("RunService").RenderStepped:Connect(function()
-				local u = math.clamp((os.clock() - t1) / 1.3, 0, 1)
-				local r0 = 20 + 700 * (1 - (1 - u) ^ 3)
-				A.Wave.update(CFrame.lookAt(c, c + UP), r0, r0 + 40 + u * 150, u * 2)
-				A.Wave.setTransparency(math.min(0.99, 0.05 + u ^ 1.3 * 0.95))
-				if u >= 1 then conn:Disconnect() end
+				local e = math.clamp((os.clock() - t1) / 1.3, 0, 1)
+				local r0 = 20 + 700 * (1 - (1 - e) ^ 3)
+				A.Wave.update(CFrame.lookAt(c, c + UP), r0, r0 + 40 + e * 150, e * 2)
+				A.Wave.setTransparency(math.min(0.99, 0.05 + e ^ 1.3 * 0.95))
+				if e >= 1 then conn:Disconnect() end
 			end)
 			for slot in pairs(ctx.rigs) do
 				local p = standCF(ctx, slot).Position
 				K.vfx("Shoot-01", CFrame.new(p.X, AC.Y + 0.6, p.Z) * CFrame.Angles(math.rad(90), 0, 0), A.FX, 0.9, 2, 2)
 			end
+			K.vfx("ForceField-Break-01", CFrame.new(home.Position.X, AC.Y + 2, home.Position.Z), A.FX, 10, 14, 3)
+			for _, e in ipairs(bossFx) do e:Emit(12) end
 		end)
 		cue("roar", t >= LAND + 0.8, function()
 			K.sfx(K.S.Hell, 0.9, 0.5, { Reverb = 3 })
@@ -1431,6 +1788,10 @@ function Ch.IAm(ctx, t0, dur)
 	if text then text.stop() end
 	spiceOff(ctx)
 	speed:Destroy()
+	bossAura(0)
+	rush.Rate = 0
+	for _, e in ipairs(bossFx) do e:Destroy() end
+	fxHost:Destroy()
 end
 
 return Ch

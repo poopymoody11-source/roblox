@@ -66,178 +66,139 @@ local function ball(tool, handle, name, y, dia, color, material)
 	return p
 end
 
--- a small block welded to `base` at c0 (for the spiral strands and fins)
-local function chip(tool, base, name, c0, size, color, material)
-	local p = part({ Name = name, Size = size, Color = color, Material = material or Enum.Material.Neon })
-	local w = Instance.new("Weld")
-	w.Part0 = base
-	w.Part1 = p
-	w.C0 = c0
-	w.Parent = p
-	p.Parent = tool
-	return p
-end
-
--- the barrel's radius at height y (it flares from the grip to the drill)
-local BARREL_Y0, BARREL_Y1 = 1.0, 4.2
-local function barrelR(y)
-	local u = math.clamp((y - BARREL_Y0) / (BARREL_Y1 - BARREL_Y0), 0, 1)
-	return 0.21 + 0.18 * u ^ 1.3
-end
-
-local function drillCone()
-	local src = ReplicatedStorage:FindFirstChild("FinalCutscene")
-	src = src and src:FindFirstChild("Assets")
-	src = src and src:FindFirstChild("DrillCone")
-	if src and src:IsA("MeshPart") then
-		local d = src:Clone()
-		for _, c in ipairs(d:GetChildren()) do c:Destroy() end
-		d.Anchored, d.CanCollide, d.CanQuery, d.CanTouch, d.Massless = false, false, false, false, true
-		return d
-	end
-	local d = part({ Size = Vector3.one })
-	local m = Instance.new("SpecialMesh")
-	m.MeshType = Enum.MeshType.FileMesh
-	m.MeshId = "rbxassetid://1778999"
-	m.Parent = d
-	return d
-end
-B.drillCone = drillCone
-
 function B.buildTool()
 	local tool = Instance.new("Tool")
 	tool.Name = TOOL_NAME
-	tool.ToolTip = "Spiral Bat"
+	tool.ToolTip = "Spiral Bat  -  Click: swing / parry   Q: Spiral Dash   E: Drill Break"
 	tool.CanBeDropped = false
 	tool.RequiresHandle = true
 	tool.Grip = CFrame.new()
 
-	-- the grip: black, taped in green
-	local handle = part({ Name = "Handle", Size = Vector3.new(0.36, 1.7, 0.36), Transparency = 1 })
+	-- the grip, wrapped
+	local handle = part({ Name = "Handle", Size = Vector3.new(0.34, 1.6, 0.34), Color = BLACK, Material = Enum.Material.Fabric, Transparency = 1 })
 	handle.Parent = tool
-	rod(tool, handle, "Grip", 0, 1.7, 0.36, BLACK, Enum.Material.Fabric)
-	for i = 0, 4 do
-		local w = chip(tool, handle, "Tape" .. i, CFrame.new(0, -0.62 + i * 0.3, 0) * CFrame.Angles(0, 0, math.rad(90 - 14)),
-			Vector3.new(0.07, 0.395, 0.395), GREEN, Enum.Material.Neon)
-		w.Shape = Enum.PartType.Cylinder
+	rod(tool, handle, "Grip", 0, 1.6, 0.34, BLACK, Enum.Material.Fabric)
+	for i = 0, 3 do
+		rod(tool, handle, "Wrap" .. i, -0.55 + i * 0.36, 0.09, 0.37, GREEN, Enum.Material.Neon)
 	end
-	-- the pommel: gold, with a spiral gem
-	ball(tool, handle, "Knob", -0.95, 0.56, GOLD)
-	rod(tool, handle, "KnobCollar", -0.78, 0.1, 0.44, GOLD)
-	ball(tool, handle, "Gem", -1.2, 0.26, GREEN, Enum.Material.Neon)
-	-- the guard, with fins
-	rod(tool, handle, "Guard", 0.9, 0.14, 0.7, GOLD)
-	for s = -1, 1, 2 do
-		chip(tool, handle, "Fin", CFrame.new(s * 0.42, 0.92, 0) * CFrame.Angles(0, 0, math.rad(-s * 35)), Vector3.new(0.34, 0.12, 0.1), GOLD, Enum.Material.Metal)
-	end
+	ball(tool, handle, "Knob", -0.88, 0.52, GOLD)
+	rod(tool, handle, "Guard", 0.86, 0.14, 0.62, GOLD)
+	rod(tool, handle, "Collar", 1.0, 0.18, 0.46, STEEL)
 
-	-- the barrel: gunmetal, flaring toward the drill
-	local segs = 8
+	-- the barrel: flaring out to the drill
+	local segs = 6
 	for i = 1, segs do
-		local y0 = BARREL_Y0 + (i - 1) * (BARREL_Y1 - BARREL_Y0) / segs
-		local y1 = BARREL_Y0 + i * (BARREL_Y1 - BARREL_Y0) / segs
-		rod(tool, handle, "Barrel" .. i, (y0 + y1) / 2, (y1 - y0) + 0.02, 2 * barrelR((y0 + y1) / 2), STEEL, Enum.Material.Metal)
+		local u = (i - 0.5) / segs
+		rod(tool, handle, "Barrel" .. i, 1.05 + (i - 0.5) * 0.42, 0.44, 0.4 + 0.3 * u, STEEL, Enum.Material.Metal)
 	end
-	-- its core showing through, and the gold bands
-	local core = rod(tool, handle, "Core", 2.55, 0.5, 2 * barrelR(2.55) + 0.05, GREEN, Enum.Material.Neon)
-	local shell = rod(tool, handle, "CoreShell", 2.55, 0.62, 2 * barrelR(2.55) + 0.14, LIME, Enum.Material.ForceField)
-	shell.Transparency = 0.2
-	rod(tool, handle, "BandLow", 1.35, 0.1, 2 * barrelR(1.35) + 0.08, GOLD)
-	rod(tool, handle, "BandMid", 3.1, 0.1, 2 * barrelR(3.1) + 0.08, GOLD)
-	rod(tool, handle, "Crown", BARREL_Y1 + 0.08, 0.2, 2 * barrelR(BARREL_Y1) + 0.14, GOLD)
+	-- gold bands and the green core showing between them
+	rod(tool, handle, "BandLow", 1.55, 0.1, 0.52, GOLD)
+	rod(tool, handle, "Core", 2.35, 0.7, 0.62, GREEN, Enum.Material.Neon)
+	rod(tool, handle, "BandHigh", 3.2, 0.12, 0.76, GOLD)
+	rod(tool, handle, "Crown", 3.62, 0.22, 0.86, GOLD)
 
-	-- the spiral: two glowing strands winding up the barrel
-	local turns, per = 2.5, 16
-	for strand = 0, 1 do
-		for i = 0, per - 1 do
-			local u = i / (per - 1)
-			local y = BARREL_Y0 + 0.15 + u * (BARREL_Y1 - BARREL_Y0 - 0.3)
-			local a = strand * math.pi + u * turns * 2 * math.pi
-			local r = barrelR(y) + 0.02
-			local pos = Vector3.new(math.cos(a) * r, y, math.sin(a) * r)
-			-- (each chip lies along the helix: tangent is its long axis)
-			local tangent = Vector3.new(-math.sin(a) * r * turns * 2 * math.pi, BARREL_Y1 - BARREL_Y0, math.cos(a) * r * turns * 2 * math.pi).Unit
-			local out = Vector3.new(math.cos(a), 0, math.sin(a))
-			local cf = CFrame.fromMatrix(pos, tangent, out)
-			chip(tool, handle, "Spiral", cf, Vector3.new(0.3, 0.07, 0.1), strand == 0 and GREEN or LIME, Enum.Material.Neon)
-		end
+	-- the drill tip (spins on the client)
+	local src = ReplicatedStorage:FindFirstChild("FinalCutscene")
+	src = src and src:FindFirstChild("Assets")
+	src = src and src:FindFirstChild("DrillCone")
+	local drill
+	if src and src:IsA("MeshPart") then
+		drill = src:Clone()
+		for _, d in ipairs(drill:GetChildren()) do d:Destroy() end
+		drill.Anchored, drill.CanCollide, drill.CanQuery, drill.CanTouch, drill.Massless = false, false, false, false, true
+		drill.Size = Vector3.new(0.95, 1.9, 0.95)
+	else
+		drill = part({ Size = Vector3.new(0.95, 1.9, 0.95) })
+		local m = Instance.new("SpecialMesh")
+		m.MeshType = Enum.MeshType.FileMesh
+		m.MeshId = "rbxassetid://1778999"
+		m.Scale = Vector3.new(0.73, 0.99, 0.76)
+		m.Parent = drill
 	end
-
-	-- the drill: a spinning lime cone with dark flutes (the client spins it)
-	local drill = drillCone()
 	drill.Name = "Drill"
-	drill.Size = Vector3.new(1.0, 2.1, 1.0)
 	drill.Color = LIME
 	drill.Material = Enum.Material.Neon
 	local dw = Instance.new("Weld")
 	dw.Name = "DrillWeld"
 	dw.Part0 = handle
 	dw.Part1 = drill
-	dw.C0 = CFrame.new(0, BARREL_Y1 + 0.2 + 1.05, 0)
+	dw.C0 = CFrame.new(0, 3.72 + 0.95, 0)
 	dw.Parent = drill
 	drill.Parent = tool
-	for f = 0, 2 do
-		for i = 0, 6 do
-			local u = i / 6
-			local y = -0.95 + u * 1.8               -- (drill space: base -1.05 .. tip +1.05)
-			local r = 0.5 * (1 - (y + 1.05) / 2.1) + 0.02
-			local a = f * 2 * math.pi / 3 + u * 1.6 * math.pi
-			local pos = Vector3.new(math.cos(a) * r, y, math.sin(a) * r)
-			local tangent = Vector3.new(-math.sin(a) * r * 1.6 * math.pi, 1.8, math.cos(a) * r * 1.6 * math.pi).Unit
-			chip(tool, drill, "Flute", CFrame.fromMatrix(pos, tangent, Vector3.new(math.cos(a), 0, math.sin(a))),
-				Vector3.new(0.3, 0.06, 0.09 * (1 - u * 0.6)), Color3.fromRGB(20, 70, 30), Enum.Material.Metal)
-		end
-	end
-	local tipGlow = Instance.new("Attachment")
-	tipGlow.Name = "Tip"
-	tipGlow.Position = Vector3.new(0, 1.05, 0)
-	tipGlow.Parent = drill
 
-	-- swing trail (the client turns it on mid-swing)
+	-- spiral grooves up the barrel (two curved beams, counter-wound)
+	local a0 = Instance.new("Attachment")
+	a0.Name = "SpiralBase"
+	a0.Position = Vector3.new(0, 1.0, 0)
+	a0.Parent = handle
+	local a1 = Instance.new("Attachment")
+	a1.Name = "SpiralTip"
+	a1.Position = Vector3.new(0, 5.4, 0)
+	a1.Parent = handle
+	for i = 1, 2 do
+		local b = Instance.new("Beam")
+		b.Name = "Spiral" .. i
+		b.Attachment0 = a0
+		b.Attachment1 = a1
+		b.Width0 = 0.32
+		b.Width1 = 0.08
+		b.Color = ColorSequence.new(i == 1 and GREEN or LIME, Color3.new(1, 1, 1))
+		b.LightEmission = 1
+		b.Brightness = 4
+		b.Texture = "rbxassetid://10365550877"
+		b.TextureSpeed = 2.5
+		b.TextureMode = Enum.TextureMode.Wrap
+		b.TextureLength = 1.2
+		b.CurveSize0 = i == 1 and 0.9 or -0.9
+		b.CurveSize1 = i == 1 and -0.9 or 0.9
+		b.Segments = 20
+		b.FaceCamera = true
+		b.Parent = handle
+	end
+	-- the swing trail (the client turns it on mid-swing)
 	local t0 = Instance.new("Attachment")
 	t0.Name = "TrailBase"
 	t0.Position = Vector3.new(0, 1.6, 0)
 	t0.Parent = handle
 	local t1 = Instance.new("Attachment")
 	t1.Name = "TrailTip"
-	t1.Position = Vector3.new(0, 6.3, 0)
+	t1.Position = Vector3.new(0, 5.5, 0)
 	t1.Parent = handle
 	local trail = Instance.new("Trail")
 	trail.Name = "SwingTrail"
 	trail.Attachment0 = t0
 	trail.Attachment1 = t1
-	trail.Lifetime = 0.2
+	trail.Lifetime = 0.22
 	trail.MinLength = 0.05
 	trail.LightEmission = 1
-	trail.Brightness = 4
-	trail.Texture = "rbxassetid://10365550877"
-	trail.TextureMode = Enum.TextureMode.Stretch
-	trail.Color = ColorSequence.new(Color3.new(1, 1, 1), GREEN)
-	trail.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.6, 0.5), NumberSequenceKeypoint.new(1, 1) })
-	trail.WidthScale = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0.3) })
+	trail.Brightness = 3
+	trail.Color = ColorSequence.new(LIME, GREEN)
+	trail.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(1, 1) })
+	trail.WidthScale = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0.2) })
 	trail.Enabled = false
 	trail.Parent = handle
 
-	-- spiral energy off the core, and its light
+	-- spiral sparks off the core, and its light
+	local core = tool:FindFirstChild("Core")
 	local e = Instance.new("ParticleEmitter")
 	e.Name = "Sparks"
 	e.Texture = "rbxassetid://11381556016"
 	e.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid8x8
 	e.FlipbookMode = Enum.ParticleFlipbookMode.OneShot
 	e.Color = ColorSequence.new(GREEN, LIME)
-	e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.8), NumberSequenceKeypoint.new(1, 0) })
+	e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.9), NumberSequenceKeypoint.new(1, 0) })
 	e.Lifetime = NumberRange.new(0.3, 0.55)
 	e.Speed = NumberRange.new(1, 3)
 	e.SpreadAngle = Vector2.new(180, 180)
-	e.Rate = 10
+	e.Rate = 14
 	e.LightEmission = 1
 	e.Brightness = 2.5
 	e.Rotation = NumberRange.new(0, 360)
 	e.Parent = core
 	local light = Instance.new("PointLight")
 	light.Color = GREEN
-	light.Range = 9
-	light.Brightness = 1.4
+	light.Range = 10
+	light.Brightness = 1.6
 	light.Parent = core
 	return tool
 end

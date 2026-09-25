@@ -32,9 +32,9 @@ T.Chapters = {
 	{ Name = "Crush",     Dur = 8 },
 	{ Name = "Funnel",    Dur = 9 },    -- every galaxy's spiral energy
 	{ Name = "Veins",     Dur = 11 },   -- inside you
-	{ Name = "Transform", Dur = 11 },   -- the Spiral Bat
+	{ Name = "Transform", Dur = 5.65 },   -- the Spiral Bat
 	{ Name = "Shout",     Dur = 7 },    -- JUST WHO THE HELL DO YOU THINK WE ARE
-	{ Name = "IAm",       Dur = 9.5 },  -- JUST WHO THE HELL DO YOU THINK I AM - then you both land, and the arena is there
+	{ Name = "IAm",       Dur = 10.5 },  -- JUST WHO THE HELL DO YOU THINK I AM - then you both land, and the arena is there
 }
 
 local t = 0

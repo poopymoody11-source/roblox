@@ -3,13 +3,10 @@
 -- Every hit the server schedules is registered here. For the
 -- ones aimed at you it draws the cutscene's lock-on: red target
 -- brackets clamped round what's coming, its name, IMPACT 1.2
--- counting down, and a beep that quickens as it closes. For any
--- hit you're standing in, a PARRY prompt (the dodge prompt's
--- closing ring) shows when to swing: swing as the ring meets
--- the circle and the Spiral Bat parries it.
+-- counting down, and a beep that quickens as it closes. Also the
+-- attack callouts and the result pops. (The parry prompts are Qte's.)
 --==================================================
 local Players = game:GetService("Players")
-local UIS = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 
 local W = {}
@@ -17,10 +14,7 @@ local W = {}
 local FONT = Font.new("rbxasset://fonts/families/Inconsolata.json", Enum.FontWeight.Bold)
 local RED = Color3.fromRGB(255, 40, 55)
 local GOOD = Color3.fromRGB(120, 255, 170)
-local BAD = Color3.fromRGB(255, 70, 90)
 local GOLD = Color3.fromRGB(255, 230, 120)
-local GREEN = Color3.fromRGB(70, 255, 120)
-local DEEP_GREEN = Color3.fromRGB(20, 110, 55)
 local BEEP = "rbxasset://sounds/electronicpingshort.wav"
 
 local K, S
@@ -36,7 +30,6 @@ local function tween(o, t, props, style, dir)
 	tw:Play()
 	return tw
 end
-local function corner(p, r) local c = Instance.new("UICorner") c.CornerRadius = r or UDim.new(1, 0) c.Parent = p return c end
 local function stroke(p, color, th)
 	local s = Instance.new("UIStroke")
 	s.Color = color or Color3.new(0, 0, 0)
@@ -63,10 +56,7 @@ local function label(parent, props)
 	if (props.StrokeTh or 3) > 0 then stroke(t, Color3.new(0, 0, 0), props.StrokeTh or 3) end
 	return t
 end
-local function square(f) local a = Instance.new("UIAspectRatioConstraint") a.AspectRatio = 1 a.Parent = f return a end
 
-local function touchOnly() return UIS.TouchEnabled and not UIS.KeyboardEnabled end
-local function padOnly() return UIS.GamepadEnabled and not UIS.KeyboardEnabled end
 
 function W.init(kit, shared)
 	K, S = kit, shared
@@ -213,56 +203,6 @@ local function lockUpdate(h, now, T, cam, vs, wp, rad)
 end
 
 --------------------------------------------------------------------------
--- the parry prompt: a closing ring that meets its circle in the sweet spot
---------------------------------------------------------------------------
-local prompt -- (one at a time: the soonest threat)
-
-local function glyph()
-	if touchOnly() then return "TAP" end
-	if padOnly() then return "R2" end
-	return "CLICK"
-end
-
-local function makePrompt()
-	local holder = frame(root, { Name = "Parry", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.62), Size = UDim2.fromScale(0.1, 0.1), BackgroundTransparency = 1, ZIndex = 61 })
-	square(holder).DominantAxis = Enum.DominantAxis.Height
-	local ring = frame(holder, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(3, 3), BackgroundTransparency = 1, ZIndex = 61 })
-	corner(ring)
-	local rs = stroke(ring, Color3.new(1, 1, 1), 5)
-	local disc = frame(holder, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(1, 1, 1), ZIndex = 62 })
-	corner(disc)
-	stroke(disc, Color3.new(0, 0, 0), 5)
-	local dg = grad(disc, DEEP_GREEN, GREEN)
-	label(disc, { Text = glyph(), Size = UDim2.fromScale(0.78, 0.36), Position = UDim2.fromScale(0.11, 0.2), ZIndex = 63, StrokeTh = 3 })
-	label(disc, { Text = "PARRY", Size = UDim2.fromScale(0.6, 0.2), Position = UDim2.fromScale(0.2, 0.6), ZIndex = 63, TextColor3 = Color3.fromRGB(220, 255, 225), StrokeTh = 2 })
-	local sc = Instance.new("UIScale")
-	sc.Scale = 0.2
-	sc.Parent = holder
-	tween(sc, 0.16, { Scale = 1 }, Enum.EasingStyle.Back)
-	return { Holder = holder, Ring = ring, RingStroke = rs, Disc = disc, DiscGrad = dg, Scale = sc, Pos = Vector2.new(0.5, 0.62) }
-end
-
-local function closePrompt(good)
-	local ui = prompt
-	if not ui then return end
-	prompt = nil
-	local col = good and GOOD or BAD
-	ui.RingStroke.Color = col
-	ui.DiscGrad.Color = ColorSequence.new(col:Lerp(Color3.new(0, 0, 0), 0.25), col)
-	tween(ui.Ring, 0.25, { Size = UDim2.fromScale(good and 1.9 or 1.2, good and 1.9 or 1.2) })
-	tween(ui.RingStroke, 0.25, { Transparency = 1 })
-	tween(ui.Scale, 0.3, { Scale = good and 1.25 or 0.6 }, good and Enum.EasingStyle.Back or Enum.EasingStyle.Quad)
-	task.delay(0.12, function()
-		for _, d in ipairs(ui.Holder:GetDescendants()) do
-			if d:IsA("Frame") then tween(d, 0.25, { BackgroundTransparency = 1 })
-			elseif d:IsA("TextLabel") then tween(d, 0.25, { TextTransparency = 1 })
-			elseif d:IsA("UIStroke") then tween(d, 0.25, { Transparency = 1 }) end
-		end
-		task.delay(0.3, function() ui.Holder:Destroy() end)
-	end)
-end
-
---------------------------------------------------------------------------
 -- hits
 --------------------------------------------------------------------------
 local function me()
@@ -290,7 +230,13 @@ end
 
 -- h: { Id, T, Shape, Name, Target (userId), Pos = function(now) -> Vector3 (optional), Rad (optional), Parry (default true) }
 function W.add(h)
-	if hits[h.Id] then return end
+	local old = hits[h.Id]
+	if old then
+		-- (the attack's visuals add where its threat is drawn)
+		old.Pos = old.Pos or h.Pos
+		old.Rad = old.Rad or h.Rad
+		return
+	end
 	hits[h.Id] = h
 	table.insert(order, h.Id)
 end
@@ -301,7 +247,6 @@ function W.cancelAll()
 		hits[id] = nil
 	end
 	table.clear(order)
-	closePrompt(false)
 end
 
 -- the server's verdict on a hit that caught (or would have caught) you
@@ -310,7 +255,6 @@ function W.result(id, result)
 	if h then
 		h.Result = result
 		if h.Lock then endLock(h, result ~= "hit", result == "hit" and "IMPACT" or (result == "evade" and "EVADED" or "PARRIED")) end
-		if prompt and prompt.Id == id then closePrompt(result ~= "hit") end
 	end
 	if result == "perfect" then
 		W.pop("PERFECT PARRY!", GOLD, true)
@@ -324,49 +268,11 @@ function W.result(id, result)
 	end
 end
 
--- did my swing claim this hit? (the parrier sees the deflection at once)
-function W.claimed(id)
-	local h = hits[id]
-	return h ~= nil and h.Claimed ~= nil
-end
-
--- a swing just happened: which live hits does it parry? (and was it early?)
-function W.tryParry(now)
-	local pos = me()
-	if not pos then return {}, false end
-	local ids, early = {}, false
-	for _, id in ipairs(order) do
-		local h = hits[id]
-		if h and not h.Result and not h.Claimed and h.Parry ~= false then
-			local T = impactT(h, pos)
-			if inPath(h, pos, T) then
-				local dt = now - T
-				if dt >= -S.PARRY_EARLY and dt <= S.PARRY_LATE then
-					h.Claimed = now
-					table.insert(ids, id)
-				elseif dt < -S.PARRY_EARLY and dt > -0.85 then
-					early = true
-				end
-			end
-		end
-	end
-	if #ids > 0 then
-		if prompt then
-			prompt.RingStroke.Color = GOOD
-			tween(prompt.Scale, 0.15, { Scale = 1.15 }, Enum.EasingStyle.Back)
-		end
-	elseif early then
-		W.pop("TOO EARLY!", BAD, false, Vector2.new(0.5, 0.7))
-	end
-	return ids, early
-end
-
 function W.update(now)
 	local cam = workspace.CurrentCamera
 	local vs = cam.ViewportSize
 	local pos = me()
 	local soonest, soonestT
-	local best, bestT -- the parry prompt's hit
 	local myId = player.UserId
 	for i = #order, 1, -1 do
 		local id = order[i]
@@ -395,38 +301,7 @@ function W.update(now)
 					end
 				end
 			end
-			-- the parry prompt: anything I'm standing in
-			if pos and not h.Result and not h.Claimed and h.Parry ~= false and now >= T - S.PROMPT_LEAD and now <= T + S.PARRY_LATE and inPath(h, pos, T) then
-				if not bestT or T < bestT then best, bestT = h, T end
-			end
 		end
-	end
-	-- prompt
-	if best then
-		if prompt and prompt.Id ~= best.Id then closePrompt(false) end
-		if not prompt then
-			prompt = makePrompt()
-			prompt.Id = best.Id
-		end
-		local J = bestT - (S.PARRY_EARLY - S.PARRY_LATE) / 2 -- (the middle of the window)
-		local s = 1 + 2 * math.max(0, (J - now) / (S.PROMPT_LEAD - (bestT - J)))
-		if now > J then s = 1 - 0.15 * math.min((now - J) / 0.2, 1) end
-		prompt.Ring.Size = UDim2.fromScale(s, s)
-		local near = 1 - math.clamp(math.abs(now - J) / 0.3, 0, 1)
-		prompt.RingStroke.Thickness = 4 + near * 4
-		prompt.RingStroke.Color = Color3.new(1, 1, 1):Lerp(GOLD, near)
-		-- (over the threat, kept clear of the middle of the screen)
-		local want = Vector2.new(0.5, 0.64)
-		local wp = best.Pos and best.Pos(now) or nil
-		if wp then
-			local v = cam:WorldToViewportPoint(wp)
-			if v.Z > 0 then want = Vector2.new(math.clamp(v.X / vs.X, 0.3, 0.7), math.clamp(v.Y / vs.Y, 0.3, 0.72)) end
-		end
-		prompt.Pos = prompt.Pos:Lerp(want, 0.2)
-		prompt.Holder.Position = UDim2.fromScale(prompt.Pos.X, prompt.Pos.Y)
-	elseif prompt then
-		local h = hits[prompt.Id]
-		closePrompt(h ~= nil and h.Claimed ~= nil)
 	end
 	-- the beep: faster and higher as the nearest lock closes
 	if soonest then

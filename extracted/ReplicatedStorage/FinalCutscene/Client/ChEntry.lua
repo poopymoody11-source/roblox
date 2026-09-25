@@ -678,36 +678,96 @@ function Ch.Float(ctx, t0, dur)
 
 	-- the prompt
 	local isTouch = UIS.TouchEnabled and not UIS.KeyboardEnabled
-	local hint = Instance.new("Frame")
+	-- (in the game's own UI style: chunky black outlines, rounded gradient
+	-- panels, a pill title and Inconsolata Bold with black strokes)
+	local UI_FONT = Font.new("rbxasset://fonts/families/Inconsolata.json", Enum.FontWeight.Bold)
+	local function corner(p, r) local c = Instance.new("UICorner") c.CornerRadius = r or UDim.new(0, 20) c.Parent = p return c end
+	local function stroke(p, color, th) local st = Instance.new("UIStroke") st.Color = color or Color3.new(0, 0, 0) st.Thickness = th or 5 st.Parent = p return st end
+	local function grad(p, c0, c1) local g = Instance.new("UIGradient") g.Color = ColorSequence.new(c0, c1) g.Rotation = -90 g.Parent = p return g end
+	local function label(parent, props)
+		local l = Instance.new("TextLabel")
+		l.BackgroundTransparency = 1
+		l.FontFace = UI_FONT
+		l.TextScaled = true
+		l.TextColor3 = Color3.new(1, 1, 1)
+		for k, v in pairs(props) do if k ~= "StrokeColor" and k ~= "StrokeTh" then l[k] = v end end
+		l.Parent = parent
+		stroke(l, props.StrokeColor or Color3.new(0, 0, 0), props.StrokeTh or 2)
+		return l
+	end
+	local hint = Instance.new("CanvasGroup")
 	hint.Name = "FloatHint"
 	hint.BackgroundTransparency = 1
 	hint.AnchorPoint = Vector2.new(0.5, 1)
 	hint.Position = UDim2.new(0.5, 0, 0.86, 0)
-	hint.Size = UDim2.fromScale(0.7, 0.1)
+	hint.Size = UDim2.fromOffset(800, 160)
+	hint.GroupTransparency = 1
 	hint.ZIndex = 90
-	local hintLabels, hintStrokes = {}, {}
-	for i, spec in ipairs({
-		{ "FLOAT FREE", 0, 0.6 },
-		{ isTouch and "drag the left side to drift  -  drag the right side to look around"
-			or "WASD to drift  -  SPACE / SHIFT up and down  -  hold RIGHT-CLICK to look around", 0.62, 0.38 },
-	}) do
-		local l = Instance.new("TextLabel")
-		l.BackgroundTransparency = 1
-		l.Position = UDim2.fromScale(0, spec[2])
-		l.Size = UDim2.fromScale(1, spec[3])
-		l.FontFace = K.Fonts.Title
-		l.TextScaled = true
-		l.Text = spec[1]
-		l.TextColor3 = i == 1 and Color3.fromRGB(245, 235, 255) or Color3.fromRGB(205, 195, 240)
-		l.TextTransparency = 1
-		l.ZIndex = 90
-		l.Parent = hint
-		local s = Instance.new("UIStroke")
-		s.Thickness = 2
-		s.Transparency = 1
-		s.Parent = l
-		table.insert(hintLabels, l)
-		table.insert(hintStrokes, s)
+	local hintScale = Instance.new("UIScale")
+	hintScale.Parent = hint
+	local vp0 = cam0.ViewportSize
+	local baseScale = math.clamp(math.min(vp0.X / 1280, vp0.Y / 720) * 0.85, 0.45, 1.15)
+	hintScale.Scale = baseScale
+	-- the panel
+	local panel = Instance.new("Frame")
+	panel.AnchorPoint = Vector2.new(0.5, 1)
+	panel.Position = UDim2.new(0.5, 0, 1, -8)
+	panel.Size = UDim2.fromOffset(780, 92)
+	panel.BackgroundColor3 = Color3.new(1, 1, 1)
+	panel.ZIndex = 91
+	panel.Parent = hint
+	corner(panel, UDim.new(0, 24))
+	stroke(panel, Color3.new(0, 0, 0), 5)
+	grad(panel, Color3.fromRGB(148, 142, 153), Color3.fromRGB(46, 20, 55))
+	-- the title pill, riding the top edge
+	local pill = Instance.new("Frame")
+	pill.AnchorPoint = Vector2.new(0.5, 0.5)
+	pill.Position = UDim2.new(0.5, 0, 1, -100)
+	pill.Size = UDim2.fromOffset(250, 50)
+	pill.BackgroundColor3 = Color3.new(1, 1, 1)
+	pill.ZIndex = 93
+	pill.Parent = hint
+	corner(pill, UDim.new(0, 60))
+	stroke(pill, Color3.new(0, 0, 0), 5)
+	grad(pill, Color3.fromRGB(196, 150, 255), Color3.fromRGB(86, 44, 176))
+	label(pill, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.82, 0.62), TextColor3 = Color3.new(0, 0, 0), Text = "FLOAT FREE", ZIndex = 94, StrokeColor = Color3.new(1, 1, 1), StrokeTh = 3 })
+	-- the controls, as key chips
+	local row = Instance.new("Frame")
+	row.BackgroundTransparency = 1
+	row.AnchorPoint = Vector2.new(0.5, 0.5)
+	row.Position = UDim2.new(0.5, 0, 0.5, 8)
+	row.Size = UDim2.new(1, -30, 0, 44)
+	row.ZIndex = 92
+	row.Parent = panel
+	local lay = Instance.new("UIListLayout")
+	lay.FillDirection = Enum.FillDirection.Horizontal
+	lay.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	lay.VerticalAlignment = Enum.VerticalAlignment.Center
+	lay.Padding = UDim.new(0, 26)
+	lay.SortOrder = Enum.SortOrder.LayoutOrder
+	lay.Parent = row
+	local chips = isTouch and { { "LEFT SIDE", "DRIFT" }, { "RIGHT SIDE", "LOOK AROUND" } }
+		or { { "WASD", "DRIFT" }, { "SPACE / SHIFT", "UP / DOWN" }, { "RIGHT-CLICK", "LOOK" } }
+	for i, c in ipairs(chips) do
+		local kw = 22 + #c[1] * 11
+		local aw = 10 + #c[2] * 11
+		local chip = Instance.new("Frame")
+		chip.BackgroundTransparency = 1
+		chip.Size = UDim2.fromOffset(kw + 10 + aw, 44)
+		chip.LayoutOrder = i
+		chip.ZIndex = 92
+		chip.Parent = row
+		local key = Instance.new("Frame")
+		key.Position = UDim2.fromOffset(0, 4)
+		key.Size = UDim2.fromOffset(kw, 36)
+		key.BackgroundColor3 = Color3.new(1, 1, 1)
+		key.ZIndex = 93
+		key.Parent = chip
+		corner(key, UDim.new(0, 10))
+		stroke(key, Color3.new(0, 0, 0), 3)
+		grad(key, Color3.fromRGB(255, 255, 255), Color3.fromRGB(170, 160, 190))
+		label(key, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.new(1, -12, 0, 22), TextColor3 = Color3.new(0, 0, 0), Text = c[1], ZIndex = 94, StrokeColor = Color3.new(1, 1, 1), StrokeTh = 1 })
+		label(chip, { Position = UDim2.fromOffset(kw + 10, 9), Size = UDim2.fromOffset(aw, 26), TextXAlignment = Enum.TextXAlignment.Left, Text = c[2], ZIndex = 93, StrokeTh = 2 })
 	end
 	hint.Parent = K.Gui
 
@@ -830,10 +890,8 @@ function Ch.Float(ctx, t0, dur)
 
 		-- the prompt fades in with control and out before the pull
 		local hintA = K.k(t, FLOAT_CONTROL, FLOAT_CONTROL + 0.6) * (1 - K.k(t, dur - FLOAT_PULL - 1.6, dur - FLOAT_PULL - 0.8))
-		for i, l in ipairs(hintLabels) do
-			l.TextTransparency = 1 - hintA
-			hintStrokes[i].Transparency = 1 - hintA
-		end
+		hint.GroupTransparency = 1 - hintA
+		hintScale.Scale = baseScale * (0.92 + 0.08 * K.E.outBack(math.clamp(hintA, 0, 1)))
 
 		cue("out", t >= 0, function()
 			K.flash(0.6, Color3.fromRGB(235, 220, 255), 0.55)
@@ -878,15 +936,69 @@ local RUN = {
 	Lift = 190,     -- how high a foot comes up
 	Floor = -200,   -- the height of the floor of power he runs on
 }
-local RUN_PHASE0 = (-(RUN.Plant - RUN.From) / RUN.Cycle) % 1 -- (so the right foot lands on the plant)
 local VIOLET = Color3.fromRGB(160, 70, 255)
 local VIOLET_HOT = Color3.fromRGB(232, 190, 255)
 local VIOLET_DEEP = Color3.fromRGB(72, 22, 150)
 local SWING = 0.55 -- the snatch itself (CATCH)
 
+-- the charge starts as slow, heavy stomps and builds into the full sprint:
+-- cadence, stride length and stance all ramp up (tabulated, so every foot
+-- still lands exactly where it's planted and the right foot hits the plant)
+local RAMP = 3.2
+local function ramp(t) local x = math.clamp((t - RUN.From) / RAMP, 0, 1) return x * x * (3 - 2 * x) end
+local function cadence(t) return 1 / 2.5 + (1 / RUN.Cycle - 1 / 2.5) * ramp(t) end
+local function strideLen(t) return RUN.Speed * RUN.Cycle * (0.5 + 0.5 * ramp(t)) end
+local function stanceAt(t) return 0.46 + (RUN.Stance - 0.46) * ramp(t) end
+local TAB_DT = 0.01
+local PHI, DIST = {}, {}
+local TABN = math.floor(RUN.Plant / TAB_DT + 0.5)
+do
+	local cum = { [0] = 0 }
+	PHI[0] = 0
+	local phi, dist = 0, 0
+	for i = 1, TABN do
+		local tm = (i - 0.5) * TAB_DT
+		phi += cadence(tm) * TAB_DT
+		dist += cadence(tm) * strideLen(tm) * TAB_DT
+		PHI[i] = phi
+		cum[i] = dist
+	end
+	local off = math.ceil(PHI[TABN]) - PHI[TABN]
+	for i = 0, TABN do
+		PHI[i] += off
+		DIST[i] = RUN.EndBack + (cum[TABN] - cum[i])
+	end
+end
+local function tabAt(T, t)
+	local x = t / TAB_DT
+	local i = math.clamp(math.floor(x), 0, TABN - 1)
+	local f = x - i
+	return T[i] + (T[i + 1] - T[i]) * f
+end
+local function gait(t)
+	if t >= RUN.Plant then return PHI[TABN] + (t - RUN.Plant) / RUN.Cycle end
+	if t <= 0 then return PHI[0] + t * cadence(0) end
+	return tabAt(PHI, t)
+end
+-- the moment the gait reaches phase p
+local function phaseTime(p)
+	if p >= PHI[TABN] then return RUN.Plant + (p - PHI[TABN]) * RUN.Cycle end
+	if p <= PHI[0] then return (p - PHI[0]) / cadence(0) end
+	local lo, hi = 0, TABN
+	while hi - lo > 1 do
+		local mid = (lo + hi) // 2
+		if PHI[mid] <= p then lo = mid else hi = mid end
+	end
+	return (lo + (p - PHI[lo]) / (PHI[hi] - PHI[lo])) * TAB_DT
+end
+local function stepTime(n, o) return phaseTime(n + o) end
+
 -- how far back from his home he is, along his run
 local function runDist(t)
-	if t <= RUN.Plant then return RUN.EndBack + RUN.Speed * (RUN.Plant - t) end
+	if t <= RUN.Plant then
+		if t <= 0 then return DIST[0] - t * cadence(0) * strideLen(0) end
+		return tabAt(DIST, t)
+	end
 	-- the jump-stop: his momentum bleeds off into the crouch...
 	local u = math.min(t - RUN.Plant, 0.45)
 	local d = RUN.EndBack - RUN.Speed * (u - u * u / 0.9)
@@ -894,8 +1006,6 @@ local function runDist(t)
 	if t > RUN.Leap then d -= 700 * (t - RUN.Leap) end
 	return d
 end
-local function gait(t) return (t - RUN.From) / RUN.Cycle + RUN_PHASE0 end
-local function stepTime(n, o) return RUN.From + (n + o - RUN_PHASE0) * RUN.Cycle end
 
 ------------------------------------------------------------------------
 -- his legs: a two-bone solve per leg so every planted foot really stays
@@ -988,7 +1098,7 @@ end
 -- where the n'th footfall of a foot lands (the ground under his hip at mid-stance)
 local function plantAt(L, side, n)
 	local o = side == "Right" and 0 or 0.5
-	return footGround(L, side, runDist(stepTime(n, o) + RUN.Stance * RUN.Cycle / 2))
+	return footGround(L, side, runDist(phaseTime(n + o + stanceAt(stepTime(n, o)) / 2)))
 end
 -- the middle of a footprint (for the effects)
 local function printAt(L, side, ground)
@@ -1004,15 +1114,16 @@ local function strideFoot(ctx, L, side, t)
 	local n = math.floor(p)
 	local u = p - n
 	local ah = UP * L[side].AnkleH
-	if u < RUN.Stance then
+	local S = stanceAt(stepTime(n, o))
+	if u < S then
 		-- planted: heel down flat, rolling up onto the toes to push off
-		local pitch = K.lerp(12, 0, K.k(u, 0, 0.05)) - 22 * K.k(u, RUN.Stance * 0.6, RUN.Stance)
+		local pitch = K.lerp(12, 0, K.k(u, 0, 0.05)) - 22 * K.k(u, S * 0.6, S)
 		return plantAt(L, side, n) + ah, pitch
 	end
 	-- swinging through: heel kicks up behind, knee drives forward, toes up for the strike
-	local w = (u - RUN.Stance) / (1 - RUN.Stance)
+	local w = (u - S) / (1 - S)
 	local a, b = plantAt(L, side, n), plantAt(L, side, n + 1)
-	local pos = a:Lerp(b, K.E.inOutSine(w)) + UP * RUN.Lift * math.sin(math.pi * w ^ 0.8)
+	local pos = a:Lerp(b, K.E.inOutSine(w)) + UP * RUN.Lift * (0.55 + 0.45 * ramp(t)) * math.sin(math.pi * w ^ 0.8)
 	local pitch = K.lerp(-22, -40, K.k(w, 0, 0.25)) + K.k(w, 0.25, 1) * 52
 	return pos + ah, pitch
 end
@@ -1026,7 +1137,8 @@ local function chargeBody(ctx, SB, L, t)
 	local ph = 2 * math.pi * cyc
 	local c = math.cos(ph)
 	local run = 1 - K.k(t, RUN.Plant - 0.12, RUN.Plant + 0.12)
-	local bob = math.cos(2 * math.pi * 2 * (cyc - RUN.Stance / 2)) * run
+	local pace = 0.45 + 0.55 * ramp(t)
+	local bob = math.cos(2 * math.pi * 2 * (cyc - stanceAt(t) / 2)) * run * pace
 	local crouch = K.k(t, RUN.Plant, RUN.Leap - 0.05, K.E.outCubic) * (1 - K.k(t, RUN.Leap - 0.05, RUN.Leap + 0.12, K.E.outQuad))
 	local air = math.max(t - RUN.Leap, 0)
 	local up = K.k(t, RUN.Leap - 0.08, RUN.Leap + 0.3, K.E.outCubic)
@@ -1037,7 +1149,7 @@ local function chargeBody(ctx, SB, L, t)
 	local ground = Vector3.new(home.X, RUN.Floor, home.Z) - look * D
 	local y = RUN.Floor + L.AnkleH + hip2ank - L.HipY + 1500 * air - 420 * air * air
 	local pos = Vector3.new(ground.X, y, ground.Z) + right * sway
-	local lean = (11 + 2 * bob) * run + crouch * 20 + up * 10
+	local lean = (4 + 7 * pace + 2 * bob) * run + crouch * 20 + up * 10
 	local yaw = 7 * c * run
 	local roll = 3 * math.cos(2 * math.pi * (cyc - RUN.Stance / 2)) * run
 	local rootCF = CFrame.new(pos) * home.Rotation * CFrame.Angles(-math.rad(lean), math.rad(yaw), math.rad(roll))
@@ -1045,7 +1157,7 @@ local function chargeBody(ctx, SB, L, t)
 
 	SB.reset()
 	-- arms pumping against the legs; flung back for the crouch, thrown up for the leap
-	local sw = 38 * run
+	local sw = 38 * run * pace
 	SB.body({
 		Waist = K.A(-4 + 2 * bob - crouch * 8 + up * 12, -1.6 * yaw, 0),
 		Neck = K.A(lean * 0.7 + 4 - up * 14, yaw * 0.6, 0),
@@ -1138,7 +1250,21 @@ local function buildCharge(ctx)
 			Speed = NumberRange.new(10, 60), SpreadAngle = Vector2.new(60, 60), LightEmission = 1,
 			Rotation = NumberRange.new(0, 360), RotSpeed = NumberRange.new(-30, 30), Shape = Enum.ParticleEmitterShape.Box,
 		})
-		table.insert(C.Pads, { Host = host, Disc = disc, Swirl = swirl, Swirl2 = swirl2, Rim = rim, Motes = motes, Stars = stars, Cloud = cloud, Spin = math.random() * 6 })
+		-- its inlay: dotted arms of light spiralling in, like the arena's own
+		local inlay = {}
+		for arm = 1, 3 do
+			for seg = 1, 8 do
+				local b = K.ray(host, base, base + UP, 6, 6, "14582794847", { Color = Color3.fromRGB(230, 200, 255), Brightness = 5, Transparency = 0.1, Segments = 1, Mode = Enum.TextureMode.Wrap, Length = 7 })
+				b.Enabled = false
+				table.insert(inlay, { B = b, Arm = arm, Seg = seg })
+			end
+		end
+		for seg = 1, 16 do
+			local b = K.ray(host, base, base + UP, 5, 5, "14582794847", { Color = Color3.fromRGB(200, 160, 255), Brightness = 4, Transparency = 0.2, Segments = 1, Mode = Enum.TextureMode.Wrap, Length = 7 })
+			b.Enabled = false
+			table.insert(inlay, { B = b, Ring = seg })
+		end
+		table.insert(C.Pads, { Host = host, Disc = disc, Swirl = swirl, Swirl2 = swirl2, Rim = rim, Motes = motes, Stars = stars, Cloud = cloud, Inlay = inlay, Spin = math.random() * 6 })
 	end
 	local live = {} -- footfall key -> its pad
 	-- a footfall's mass: f 0..1 = how far it has formed (it never un-forms)
@@ -1163,6 +1289,7 @@ local function buildCharge(ctx)
 		P.Swirl.Enabled, P.Swirl2.Enabled = false, false
 		P.Rim.setTransparency(0.99)
 		P.Motes.Rate, P.Stars.Rate, P.Cloud.Rate = 0, 0, 0
+		for _, e in ipairs(P.Inlay) do e.B.Enabled = false end
 	end
 	local function updatePads()
 		local now = os.clock()
@@ -1197,13 +1324,35 @@ local function buildCharge(ctx)
 						P.Swirl2.Transparency = NumberSequence.new(1 - 0.65 * vis)
 					end
 					P.Rim.update(CFrame.lookAt(at + UP * 2.4, at + UP * 4), r - 5, r + 7, now * 0.4)
+					local on = vis > 0.02
+					local spin = P.Spin + now * 0.35
+					for _, e in ipairs(P.Inlay) do
+						e.B.Enabled = on
+						if on then
+							local p0, p1
+							if e.Ring then
+								local a0, a1 = (e.Ring - 1) / 16 * math.pi * 2 - spin * 0.6, e.Ring / 16 * math.pi * 2 - spin * 0.6
+								p0 = at + Vector3.new(math.cos(a0), 0, math.sin(a0)) * r * 0.55
+								p1 = at + Vector3.new(math.cos(a1), 0, math.sin(a1)) * r * 0.55
+							else
+								local function arm(u) -- u 0 at the heart, 1 at the rim
+									local th = (e.Arm - 1) / 3 * math.pi * 2 + spin + u * math.pi * 1.6
+									return at + Vector3.new(math.cos(th), 0, math.sin(th)) * r * (0.08 + 0.84 * u)
+								end
+								p0, p1 = arm((e.Seg - 1) / 8), arm(e.Seg / 8)
+							end
+							e.B.Attachment0.WorldPosition = p0 + UP * 2.6
+							e.B.Attachment1.WorldPosition = p1 + UP * 2.6
+							e.B.Transparency = NumberSequence.new(1 - 0.9 * vis)
+						end
+					end
 					P.Rim.setTransparency(math.min(0.99, 1 - vis))
 					P.Host.Size = Vector3.new(1.6 * r, 1, 1.6 * r)
 					P.Host.CFrame = CFrame.new(at + UP * 3)
 					local forming = P.F < 1 and not P.Gone
 					P.Motes.Rate = P.Gone and 0 or (forming and 120 * P.F or 45)
 					P.Stars.Rate = P.Gone and 0 or (forming and 50 * P.F or 6)
-					P.Cloud.Rate = P.Gone and 0 or (forming and 40 * P.F or 6)
+					P.Cloud.Rate = P.Gone and 0 or (forming and 22 * P.F or 3)
 				end
 			end
 		end
@@ -1295,8 +1444,9 @@ local function footForm(ctx, L, side, t)
 	local p = gait(t) - o
 	local n = math.floor(p)
 	local u = p - n
-	if u < RUN.Stance then return side .. n, printAt(L, side, plantAt(L, side, n)), 1 end
-	local w = (u - RUN.Stance) / (1 - RUN.Stance)
+	local S = stanceAt(stepTime(n, o))
+	if u < S then return side .. n, printAt(L, side, plantAt(L, side, n)), 1 end
+	local w = (u - S) / (1 - S)
 	if w < FORM_FROM then return nil end
 	return side .. (n + 1), printAt(L, side, plantAt(L, side, n + 1)), (w - FORM_FROM) / (1 - FORM_FROM)
 end
@@ -1429,7 +1579,7 @@ function Ch.Descent(ctx, t0, dur)
 					lastStep[side] = n
 				elseif n > lastStep[side] then
 					lastStep[side] = n
-					stomp(printAt(L, side, plantAt(L, side, n)), 1, side)
+					stomp(printAt(L, side, plantAt(L, side, n)), 1 + 0.6 * (1 - ramp(t)), side)
 				end
 			end
 			-- the eyes blaze as he nears
@@ -1754,11 +1904,12 @@ function Ch.Catch(ctx, t0, dur)
 		cue("struggle", t >= tc + 1.8, function() K.sfx(K.S.BodyFall, 0.5, 1.2) end)
 		cue("groan", t >= 4.2, function() K.sfx(K.S.DarkDrone, 0.6, 0.7) end)
 		-- he speaks
-		cue("line1", t >= 4.4, function() K.say("SPIRAL APES.", 1.0, { Scale = 0.09 }) end)
-		cue("line2", t >= 6.7, function() K.say("YOU HAVE CRAWLED\nFAR ENOUGH.", 1.1, { Scale = 0.075 }) end)
-		cue("line3", t >= 9.3, function()
+		cue("line1", t >= 4.4, function() K.say("SPIRAL APE.", 0.9, { Scale = 0.09, Speaker = "Anti-Spiral" }) end)
+		cue("line2", t >= 5.9, function() K.say("YOU CAME SEARCHING\nFOR THE TRUE LA PEACE.", 0.85, { Scale = 0.07, Speaker = "Anti-Spiral" }) end)
+		cue("line3", t >= 7.9, function() K.say("SO I HAVE COME\nTO PUT A STOP TO IT.", 0.7, { Scale = 0.07, Speaker = "Anti-Spiral" }) end)
+		cue("line4", t >= 9.6, function()
 			K.sfx(K.S.Thunder, 0.6)
-			K.say("HERE, YOUR EVOLUTION ENDS.", 1.2, { Scale = 0.075 })
+			K.say("HERE, YOUR EVOLUTION ENDS.", 1.0, { Scale = 0.075, Speaker = "Anti-Spiral" })
 		end)
 		cue("loom", t >= 9.2, function()
 			K.sfx(K.S.Hell, 0.7, 0.45)

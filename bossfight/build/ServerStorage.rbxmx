@@ -1,4 +1,4 @@
-<roblox version="4"><Item class="Folder" referent="RBX27"><Properties><string name="Name">BossFightServer</string></Properties><Item class="Folder" referent="RBX23"><Properties><string name="Name">Attacks</string></Properties><Item class="ModuleScript" referent="RBX17"><Properties><string name="Name">AnnihilationBeam</string><ProtectedString name="Source"><![CDATA[--==================================================
+<roblox version="4"><Item class="Folder" referent="RBX32"><Properties><string name="Name">BossFightServer</string></Properties><Item class="Folder" referent="RBX29"><Properties><string name="Name">Attacks</string></Properties><Item class="ModuleScript" referent="RBX21"><Properties><string name="Name">AnnihilationBeam</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- ATTACK 5: ANNIHILATION BEAM
 -- He thrusts out a palm; violet light gathers in it... then a
 -- beam tears out of it and sweeps across the arena. It's too
@@ -34,23 +34,69 @@ function A.Run(F, P, token)
 			Kind = "sweep", O = origin, A0 = centreA - half * d, A1 = centreA + half * d,
 			T0 = t, T1 = t + P.Sweep, W = P.W, L = 2 * S.ARENA_R + 20,
 		}
-		local hit = { Id = F.newId("AB"), Shape = shape, Damage = P.Damage, Name = "ANNIHILATION BEAM", Knock = 50 }
+		local hit = { Id = F.newId("AB"), Shape = shape, Damage = P.Damage, Name = "ANNIHILATION BEAM", Knock = 50,
+			Qte = F.qte.randomChord(2), Counter = 70, CounterPerfect = 110 }
 		table.insert(sweeps, hit)
 		t = shape.T1 + 0.35
 	end
 	local list = {}
 	for _, h in ipairs(sweeps) do table.insert(list, { Id = h.Id, Shape = h.Shape }) end
 	F.fx("AnnihilationBeam", { T0 = t0, FireT = fireT, Hand = hand, Origin = origin, Sweeps = list })
+	-- (announced now so the prompts can lead them; a sweep can't catch anyone before it starts)
 	for _, h in ipairs(sweeps) do
-		F.waitUntil(h.Shape.T0 - 0.05)
-		if F.cancelled(token) then return end
 		F.continuousHit(h, h.Shape.T1 + 0.05)
 	end
 	F.waitUntil(sweeps[#sweeps].Shape.T1 + 0.6)
 end
 
 return A
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX18"><Properties><string name="Name">ConstellationLances</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX22"><Properties><string name="Name">BigBang</string><ProtectedString name="Source"><![CDATA[--==================================================
+-- ULTIMATE: BIG BANG
+-- He rises out of the galaxy floor, draws every star in the
+-- realm into a universe between his hands, and hurls it at
+-- the arena. It covers everything: there's no running from it.
+-- The only way out is its QTE - five steps, on a knife-edge -
+-- and anyone who lands all five drives it back into him.
+--==================================================
+local A = {}
+
+A.Defaults = {
+	Charge = 5.0,   -- rising + gathering the universe
+	Fall = 2.2,     -- from his hands to the arena
+	Damage = 75,
+	Speed = 1,      -- (phase 2 hurls it faster)
+}
+
+function A.Run(F, P, token)
+	local S = F.S
+	local t0 = F.now() + 0.2
+	local throwT = t0 + P.Charge / P.Speed
+	local T = throwT + P.Fall / P.Speed
+	local max = F.maxHealth()
+	local hit = F.hit({
+		T = T,
+		Shape = { Kind = "circle", P = S.CENTER, R = S.ARENA_R + 40 },
+		Damage = P.Damage,
+		Name = "BIG BANG",
+		Target = "all",
+		Knock = 140,
+		-- every step on a knife-edge (see QTE.ultimate: +/-0.09 s, perfect +/-0.045 s)
+		Qte = F.qte.ultimate({
+			{ At = -1.5, Keys = { "CLICK" } },
+			{ At = -1.1, Keys = { "Q" } },
+			{ At = -0.72, Keys = { "CLICK", "SPACE" } },
+			{ At = -0.36, Keys = { "E" } },
+			{ At = 0, Keys = { "CLICK", "Q", "E" } },
+		}),
+		Counter = math.floor(max * 0.08),
+		CounterPerfect = math.floor(max * 0.12),
+	})
+	F.fx("BigBang", { T0 = t0, ThrowT = throwT, T = T, Id = hit.Id })
+	F.waitUntil(T + (F.Config.UltimateCounterDelay or 3.4) + 0.5)
+end
+
+return A
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX23"><Properties><string name="Name">ConstellationLances</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- ATTACK 4: CONSTELLATION LANCES
 -- He points to the sky: stars ignite over the arena and join
 -- into constellations, their lines burning red on the floor
@@ -108,6 +154,7 @@ function A.Run(F, P, token)
 			Name = "LANCE",
 			Target = l.Target,
 			Knock = 45,
+			Counter = 25, CounterPerfect = 40,
 		})
 		table.insert(list, { Id = hit.Id, A = l.A, B = l.B, W = P.W, T = hit.T, Target = l.Target })
 	end
@@ -117,7 +164,7 @@ function A.Run(F, P, token)
 end
 
 return A
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX19"><Properties><string name="Name">FistSlam</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX24"><Properties><string name="Name">FistSlam</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- ATTACK 2: FIST SLAM
 -- He rears back and brings his fists down: red zones open on
 -- the arena (one under every player, plus a few more), fill up,
@@ -185,6 +232,7 @@ function A.Run(F, P, token)
 				Name = "FIST",
 				Target = z.Target,
 				Knock = 70,
+				Counter = 25, CounterPerfect = 40,
 			})
 			table.insert(list, { Id = hit.Id, P = z.P, R = P.ZoneR, T = hit.T, Target = z.Target })
 		end
@@ -208,6 +256,8 @@ function A.Run(F, P, token)
 			Name = "HAMMER OF DESPAIR",
 			Target = "all",
 			Knock = 110,
+			Qte = F.qte.randomChord(3),
+			Counter = 100, CounterPerfect = 160,
 		})
 		F.fx("FistHammer", { T0 = waveT, T = hit.T, Id = hit.Id, P = p, R = P.HammerR })
 		waveT = hit.T + 0.6
@@ -216,7 +266,7 @@ function A.Run(F, P, token)
 end
 
 return A
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX20"><Properties><string name="Name">GalaxyBarrage</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX25"><Properties><string name="Name">GalaxyBarrage</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- ATTACK 1: GALAXY BARRAGE
 -- He raises his arms and tears violet galaxies open in the sky
 -- over the arena; planets, moons and stars pour out of them at
@@ -300,6 +350,7 @@ function A.Run(F, P, token)
 			Name = k.Name,
 			Target = tgt.Player.UserId,
 			Knock = 40,
+			Counter = 18, CounterPerfect = 30,
 		})
 		F.fx("Shot", {
 			Attack = id, Id = hit.Id, Kind = k.Kind, Model = k.Model, Name = k.Name, Size = k.Size, R = k.R,
@@ -324,6 +375,8 @@ function A.Run(F, P, token)
 				Name = "JUPITER",
 				Target = "all",
 				Knock = 100,
+				Qte = F.qte.randomChord(3),
+				Counter = 90, CounterPerfect = 150,
 			})
 			F.fx("Shot", {
 				Attack = id, Id = hit.Id, Kind = "giant", Model = "jupiter", Name = "JUPITER", Size = 64, R = 32,
@@ -336,7 +389,103 @@ function A.Run(F, P, token)
 end
 
 return A
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX21"><Properties><string name="Name">SpiralCollapse</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX26"><Properties><string name="Name">GalaxyCorruption</string><ProtectedString name="Source"><![CDATA[--==================================================
+-- SET PIECE: GALAXY CORRUPTION (the end of phase 1)
+-- He reaches out to the sky and every galaxy in the realm turns
+-- to his violet. Then they open fire: a storm of rapid strikes
+-- raining down on the arena, lances of light across it, faster
+-- and faster... and to finish, every galaxy converges on you.
+--==================================================
+local A = {}
+
+A.Defaults = {
+	Corrupt = 3.2,     -- the galaxies turning
+	Storm = 9,         -- seconds of bombardment
+	Galaxies = 7,      -- (the realm's hero galaxies, indexed on the client)
+	BoltGap = { 0.22, 0.09 }, -- seconds between bolts, start -> end of the storm
+	BoltWarn = 0.95,
+	BoltR = 10,
+	LanceEvery = 1.8,
+	Damage = 18,
+	FinaleR = 16,
+	FinaleDamage = 45,
+}
+
+local KEYS = { "CLICK", "CLICK", "Q", "E", "F" }
+
+function A.Run(F, P, token)
+	local S = F.S
+	local rng = F.rng
+	local t0 = F.now() + 0.2
+	local stormT = t0 + P.Corrupt
+	local endT = stormT + P.Storm
+	F.fx("GalaxyCorruption", { T0 = t0, StormT = stormT, EndT = endT, Galaxies = P.Galaxies })
+	F.waitUntil(stormT - P.BoltWarn)
+	local nextLance = stormT + 0.8
+	local t = stormT
+	while t < endT do
+		if F.cancelled(token) then return end
+		local u = (t - stormT) / P.Storm
+		local gap = P.BoltGap[1] + (P.BoltGap[2] - P.BoltGap[1]) * u
+		local targets = F.targets()
+		if #targets == 0 then break end
+		-- a bolt: at someone (with a little scatter), from one of the galaxies
+		local tg = targets[rng:NextInteger(1, #targets)]
+		local p = tg.Root.Position + S.flat(tg.Root.AssemblyLinearVelocity) * 0.4
+			+ Vector3.new(rng:NextNumber(-14, 14), 0, rng:NextNumber(-14, 14))
+		local off = S.flat(p - S.CENTER)
+		if off.Magnitude > S.ARENA_R - 6 then p = S.CENTER + off.Unit * (S.ARENA_R - 6) end
+		local land = S.surface(p.X, p.Z)
+		local hit = F.hit({
+			T = t + P.BoltWarn,
+			Shape = { Kind = "circle", P = land, R = P.BoltR },
+			Damage = P.Damage, Name = "CORRUPTED STAR", Target = tg.Player.UserId, Knock = 30,
+			Qte = F.qte.single(KEYS[rng:NextInteger(1, #KEYS)]),
+			Counter = 12, CounterPerfect = 20,
+		})
+		F.fx("CorruptBolt", { Id = hit.Id, From = rng:NextInteger(1, P.Galaxies), To = land, R = P.BoltR, T0 = t, T = hit.T })
+		-- now and then a lance of light across the arena, through someone
+		if t >= nextLance then
+			nextLance = t + P.LanceEvery * (1 - 0.4 * u)
+			local a = rng:NextNumber() * math.pi
+			local d = Vector3.new(math.cos(a), 0, math.sin(a))
+			local c = S.flat(tg.Root.Position - S.CENTER)
+			local b = c:Dot(d)
+			local disc = b * b - (c:Dot(c) - (S.ARENA_R - 4) ^ 2)
+			if disc > 0 then
+				local sq = math.sqrt(disc)
+				local A0 = S.CENTER + d * (-b - sq)
+				local B0 = S.CENTER + d * (-b + sq)
+				local lh = F.hit({
+					T = t + 1.2,
+					Shape = { Kind = "line", A = S.surface(A0.X, A0.Z), B = S.surface(B0.X, B0.Z), W = 12 },
+					Damage = P.Damage + 8, Name = "GALACTIC LANCE", Target = tg.Player.UserId, Knock = 45,
+					Qte = F.qte.randomChord(2), Counter = 35, CounterPerfect = 55,
+				})
+				F.fx("CorruptLance", { Id = lh.Id, From = rng:NextInteger(1, P.Galaxies), A = lh.Shape.A, B = lh.Shape.B, W = 12, T0 = t, T = lh.T })
+			end
+		end
+		F.waitUntil(t + gap)
+		t += gap
+	end
+	if F.cancelled(token) then return end
+	-- the finale: every galaxy at once, on each of you
+	local finT = endT + 2.2
+	for _, tg in ipairs(F.targets()) do
+		local p = tg.Root.Position
+		local hit = F.hit({
+			T = finT,
+			Shape = { Kind = "circle", P = S.surface(p.X, p.Z), R = P.FinaleR },
+			Damage = P.FinaleDamage, Name = "EVERY GALAXY", Target = tg.Player.UserId, Knock = 90,
+			Qte = F.qte.randomChord(3), Counter = 80, CounterPerfect = 130,
+		})
+		F.fx("CorruptFinale", { Id = hit.Id, P = hit.Shape.P, R = P.FinaleR, T0 = endT, T = finT, User = tg.Player.UserId })
+	end
+	F.waitUntil(finT + 1.5)
+end
+
+return A
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX27"><Properties><string name="Name">SpiralCollapse</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- ATTACK 6: SPIRAL COLLAPSE
 -- He claps his hands together over his head and a black hole
 -- opens above the arena, dragging everyone toward it (the pull
@@ -364,6 +513,9 @@ function A.Run(F, P, token)
 		Damage = P.Damage,
 		Name = "SPIRAL COLLAPSE",
 		Knock = 90,
+		Target = "all",
+		Qte = F.qte.randomChord(3),
+		Counter = 110, CounterPerfect = 170,
 	})
 	F.fx("SpiralCollapse", { T0 = t0, OpenT = openT, BlastT = blastT, Id = hit.Id, R = P.R, Strength = P.Strength, Centre = S.CENTER })
 	F.waitUntil(blastT + 0.8)
@@ -371,7 +523,7 @@ function A.Run(F, P, token)
 end
 
 return A
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX22"><Properties><string name="Name">StompQuake</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX28"><Properties><string name="Name">StompQuake</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- ATTACK 3: STOMP QUAKE
 -- He lifts a foot high over the galaxy floor and brings it down
 -- at the rim: shockwave rings roll out across the whole arena.
@@ -406,387 +558,21 @@ function A.Run(F, P, token)
 	end
 	local list = {}
 	for _, r in ipairs(rings) do
-		local hit = { Id = F.newId("SQ"), Shape = r.Shape, Damage = P.Damage, Name = "SHOCKWAVE", Knock = 30 }
+		-- (SPACE: jump it, and a jump on the beat parries it)
+		local hit = { Id = F.newId("SQ"), Shape = r.Shape, Damage = P.Damage, Name = "SHOCKWAVE", Knock = 30, Qte = F.qte.single("SPACE"), Counter = 20, CounterPerfect = 32 }
 		r.Hit = hit
 		table.insert(list, { Id = hit.Id, Shape = r.Shape })
 	end
-	F.fx("StompQuake", { T0 = t0, StompT = stompT, Foot = foot, Origin = origin, Rings = list })
-	F.waitUntil(stompT + 0.1)
-	if F.cancelled(token) then return end
+	-- (announced now, so the prompts can lead them; a ring can't catch anyone before its start)
 	for _, r in ipairs(rings) do
-		F.ringHit(r.Hit, r.Until)
+		F.continuousHit(r.Hit, r.Until)
 	end
+	F.fx("StompQuake", { T0 = t0, StompT = stompT, Foot = foot, Origin = origin, Rings = list })
 	F.waitUntil(rings[#rings].Until - (S.ARENA_R / P.Speed) * 0.6)
 end
 
 return A
-]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX24"><Properties><string name="Name">BatServer</string><ProtectedString name="Source"><![CDATA[--==================================================
--- THE SPIRAL BAT (server)
--- Builds the bat (a drill-headed Gurren bat: black grip, gold
--- fittings, a spiral-grooved barrel and a spinning green drill
--- tip), hands it to everyone, and checks what they do with it:
---   click  - swing (3-hit combo). A swing as a hit lands on
---            you is a PARRY: you take nothing, he takes it.
---   Q      - Spiral Dash: a burst of speed with brief i-frames.
---   E      - Drill Break: hurl a spiral drill at his core.
---==================================================
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local StarterPack = game:GetService("StarterPack")
-
-local B = {}
-
-local GREEN = Color3.fromRGB(70, 255, 120)
-local LIME = Color3.fromRGB(190, 255, 90)
-local GOLD = Color3.fromRGB(255, 200, 70)
-local BLACK = Color3.fromRGB(18, 20, 22)
-local STEEL = Color3.fromRGB(34, 44, 40)
-
-local TOOL_NAME = "SpiralBat"
-B.TOOL_NAME = TOOL_NAME
-
---------------------------------------------------------------------------
--- the model (everything runs along the Handle's +Y, grip at the origin)
---------------------------------------------------------------------------
-local function part(props)
-	local p = Instance.new("Part")
-	p.Anchored = false
-	p.CanCollide = false
-	p.CanQuery = false
-	p.CanTouch = false
-	p.Massless = true
-	p.CastShadow = false
-	p.TopSurface = Enum.SurfaceType.Smooth
-	p.BottomSurface = Enum.SurfaceType.Smooth
-	for k, v in pairs(props) do p[k] = v end
-	return p
-end
-
--- a cylinder standing along the handle's Y axis, `len` long, centred at y
-local function rod(tool, handle, name, y, len, dia, color, material)
-	local p = part({
-		Name = name, Shape = Enum.PartType.Cylinder, Size = Vector3.new(len, dia, dia),
-		Color = color, Material = material or Enum.Material.Metal,
-	})
-	local w = Instance.new("Weld")
-	w.Part0 = handle
-	w.Part1 = p
-	w.C0 = CFrame.new(0, y, 0) * CFrame.Angles(0, 0, math.rad(90))
-	w.Parent = p
-	p.Parent = tool
-	return p
-end
-
-local function ball(tool, handle, name, y, dia, color, material)
-	local p = part({ Name = name, Shape = Enum.PartType.Ball, Size = Vector3.one * dia, Color = color, Material = material or Enum.Material.Metal })
-	local w = Instance.new("Weld")
-	w.Part0 = handle
-	w.Part1 = p
-	w.C0 = CFrame.new(0, y, 0)
-	w.Parent = p
-	p.Parent = tool
-	return p
-end
-
--- a small block welded to `base` at c0 (for the spiral strands and fins)
-local function chip(tool, base, name, c0, size, color, material)
-	local p = part({ Name = name, Size = size, Color = color, Material = material or Enum.Material.Neon })
-	local w = Instance.new("Weld")
-	w.Part0 = base
-	w.Part1 = p
-	w.C0 = c0
-	w.Parent = p
-	p.Parent = tool
-	return p
-end
-
--- the barrel's radius at height y (it flares from the grip to the drill)
-local BARREL_Y0, BARREL_Y1 = 1.0, 4.2
-local function barrelR(y)
-	local u = math.clamp((y - BARREL_Y0) / (BARREL_Y1 - BARREL_Y0), 0, 1)
-	return 0.21 + 0.18 * u ^ 1.3
-end
-
-local function drillCone()
-	local src = ReplicatedStorage:FindFirstChild("FinalCutscene")
-	src = src and src:FindFirstChild("Assets")
-	src = src and src:FindFirstChild("DrillCone")
-	if src and src:IsA("MeshPart") then
-		local d = src:Clone()
-		for _, c in ipairs(d:GetChildren()) do c:Destroy() end
-		d.Anchored, d.CanCollide, d.CanQuery, d.CanTouch, d.Massless = false, false, false, false, true
-		return d
-	end
-	local d = part({ Size = Vector3.one })
-	local m = Instance.new("SpecialMesh")
-	m.MeshType = Enum.MeshType.FileMesh
-	m.MeshId = "rbxassetid://1778999"
-	m.Parent = d
-	return d
-end
-B.drillCone = drillCone
-
-function B.buildTool()
-	local tool = Instance.new("Tool")
-	tool.Name = TOOL_NAME
-	tool.ToolTip = "Spiral Bat"
-	tool.CanBeDropped = false
-	tool.RequiresHandle = true
-	tool.Grip = CFrame.new()
-
-	-- the grip: black, taped in green
-	local handle = part({ Name = "Handle", Size = Vector3.new(0.36, 1.7, 0.36), Transparency = 1 })
-	handle.Parent = tool
-	rod(tool, handle, "Grip", 0, 1.7, 0.36, BLACK, Enum.Material.Fabric)
-	for i = 0, 4 do
-		local w = chip(tool, handle, "Tape" .. i, CFrame.new(0, -0.62 + i * 0.3, 0) * CFrame.Angles(0, 0, math.rad(90 - 14)),
-			Vector3.new(0.07, 0.395, 0.395), GREEN, Enum.Material.Neon)
-		w.Shape = Enum.PartType.Cylinder
-	end
-	-- the pommel: gold, with a spiral gem
-	ball(tool, handle, "Knob", -0.95, 0.56, GOLD)
-	rod(tool, handle, "KnobCollar", -0.78, 0.1, 0.44, GOLD)
-	ball(tool, handle, "Gem", -1.2, 0.26, GREEN, Enum.Material.Neon)
-	-- the guard, with fins
-	rod(tool, handle, "Guard", 0.9, 0.14, 0.7, GOLD)
-	for s = -1, 1, 2 do
-		chip(tool, handle, "Fin", CFrame.new(s * 0.42, 0.92, 0) * CFrame.Angles(0, 0, math.rad(-s * 35)), Vector3.new(0.34, 0.12, 0.1), GOLD, Enum.Material.Metal)
-	end
-
-	-- the barrel: gunmetal, flaring toward the drill
-	local segs = 8
-	for i = 1, segs do
-		local y0 = BARREL_Y0 + (i - 1) * (BARREL_Y1 - BARREL_Y0) / segs
-		local y1 = BARREL_Y0 + i * (BARREL_Y1 - BARREL_Y0) / segs
-		rod(tool, handle, "Barrel" .. i, (y0 + y1) / 2, (y1 - y0) + 0.02, 2 * barrelR((y0 + y1) / 2), STEEL, Enum.Material.Metal)
-	end
-	-- its core showing through, and the gold bands
-	local core = rod(tool, handle, "Core", 2.55, 0.5, 2 * barrelR(2.55) + 0.05, GREEN, Enum.Material.Neon)
-	local shell = rod(tool, handle, "CoreShell", 2.55, 0.62, 2 * barrelR(2.55) + 0.14, LIME, Enum.Material.ForceField)
-	shell.Transparency = 0.2
-	rod(tool, handle, "BandLow", 1.35, 0.1, 2 * barrelR(1.35) + 0.08, GOLD)
-	rod(tool, handle, "BandMid", 3.1, 0.1, 2 * barrelR(3.1) + 0.08, GOLD)
-	rod(tool, handle, "Crown", BARREL_Y1 + 0.08, 0.2, 2 * barrelR(BARREL_Y1) + 0.14, GOLD)
-
-	-- the spiral: two glowing strands winding up the barrel
-	local turns, per = 2.5, 16
-	for strand = 0, 1 do
-		for i = 0, per - 1 do
-			local u = i / (per - 1)
-			local y = BARREL_Y0 + 0.15 + u * (BARREL_Y1 - BARREL_Y0 - 0.3)
-			local a = strand * math.pi + u * turns * 2 * math.pi
-			local r = barrelR(y) + 0.02
-			local pos = Vector3.new(math.cos(a) * r, y, math.sin(a) * r)
-			-- (each chip lies along the helix: tangent is its long axis)
-			local tangent = Vector3.new(-math.sin(a) * r * turns * 2 * math.pi, BARREL_Y1 - BARREL_Y0, math.cos(a) * r * turns * 2 * math.pi).Unit
-			local out = Vector3.new(math.cos(a), 0, math.sin(a))
-			local cf = CFrame.fromMatrix(pos, tangent, out)
-			chip(tool, handle, "Spiral", cf, Vector3.new(0.3, 0.07, 0.1), strand == 0 and GREEN or LIME, Enum.Material.Neon)
-		end
-	end
-
-	-- the drill: a spinning lime cone with dark flutes (the client spins it)
-	local drill = drillCone()
-	drill.Name = "Drill"
-	drill.Size = Vector3.new(1.0, 2.1, 1.0)
-	drill.Color = LIME
-	drill.Material = Enum.Material.Neon
-	local dw = Instance.new("Weld")
-	dw.Name = "DrillWeld"
-	dw.Part0 = handle
-	dw.Part1 = drill
-	dw.C0 = CFrame.new(0, BARREL_Y1 + 0.2 + 1.05, 0)
-	dw.Parent = drill
-	drill.Parent = tool
-	for f = 0, 2 do
-		for i = 0, 6 do
-			local u = i / 6
-			local y = -0.95 + u * 1.8               -- (drill space: base -1.05 .. tip +1.05)
-			local r = 0.5 * (1 - (y + 1.05) / 2.1) + 0.02
-			local a = f * 2 * math.pi / 3 + u * 1.6 * math.pi
-			local pos = Vector3.new(math.cos(a) * r, y, math.sin(a) * r)
-			local tangent = Vector3.new(-math.sin(a) * r * 1.6 * math.pi, 1.8, math.cos(a) * r * 1.6 * math.pi).Unit
-			chip(tool, drill, "Flute", CFrame.fromMatrix(pos, tangent, Vector3.new(math.cos(a), 0, math.sin(a))),
-				Vector3.new(0.3, 0.06, 0.09 * (1 - u * 0.6)), Color3.fromRGB(20, 70, 30), Enum.Material.Metal)
-		end
-	end
-	local tipGlow = Instance.new("Attachment")
-	tipGlow.Name = "Tip"
-	tipGlow.Position = Vector3.new(0, 1.05, 0)
-	tipGlow.Parent = drill
-
-	-- swing trail (the client turns it on mid-swing)
-	local t0 = Instance.new("Attachment")
-	t0.Name = "TrailBase"
-	t0.Position = Vector3.new(0, 1.6, 0)
-	t0.Parent = handle
-	local t1 = Instance.new("Attachment")
-	t1.Name = "TrailTip"
-	t1.Position = Vector3.new(0, 6.3, 0)
-	t1.Parent = handle
-	local trail = Instance.new("Trail")
-	trail.Name = "SwingTrail"
-	trail.Attachment0 = t0
-	trail.Attachment1 = t1
-	trail.Lifetime = 0.2
-	trail.MinLength = 0.05
-	trail.LightEmission = 1
-	trail.Brightness = 4
-	trail.Texture = "rbxassetid://10365550877"
-	trail.TextureMode = Enum.TextureMode.Stretch
-	trail.Color = ColorSequence.new(Color3.new(1, 1, 1), GREEN)
-	trail.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.6, 0.5), NumberSequenceKeypoint.new(1, 1) })
-	trail.WidthScale = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0.3) })
-	trail.Enabled = false
-	trail.Parent = handle
-
-	-- spiral energy off the core, and its light
-	local e = Instance.new("ParticleEmitter")
-	e.Name = "Sparks"
-	e.Texture = "rbxassetid://11381556016"
-	e.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid8x8
-	e.FlipbookMode = Enum.ParticleFlipbookMode.OneShot
-	e.Color = ColorSequence.new(GREEN, LIME)
-	e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.8), NumberSequenceKeypoint.new(1, 0) })
-	e.Lifetime = NumberRange.new(0.3, 0.55)
-	e.Speed = NumberRange.new(1, 3)
-	e.SpreadAngle = Vector2.new(180, 180)
-	e.Rate = 10
-	e.LightEmission = 1
-	e.Brightness = 2.5
-	e.Rotation = NumberRange.new(0, 360)
-	e.Parent = core
-	local light = Instance.new("PointLight")
-	light.Color = GREEN
-	light.Range = 9
-	light.Brightness = 1.4
-	light.Parent = core
-	return tool
-end
-
---------------------------------------------------------------------------
--- handing it out
---------------------------------------------------------------------------
-local template
-
-local function give(player)
-	local backpack = player:FindFirstChildOfClass("Backpack")
-	local char = player.Character
-	-- (the old bat goes)
-	for _, holder in ipairs({ backpack, char }) do
-		if holder then
-			for _, c in ipairs(holder:GetChildren()) do
-				if c:IsA("Tool") and (c.Name == "VerityBat" or c.Name == "Bat") then c:Destroy() end
-			end
-		end
-	end
-	if backpack and not backpack:FindFirstChild(TOOL_NAME) and not (char and char:FindFirstChild(TOOL_NAME)) then
-		template:Clone().Parent = backpack
-	end
-end
-
---------------------------------------------------------------------------
--- actions
---------------------------------------------------------------------------
-function B.init(F)
-	local S, cfg = F.S, F.Config.Bat
-	-- (the clients read the cooldowns for their ability bar from here)
-	local shared = ReplicatedStorage:WaitForChild("AntiSpiralFight")
-	shared:SetAttribute("SwingCooldown", cfg.SwingCooldown)
-	shared:SetAttribute("ComboReset", cfg.ComboReset)
-	shared:SetAttribute("DashCooldown", cfg.DashCooldown)
-	shared:SetAttribute("DrillCooldown", cfg.DrillCooldown)
-	template = B.buildTool()
-	for _, name in ipairs({ "VerityBat", "Bat" }) do
-		local old = StarterPack:FindFirstChild(name)
-		if old then old:Destroy() end
-	end
-	template:Clone().Parent = StarterPack
-	local function hook(p)
-		p.CharacterAdded:Connect(function()
-			task.wait(0.5)
-			give(p)
-		end)
-		if p.Character then give(p) end
-	end
-	Players.PlayerAdded:Connect(hook)
-	for _, p in ipairs(Players:GetPlayers()) do hook(p) end
-
-	local last = {} -- [player] = { Swing, Dash, Drill }
-	Players.PlayerRemoving:Connect(function(p) last[p] = nil end)
-
-	local function ready(player)
-		if workspace:GetAttribute("FC_State") ~= "Fight" then return nil end
-		local char = player.Character
-		local hum = char and char:FindFirstChildOfClass("Humanoid")
-		local root = char and char:FindFirstChild("HumanoidRootPart")
-		if not (hum and root and hum.Health > 0 and char:FindFirstChild(TOOL_NAME)) then return nil end
-		last[player] = last[player] or { Swing = 0, Dash = 0, Drill = 0 }
-		return char, root, last[player]
-	end
-
-	local function melee(player, root, combo)
-		-- anything with a Humanoid in front of you that isn't a player (minions)
-		local params = OverlapParams.new()
-		params.FilterType = Enum.RaycastFilterType.Exclude
-		local ex = {}
-		for _, p in ipairs(Players:GetPlayers()) do if p.Character then table.insert(ex, p.Character) end end
-		params.FilterDescendantsInstances = ex
-		local centre = root.Position + root.CFrame.LookVector * (cfg.MeleeRange * 0.5)
-		local seen = {}
-		for _, part in ipairs(workspace:GetPartBoundsInRadius(centre, cfg.MeleeRange * 0.7, params)) do
-			local m = part:FindFirstAncestorOfClass("Model")
-			while m and not m:FindFirstChildOfClass("Humanoid") do m = m:FindFirstAncestorOfClass("Model") end
-			if m and not seen[m] then
-				seen[m] = true
-				-- (not him: his body is only ever where the clients draw it)
-				local h = m:FindFirstChildOfClass("Humanoid")
-				if m ~= F.Model and h and h.Health > 0 then
-					h:TakeDamage(cfg.MeleeDamage * (combo == 3 and 1.6 or 1))
-				end
-			end
-		end
-	end
-
-	F.BatRemote.OnServerEvent:Connect(function(player, action, a, b)
-		local char, root, cd = ready(player)
-		if not char then return end
-		local now = S.now()
-		if action == "swing" then
-			if now - cd.Swing < cfg.SwingCooldown * 0.8 then return end
-			cd.Swing = now
-			local combo = (type(a) == "number") and math.clamp(math.floor(a), 1, 3) or 1
-			-- parry claims: the hits this swing met (validated against live hits)
-			if type(b) == "table" and type(b.T) == "number" and math.abs(b.T - now) < 1.5 and type(b.Ids) == "table" then
-				for i = 1, math.min(#b.Ids, 4) do
-					local id = b.Ids[i]
-					if type(id) == "string" and F.isLive(id) then F.claim(player, id, b.T) end
-				end
-			end
-			melee(player, root, combo)
-			F.BatFxRemote:FireAllClients("swing", player.UserId, combo)
-		elseif action == "dash" then
-			if now - cd.Dash < cfg.DashCooldown * 0.9 then return end
-			cd.Dash = now
-			player:SetAttribute("IFrameUntil", now + cfg.DashIFrames)
-			F.BatFxRemote:FireAllClients("dash", player.UserId)
-		elseif action == "drill" then
-			if now - cd.Drill < cfg.DrillCooldown * 0.95 then return end
-			if not F.Alive then return end
-			cd.Drill = now
-			local from = root.Position + Vector3.new(0, 1.5, 0)
-			local target = F.chestAt(now + 0.5)
-			local travel = (target - from).Magnitude / cfg.DrillSpeed
-			F.BatFxRemote:FireAllClients("drill", player.UserId, { From = from, T0 = now, T1 = now + travel })
-			task.delay(travel, function()
-				if F.Alive then F.damageBoss(cfg.DrillDamage, player, "drill") end
-			end)
-		end
-	end)
-end
-
-return B
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX25"><Properties><string name="Name">Config</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX30"><Properties><string name="Name">Config</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- BOSS FIGHT: CONFIG
 -- Tune the fight here. Attack modules live in ./Attacks and
 -- are listed per phase by name; Params override each
@@ -794,33 +580,31 @@ return B
 --==================================================
 return {
 	DisplayName = "Anti-Spiral",
-	MaxHealth = 6000,
+
+	-- his health: MaxHealth for one player, plus this share of it per extra player
+	-- (2 players = 1.7x, 4 players = 3.1x ...)
+	MaxHealth = 4000,
+	HealthPerExtraPlayer = 0.7,
 
 	WalkSpeed = 70,          -- studs/s round the ring at full stride
 	WalkArc = { 35, 80 },    -- degrees he walks between attacks (random in range)
 
-	-- what a parry does to him (perfect = within Shared.PERFECT of impact)
-	ParryDamage = 45,
-	PerfectDamage = 80,
+	-- a parried hit's damage to him, if the attack doesn't set its own Counter
+	ParryDamage = 40,
 
-	-- the Spiral Bat
-	Bat = {
-		SwingCooldown = 0.28,
-		ComboReset = 0.9,     -- seconds before the combo starts over
-		MeleeDamage = 20,     -- on anything with a Humanoid in reach (minions, his body if you get close)
-		MeleeRange = 11,
-		DrillDamage = 60,     -- E: Drill Break, thrown at his core
-		DrillCooldown = 7,
-		DrillSpeed = 260,     -- studs/s
-		DashCooldown = 2.2,   -- Q: Spiral Dash
-		DashIFrames = 0.35,
+	-- set pieces: each comes out once, next, as his health crosses At
+	SetPieces = {
+		{ At = 0.72, Module = "BigBang" },            -- his ultimate
+		{ At = 0.58, Module = "GalaxyCorruption" },   -- the end of phase 1
+		{ At = 0.3, Module = "BigBang" },
 	},
+	UltimateCounterDelay = 3.4, -- (the Big Bang counter cinematic's length: its damage lands at the end)
 
 	Phases = {
 		{
 			Name = "THE END OF ALL SPIRALS",
 			StartsAtHealthPct = 1,
-			AttackDelay = 1.2,  -- rest after an attack, before he walks on
+			AttackDelay = 1.1,  -- rest after an attack, before he walks on
 			Attacks = {
 				{ Module = "GalaxyBarrage", Weight = 3 },
 				{ Module = "FistSlam", Weight = 3 },
@@ -837,6 +621,7 @@ return {
 			AttackDelay = 0.7,
 			TransitionTime = 3.5,
 			DamageMultiplier = 1.25,
+			UltimateParams = { Speed = 1.2 },
 			Attacks = {
 				{ Module = "GalaxyBarrage", Weight = 3, Params = { Shots = 22, Interval = 0.26, Portals = 3 } },
 				{ Module = "FistSlam", Weight = 3, Params = { Waves = 3, ExtraZones = 4 } },
@@ -848,14 +633,14 @@ return {
 		},
 	},
 }
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX26"><Properties><string name="Name">Fight</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX31"><Properties><string name="Name">Fight</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- BOSS FIGHT: SERVER CORE
 -- The Anti-Spiral's state (health, phase, where he's walking),
 -- the remotes, and every hit: attacks schedule hits with an
 -- impact time and a shape; at impact the server checks who is
 -- inside, waits a moment for parry claims, then resolves each
--- one as a hit, a parry (he takes the damage instead) or an
--- evade (Spiral Dash i-frames).
+-- one as a hit or a parry (a completed QTE: he takes the
+-- damage instead).
 --
 -- Attack modules (./Attacks) get this module and use:
 --   F.now(), F.waitUntil(t), F.cancelled(token)
@@ -863,7 +648,8 @@ return {
 --   F.rootAt(t)                 -> his root CFrame at t (from the walk plan)
 --   F.fx(kind, data)            -> every client runs the matching visual
 --   F.hit(hit)                  -> schedule a timed hit (circle / line shapes)
---   F.ringHit(hit, until)       -> a travelling shockwave ring (checked every frame)
+--   F.continuousHit(hit, until) -> a travelling hit (rings, sweeps: checked every frame)
+--   F.qte.single/chord(...)     -> QTE specs for a hit (hit.Qte; default: one click)
 --   F.newId(prefix), F.rng
 --==================================================
 local Players = game:GetService("Players")
@@ -892,9 +678,8 @@ local function remote(name)
 	r.Parent = net
 	return r
 end
-F.FxRemote = remote("Fx")        -- server -> clients: attack visuals, hit results
-F.BatRemote = remote("Bat")      -- client -> server: swings (with parry claims), dash, drill
-F.BatFxRemote = remote("BatFx")  -- server -> clients: other players' bat visuals
+F.FxRemote = remote("Fx")        -- server -> clients: attack visuals, hits, results
+F.QteRemote = remote("Qte")      -- client -> server: "I completed this hit's QTE" (id, time, grade)
 
 function F.fx(kind, data)
 	F.FxRemote:FireAllClients(kind, data)
@@ -922,6 +707,8 @@ end
 --------------------------------------------------------------------------
 local model, humanoid, root
 F.Token = 0 -- bumped on phase change / death: running attacks bail out
+F.SetPiecesUsed = {}
+F.Forced = {} -- set pieces waiting to go next
 F.Alive = true
 F.PhaseIndex = 0
 
@@ -981,6 +768,8 @@ local function publish()
 	shared:SetAttribute("BossHealth", humanoid.Health)
 	shared:SetAttribute("BossMaxHealth", humanoid.MaxHealth)
 end
+
+function F.maxHealth() return humanoid.MaxHealth end
 
 function F.setInvulnerable(on)
 	model:SetAttribute("Invulnerable", on)
@@ -1048,8 +837,15 @@ function F.damageBoss(amount, player, source)
 		onDeath()
 		return true
 	end
+	-- (set pieces - his ultimate, the galaxy corruption - come out as he crosses their thresholds)
+	local pct = humanoid.Health / humanoid.MaxHealth
+	for i, fp in ipairs(Config.SetPieces or {}) do
+		if pct <= fp.At and not F.SetPiecesUsed[i] then
+			F.SetPiecesUsed[i] = true
+			table.insert(F.Forced, fp)
+		end
+	end
 	if not transitioning then
-		local pct = humanoid.Health / humanoid.MaxHealth
 		for i = #Config.Phases, 1, -1 do
 			if i > F.PhaseIndex and pct <= Config.Phases[i].StartsAtHealthPct then
 				task.spawn(setPhase, i)
@@ -1061,30 +857,69 @@ function F.damageBoss(amount, player, source)
 end
 
 --------------------------------------------------------------------------
--- hits and parries
+-- hits and QTEs
+-- Every hit carries a QTE spec that the clients turn into prompts:
+--   { Kind = "single" | "chord" | "ultimate",
+--     Steps = { { At = seconds relative to impact, Keys = { "CLICK", "Q", ... } }, ... },
+--     Early = s, Late = s,  -- the window round each step
+--     Perfect = s }         -- |error| within this is perfect
+-- Keys: CLICK, SPACE, Q, E, F. A chord's keys all have to go down inside the
+-- window. A client that completes every step claims the hit; if the claim's
+-- time is in the window, it's a parry and he takes the counter damage.
 --------------------------------------------------------------------------
 local live = {}   -- [id] = hit (while it can still be parried)
-local claims = {} -- [player] = { [id] = client server-time of the swing }
-local SLACK = 0.12
+local claims = {} -- [player] = { [id] = { T = client server-time, Grade = "good" | "perfect" } }
+local SLACK = 0.14
+
+local QTE = {}
+F.qte = QTE
+function QTE.single(key)
+	return { Kind = "single", Steps = { { At = 0, Keys = { key or "CLICK" } } }, Early = S.PARRY_EARLY, Late = S.PARRY_LATE, Perfect = S.PERFECT }
+end
+function QTE.chord(keys)
+	return { Kind = "chord", Steps = { { At = 0, Keys = keys } }, Early = 0.34, Late = 0.1, Perfect = 0.1 }
+end
+-- a random chord of n keys (always with CLICK)
+local POOL = { "Q", "E", "F", "SPACE" }
+function QTE.randomChord(n)
+	local keys = { "CLICK" }
+	local pool = table.clone(POOL)
+	for _ = 2, n do
+		table.insert(keys, table.remove(pool, F.rng:NextInteger(1, #pool)))
+	end
+	return QTE.chord(keys)
+end
+function QTE.ultimate(steps)
+	return { Kind = "ultimate", Steps = steps, Early = 0.09, Late = 0.09, Perfect = 0.045 }
+end
 
 function F.isLive(id) return live[id] ~= nil end
 
-function F.claim(player, id, clientT)
-	if not live[id] then return end
+F.QteRemote.OnServerEvent:Connect(function(player, id, clientT, grade)
+	if type(id) ~= "string" or type(clientT) ~= "number" or not live[id] then return end
+	if math.abs(clientT - S.now()) > 1.5 then return end
 	claims[player] = claims[player] or {}
-	if not claims[player][id] then claims[player][id] = clientT end
-end
+	if not claims[player][id] then
+		claims[player][id] = { T = clientT, Grade = grade == "perfect" and "perfect" or "good" }
+	end
+end)
 
 local function resolve(hit, t, T)
 	local player = t.Player
 	local mine = claims[player] and claims[player][hit.Id]
+	local q = hit.Qte
 	local result
-	if hit.Parry ~= false and mine and mine >= T - S.PARRY_EARLY - SLACK and mine <= T + S.PARRY_LATE + SLACK then
-		local perfect = math.abs(mine - T) <= S.PERFECT + 0.03
+	if q and mine and mine.T >= T - q.Early - SLACK and mine.T <= T + q.Late + SLACK then
+		local perfect = mine.Grade == "perfect"
 		result = perfect and "perfect" or "parry"
-		F.damageBoss(perfect and Config.PerfectDamage or Config.ParryDamage, player, "parry")
-	elseif (player:GetAttribute("IFrameUntil") or 0) >= T - 0.05 then
-		result = "evade"
+		local base = hit.Counter or Config.ParryDamage
+		local dmg = perfect and (hit.CounterPerfect or base * 1.6) or base
+		if q.Kind == "ultimate" then
+			-- (the counter lands at the end of their cinematic)
+			task.delay(Config.UltimateCounterDelay or 3.2, function() F.damageBoss(dmg, player, "ultimate") end)
+		else
+			F.damageBoss(dmg, player, "parry")
+		end
 	else
 		result = "hit"
 		local mult = F.phase().DamageMultiplier or 1
@@ -1095,13 +930,21 @@ local function resolve(hit, t, T)
 			t.Root.AssemblyLinearVelocity = away * hit.Knock + Vector3.new(0, hit.Knock * 0.5, 0)
 		end
 	end
-	F.fx("Resolve", { Id = hit.Id, User = player.UserId, Result = result, Pos = t.Root.Position })
+	F.fx("Resolve", { Id = hit.Id, User = player.UserId, Result = result, Pos = t.Root.Position, Kind = q and q.Kind or "none" })
 end
 
--- a timed hit: { Id, T, Shape, Damage, Name, Target (userId), Parry (default true), Knock }
+-- every hit is announced (its QTE, shape and timing) so each client can prompt it
+local function announce(hit)
+	if hit.Qte == nil then hit.Qte = QTE.single("CLICK") end
+	if hit.Qte == false then hit.Qte = nil end
+	F.fx("Hit", { Id = hit.Id, T = hit.T, Shape = hit.Shape, Name = hit.Name, Target = hit.Target, Qte = hit.Qte })
+end
+
+-- a timed hit: { Id, T, Shape, Damage, Name, Target (userId | "all"), Qte (spec | false), Counter, CounterPerfect, Knock }
 function F.hit(hit)
 	hit.Id = hit.Id or F.newId("H")
 	live[hit.Id] = hit
+	announce(hit)
 	local token = F.Token
 	task.spawn(function()
 		-- (sample a beat after impact: the server sees each player ~half a ping late)
@@ -1118,10 +961,12 @@ function F.hit(hit)
 	return hit
 end
 
--- a shockwave ring that runs until `untilT`; each player can be caught once
-function F.ringHit(hit, untilT)
+-- a travelling hit (shockwave rings, sweeping beams) checked every frame until
+-- `untilT`; each player can be caught once
+function F.continuousHit(hit, untilT)
 	hit.Id = hit.Id or F.newId("R")
 	live[hit.Id] = hit
+	announce(hit)
 	local token = F.Token
 	local caught = {}
 	task.spawn(function()
@@ -1141,6 +986,7 @@ function F.ringHit(hit, untilT)
 	end)
 	return hit
 end
+F.ringHit = F.continuousHit
 
 Players.PlayerRemoving:Connect(function(p) claims[p] = nil end)
 -- (old claims are dropped as their hits expire)
@@ -1197,11 +1043,6 @@ function F.init(bossModel)
 	print("[BossFight] server ready: " .. #script.Parent.Attacks:GetChildren() .. " attacks loaded")
 end
 
--- a travelling hit checked every frame (rings, sweeping beams)
-function F.continuousHit(hit, untilT)
-	return F.ringHit(hit, untilT)
-end
-
 local function pick(phase, last)
 	local pool, total = {}, 0
 	for _, e in ipairs(phase.Attacks) do
@@ -1218,7 +1059,23 @@ local function pick(phase, last)
 	return pool[#pool]
 end
 
+-- his health, scaled to the party: base + a share per extra player
+local function scaledHealth(n)
+	return math.floor(Config.MaxHealth * (1 + (Config.HealthPerExtraPlayer or 0.7) * math.max(n - 1, 0)))
+end
+
 function F.run()
+	local n = math.max(#Players:GetPlayers(), 1)
+	humanoid.MaxHealth = scaledHealth(n)
+	humanoid.Health = humanoid.MaxHealth
+	print(("[BossFight] %d player(s): %d health"):format(n, humanoid.MaxHealth))
+	-- (someone joining mid-fight adds their share)
+	Players.PlayerAdded:Connect(function()
+		if not F.Alive then return end
+		local add = Config.MaxHealth * (Config.HealthPerExtraPlayer or 0.7)
+		humanoid.MaxHealth += add
+		humanoid.Health += add
+	end)
 	setPhase(1)
 	F.setInvulnerable(false)
 	F.fx("Start", { T0 = S.now() })
@@ -1237,6 +1094,10 @@ function F.run()
 		while transitioning and F.Alive do task.wait(0.1) end
 		local phase = F.phase()
 		local entry = pick(phase, last)
+		local forced = table.remove(F.Forced, 1)
+		if forced and attacks[forced.Module] then
+			entry = { Module = forced.Module, Weight = 0, Params = forced.Params or (forced.Module == "BigBang" and phase.UltimateParams) or nil }
+		end
 		if entry and #F.targets() > 0 then
 			last = entry.Module
 			local mod = attacks[entry.Module]

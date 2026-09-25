@@ -509,6 +509,10 @@ local function hideHud(on)
 			end
 		end)
 		pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false) end)
+		-- (the cutscene streams the world around the camera, far from where your character
+		-- stands; Roblox would pop its "gameplay paused / waiting for server" overlay over
+		-- the cutscene - and its QTEs - whenever the character's own area streams out)
+		pcall(function() game:GetService("GuiService"):SetGameplayPausedNotificationEnabled(false) end)
 		pcall(function() StarterGui:SetCore("ResetButtonCallback", false) end)
 		if controls then pcall(function() controls:Disable() end) end
 	else
@@ -518,6 +522,7 @@ local function hideHud(on)
 		end
 		hudState = {}
 		pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, true) end)
+		pcall(function() game:GetService("GuiService"):SetGameplayPausedNotificationEnabled(true) end)
 		pcall(function() StarterGui:SetCore("ResetButtonCallback", true) end)
 		if controls then pcall(function() controls:Enable() end) end
 	end

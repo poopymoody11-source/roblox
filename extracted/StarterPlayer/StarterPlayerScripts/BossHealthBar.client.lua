@@ -1,8 +1,8 @@
 --==================================================
 -- BOSS HUD  (CLIENT)
 --
--- Anti-Spiral boss bar (top centre) and the Spiral
--- Energy gauge (bottom left). Both appear when the
+-- Anti-Spiral boss bar (top centre). (The Spiral Energy
+-- gauge is retired and stays hidden.) It appears when the
 -- cutscene hands control back (player attribute
 -- "CutsceneDone"), with an intro animation.
 --
@@ -630,10 +630,8 @@ local function playIntro()
 	barScale.Scale = 1.06
 	tween(barScale, 0.4, { Scale = 1 }, Enum.EasingStyle.Back)
 
-	-- spiral gauge slides in from the left
-	gauge.Position = UDim2.new(-0.4, 0, 0.965, 0)
-	gauge.Visible = true
-	tween(gauge, 0.6, { Position = UDim2.new(0.02, 0, 0.965, 0) }, Enum.EasingStyle.Back)
+	-- (the spiral energy gauge is retired: it stays hidden)
+	gauge.Visible = false
 	introDone = true
 	chipTarget = pct
 end

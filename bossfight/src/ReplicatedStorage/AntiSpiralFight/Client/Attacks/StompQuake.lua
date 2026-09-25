@@ -68,6 +68,15 @@ function A.start(ctx, d)
 	end)
 	K.sfx(K.S.Rumble, 0.7, 0.8)
 	Warn.callout("STOMP QUAKE")
+	ctx.Fx.say("THE UNIVERSE TREMBLES\nAT MY STEP.", 1.2)
+	-- the cut-in: over the rim, down at the foot as it comes up... and down
+	ctx.Cam.cut(function(now)
+		local toBoss = S.flat(d.Origin - S.CENTER).Unit
+		local across = toBoss:Cross(Vector3.yAxis)
+		local foot = Rig:footGround(d.Foot)
+		local from = d.Origin - toBoss * 45 + across * 70 + Vector3.new(0, 30, 0)
+		return CFrame.lookAt(from, foot:Lerp(ctx.chest(), 0.45)), 66
+	end, d.T0 + 0.3, d.StompT + 0.35, 0.3)
 	Warn.pop("JUMP THE SHOCKWAVES!", Color3.fromRGB(255, 200, 220), false, Vector2.new(0.5, 0.3))
 
 	-- the rings: a wall of light (quads round the circle) + a glow on the floor
@@ -99,6 +108,9 @@ function A.start(ctx, d)
 			stomped = true
 			Fx.stomp(Rig:printAt(side, land, Rig.Feet[side].Yaw), 3)
 			Fx.blast(d.Origin, 30, Fx.VIOLET, { Sound = K.S.Boom, Shake = 3, Volume = 1.3 })
+			ctx.Fx.impact("WB", 0.05)
+			ctx.Cam.punch(-12, 0.4)
+			ctx.Fx.vfx("Big-Crack-01", d.Origin, 1.4, nil, 6)
 			K.sfx(K.S.Thunder, 0.8, 0.7)
 		end
 		local any = false

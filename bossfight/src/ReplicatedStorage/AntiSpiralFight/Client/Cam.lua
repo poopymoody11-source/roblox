@@ -30,6 +30,47 @@ function C.shake(amp, dur)
 	table.insert(shakes, { A = amp, D = dur, T0 = os.clock() })
 end
 
+-- a camera cut-in: from t0 to t1 (server time) the shot is fn(now) -> CFrame, fov,
+-- whipping in and back out over `blend` seconds. The big attacks use these to show
+-- the whole of what's coming.
+local cuts = {}
+local nowFn = os.clock
+function C.cut(fn, t0, t1, blend)
+	table.insert(cuts, { Fn = fn, T0 = t0, T1 = t1, B = blend or 0.25 })
+end
+function C.clearCuts() table.clear(cuts) end
+
+-- a punch of the field of view (negative = zoom in)
+local punches = {}
+function C.punch(amount, dur)
+	table.insert(punches, { A = amount, D = dur or 0.3, T0 = os.clock() })
+end
+local function punchOffset()
+	local now = os.clock()
+	local off = 0
+	for i = #punches, 1, -1 do
+		local p = punches[i]
+		local u = (now - p.T0) / p.D
+		if u >= 1 then table.remove(punches, i) else off += p.A * (1 - u) ^ 2 end
+	end
+	return off
+end
+
+local function activeCut()
+	local now = nowFn()
+	for i = #cuts, 1, -1 do
+		local c = cuts[i]
+		if now > c.T1 then
+			table.remove(cuts, i)
+		elseif now >= c.T0 then
+			local b = math.min((now - c.T0) / c.B, (c.T1 - now) / c.B, 1)
+			b = b * b * (3 - 2 * b)
+			return c, b, now
+		end
+	end
+	return nil
+end
+
 local function shakeOffset()
 	local now = os.clock()
 	local off = Vector3.zero
@@ -51,6 +92,19 @@ local function step(dt)
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	local cut, cb, cnow = activeCut()
+	if cut and enabled then
+		-- (a cut-in plays whatever the player's own camera setting)
+		cam.CameraType = Enum.CameraType.Scriptable
+		local ok, cf, fov = pcall(cut.Fn, cnow)
+		if ok and cf then
+			local base = camPos and CFrame.lookAt(camPos, camPos + (aimDir or cf.LookVector)) or cam.CFrame
+			local mixed = base:Lerp(cf, cb)
+			cam.CFrame = mixed * CFrame.new(shakeOffset())
+			cam.FieldOfView = FOV + ((fov or FOV) - FOV) * cb + punchOffset()
+			return
+		end
+	end
 	if not (enabled and wanted and root and hum and hum.Health > 0 and focusFn) then
 		if cam.CameraType == Enum.CameraType.Scriptable and enabled then
 			cam.CameraType = Enum.CameraType.Custom
@@ -79,11 +133,12 @@ local function step(dt)
 	aimDir = aimDir and aimDir:Lerp(aim, 1 - math.exp(-dt * 7)).Unit or aim
 	local pos = camPos + shakeOffset()
 	cam.CFrame = CFrame.lookAt(pos, pos + aimDir)
-	cam.FieldOfView = cam.FieldOfView + (FOV - cam.FieldOfView) * (1 - math.exp(-dt * 4))
+	cam.FieldOfView = cam.FieldOfView + (FOV - cam.FieldOfView) * (1 - math.exp(-dt * 4)) + punchOffset() * 0.25
 end
 
-function C.start(fn)
+function C.start(fn, now)
 	focusFn = fn
+	nowFn = now or nowFn
 	if enabled then return end
 	enabled = true
 	RunService:BindToRenderStep("BossFightCamera", Enum.RenderPriority.Camera.Value + 2, step)

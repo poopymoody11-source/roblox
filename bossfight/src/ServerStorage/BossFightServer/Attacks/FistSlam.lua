@@ -66,6 +66,7 @@ function A.Run(F, P, token)
 				Name = "FIST",
 				Target = z.Target,
 				Knock = 70,
+				Counter = 25, CounterPerfect = 40,
 			})
 			table.insert(list, { Id = hit.Id, P = z.P, R = P.ZoneR, T = hit.T, Target = z.Target })
 		end
@@ -89,6 +90,8 @@ function A.Run(F, P, token)
 			Name = "HAMMER OF DESPAIR",
 			Target = "all",
 			Knock = 110,
+			Qte = F.qte.randomChord(3),
+			Counter = 100, CounterPerfect = 160,
 		})
 		F.fx("FistHammer", { T0 = waveT, T = hit.T, Id = hit.Id, P = p, R = P.HammerR })
 		waveT = hit.T + 0.6
