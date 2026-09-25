@@ -1,0 +1,718 @@
+--==================================================
+-- BOSS HUD  (CLIENT)
+--
+-- Anti-Spiral boss bar (top centre) and the Spiral
+-- Energy gauge (bottom left). Both appear when the
+-- cutscene hands control back (player attribute
+-- "CutsceneDone"), with an intro animation.
+--
+-- Boss: found by the "Boss" CollectionService tag that
+-- BossController adds; reads its Humanoid plus the
+-- DisplayName / Phase / Invulnerable / Defeated attributes.
+-- Spiral energy: player attributes SpiralEnergy / SpiralEnergyMax
+-- (set by ServerScriptService.SpiralEnergyService).
+--==================================================
+
+local Players = game:GetService("Players")
+local CollectionService = game:GetService("CollectionService")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+
+--------------------------------------------------
+-- palette: the Anti-Spiral is void black with cold
+-- electric blue; spiral power is Gurren green
+--------------------------------------------------
+local VOID = Color3.fromRGB(6, 6, 16)
+local VOID2 = Color3.fromRGB(16, 14, 34)
+local ICE = Color3.fromRGB(120, 210, 255)
+local DEEP = Color3.fromRGB(40, 70, 255)
+local VIOLET = Color3.fromRGB(150, 80, 255)
+local WHITE = Color3.fromRGB(240, 246, 255)
+local CHIP = Color3.fromRGB(255, 80, 150)
+local SPIRAL = Color3.fromRGB(80, 255, 120)
+local SPIRAL_DARK = Color3.fromRGB(10, 60, 30)
+
+local NAME_FONT = Enum.Font.Sarpanch
+local UI_FONT = Enum.Font.GothamBlack
+
+local function tween(obj, time, props, style, dir)
+	local t = TweenService:Create(obj, TweenInfo.new(time, style or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out), props)
+	t:Play()
+	return t
+end
+
+local function corner(p, r) local c = Instance.new("UICorner") c.CornerRadius = r or UDim.new(0.2, 0) c.Parent = p return c end
+local function stroke(p, col, th, tr)
+	local s = Instance.new("UIStroke") s.Color = col s.Thickness = th or 2 s.Transparency = tr or 0
+	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border s.Parent = p return s
+end
+local function textStroke(p, th)
+	local s = Instance.new("UIStroke") s.Color = Color3.new(0, 0, 0) s.Thickness = th or 2 s.Parent = p return s
+end
+
+--------------------------------------------------
+-- root gui
+--------------------------------------------------
+local gui = Instance.new("ScreenGui")
+gui.Name = "BossHUD"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.DisplayOrder = 20
+gui.Enabled = false
+gui.Parent = player:WaitForChild("PlayerGui")
+local hudWanted = false
+
+--==================================================
+-- BOSS BAR
+--==================================================
+local bar = Instance.new("Frame")
+bar.Name = "BossBar"
+bar.AnchorPoint = Vector2.new(0.5, 0)
+bar.Position = UDim2.fromScale(0.5, 0.045)
+bar.Size = UDim2.fromScale(0.56, 0.11)
+bar.BackgroundTransparency = 1
+bar.Parent = gui
+local barAspect = Instance.new("UIAspectRatioConstraint") barAspect.AspectRatio = 8.5 barAspect.Parent = bar
+local barCap = Instance.new("UISizeConstraint") barCap.MaxSize = Vector2.new(980, 116) barCap.Parent = bar
+local barScale = Instance.new("UIScale") barScale.Parent = bar
+
+-- name plate
+local nameLabel = Instance.new("TextLabel")
+nameLabel.BackgroundTransparency = 1
+nameLabel.Size = UDim2.fromScale(0.62, 0.36)
+nameLabel.Position = UDim2.fromScale(0.19, 0)
+nameLabel.Font = NAME_FONT
+nameLabel.TextScaled = true
+nameLabel.TextColor3 = WHITE
+nameLabel.Text = ""
+nameLabel.Parent = bar
+local nameStroke = textStroke(nameLabel, 2.5)
+local nameGrad = Instance.new("UIGradient")
+nameGrad.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, ICE),
+	ColorSequenceKeypoint.new(0.5, WHITE),
+	ColorSequenceKeypoint.new(1, VIOLET),
+})
+nameGrad.Parent = nameLabel
+
+local subLabel = Instance.new("TextLabel")
+subLabel.BackgroundTransparency = 1
+subLabel.Size = UDim2.fromScale(0.5, 0.16)
+subLabel.Position = UDim2.fromScale(0.25, 0.83)
+subLabel.Font = Enum.Font.GothamBold
+subLabel.TextScaled = true
+subLabel.TextColor3 = ICE
+subLabel.TextTransparency = 1
+subLabel.Text = "PHASE 1  //  THE END OF ALL SPIRALS"
+subLabel.Parent = bar
+textStroke(subLabel, 1.5)
+
+-- the bar housing: angled ends made from rotated squares
+local housing = Instance.new("Frame")
+housing.Name = "Housing"
+housing.AnchorPoint = Vector2.new(0.5, 0.5)
+housing.Position = UDim2.fromScale(0.5, 0.6)
+housing.Size = UDim2.fromScale(0, 0.3)
+housing.BackgroundColor3 = VOID
+housing.BorderSizePixel = 0
+housing.ClipsDescendants = true
+housing.Parent = bar
+corner(housing, UDim.new(0.25, 0))
+local housingStroke = stroke(housing, ICE, 2, 0)
+local housingGrad = Instance.new("UIGradient")
+housingGrad.Color = ColorSequence.new(VOID2, VOID)
+housingGrad.Rotation = 90
+housingGrad.Parent = housing
+
+local function endCap(side)
+	local cap = Instance.new("Frame")
+	cap.AnchorPoint = Vector2.new(0.5, 0.5)
+	cap.Position = UDim2.fromScale(side < 0 and 0.08 or 0.92, 0.6)
+	cap.Size = UDim2.fromScale(0.05, 0.4)
+	cap.Rotation = 45
+	cap.BackgroundColor3 = VOID
+	cap.BorderSizePixel = 0
+	cap.BackgroundTransparency = 1
+	cap.Parent = bar
+	local ar = Instance.new("UIAspectRatioConstraint") ar.Parent = cap
+	local s = stroke(cap, ICE, 2, 1)
+	local core = Instance.new("Frame")
+	core.AnchorPoint = Vector2.new(0.5, 0.5)
+	core.Position = UDim2.fromScale(0.5, 0.5)
+	core.Size = UDim2.fromScale(0.4, 0.4)
+	core.BackgroundColor3 = ICE
+	core.BackgroundTransparency = 1
+	core.BorderSizePixel = 0
+	core.Parent = cap
+	return cap, s, core
+end
+local capL, capLStroke, capLCore = endCap(-1)
+local capR, capRStroke, capRCore = endCap(1)
+
+-- chip (delayed damage) and fill
+local chip = Instance.new("Frame")
+chip.Name = "Chip"
+chip.Size = UDim2.fromScale(0, 1)
+chip.BackgroundColor3 = CHIP
+chip.BorderSizePixel = 0
+chip.Parent = housing
+
+local fill = Instance.new("Frame")
+fill.Name = "Fill"
+fill.Size = UDim2.fromScale(0, 1)
+fill.BackgroundColor3 = WHITE
+fill.BorderSizePixel = 0
+fill.Parent = housing
+local fillGrad = Instance.new("UIGradient")
+fillGrad.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, DEEP),
+	ColorSequenceKeypoint.new(0.45, ICE),
+	ColorSequenceKeypoint.new(0.55, WHITE),
+	ColorSequenceKeypoint.new(0.65, ICE),
+	ColorSequenceKeypoint.new(1, DEEP),
+})
+fillGrad.Parent = fill
+
+-- inner shading to give the fill depth
+local sheen = Instance.new("Frame")
+sheen.BackgroundColor3 = Color3.new(1, 1, 1)
+sheen.BackgroundTransparency = 0.75
+sheen.BorderSizePixel = 0
+sheen.Size = UDim2.fromScale(1, 0.35)
+sheen.Parent = fill
+local sheenGrad = Instance.new("UIGradient")
+sheenGrad.Transparency = NumberSequence.new(0.3, 1)
+sheenGrad.Rotation = 90
+sheenGrad.Parent = sheen
+
+-- hit flash overlay on the fill
+local hitFlash = Instance.new("Frame")
+hitFlash.BackgroundColor3 = Color3.new(1, 1, 1)
+hitFlash.BackgroundTransparency = 1
+hitFlash.BorderSizePixel = 0
+hitFlash.Size = UDim2.fromScale(1, 1)
+hitFlash.ZIndex = 3
+hitFlash.Parent = fill
+
+-- tick marks every 10%, the phase line at 50%
+for i = 1, 9 do
+	local tick = Instance.new("Frame")
+	tick.BackgroundColor3 = VOID
+	tick.BackgroundTransparency = i == 5 and 0 or 0.55
+	tick.BorderSizePixel = 0
+	tick.AnchorPoint = Vector2.new(0.5, 0)
+	tick.Position = UDim2.fromScale(i / 10, 0)
+	tick.Size = UDim2.new(0, i == 5 and 3 or 1, 1, 0)
+	tick.ZIndex = 4
+	tick.Parent = housing
+end
+
+-- light sweep that runs across the bar
+local sweep = Instance.new("Frame")
+sweep.BackgroundColor3 = Color3.new(1, 1, 1)
+sweep.BorderSizePixel = 0
+sweep.Size = UDim2.fromScale(0.12, 1)
+sweep.Position = UDim2.fromScale(-0.2, 0)
+sweep.ZIndex = 5
+sweep.Parent = housing
+local sweepGrad = Instance.new("UIGradient")
+sweepGrad.Transparency = NumberSequence.new({
+	NumberSequenceKeypoint.new(0, 1),
+	NumberSequenceKeypoint.new(0.5, 0.45),
+	NumberSequenceKeypoint.new(1, 1),
+})
+sweepGrad.Rotation = 20
+sweepGrad.Parent = sweep
+
+-- health numbers
+local hpLabel = Instance.new("TextLabel")
+hpLabel.BackgroundTransparency = 1
+hpLabel.Size = UDim2.fromScale(0.96, 0.7)
+hpLabel.Position = UDim2.fromScale(0.02, 0.15)
+hpLabel.Font = UI_FONT
+hpLabel.TextScaled = true
+hpLabel.TextColor3 = WHITE
+hpLabel.TextXAlignment = Enum.TextXAlignment.Right
+hpLabel.TextTransparency = 1
+hpLabel.ZIndex = 6
+hpLabel.Text = ""
+hpLabel.Parent = housing
+local hpStroke = textStroke(hpLabel, 1.5)
+hpStroke.Transparency = 1
+
+-- invulnerable overlay: moving diagonal stripes + label
+local shield = Instance.new("Frame")
+shield.BackgroundColor3 = VIOLET
+shield.BackgroundTransparency = 1
+shield.BorderSizePixel = 0
+shield.Size = UDim2.fromScale(1, 1)
+shield.ZIndex = 7
+shield.Parent = housing
+local shieldGrad = Instance.new("UIGradient")
+do
+	local kp = {}
+	for i = 0, 10 do
+		table.insert(kp, NumberSequenceKeypoint.new(i / 10, (i % 2 == 0) and 0.35 or 1))
+	end
+	shieldGrad.Transparency = NumberSequence.new(kp)
+end
+shieldGrad.Rotation = 35
+shieldGrad.Parent = shield
+local shieldLabel = Instance.new("TextLabel")
+shieldLabel.BackgroundTransparency = 1
+shieldLabel.Size = UDim2.fromScale(0.5, 0.7)
+shieldLabel.Position = UDim2.fromScale(0.02, 0.15)
+shieldLabel.Font = UI_FONT
+shieldLabel.TextScaled = true
+shieldLabel.TextColor3 = WHITE
+shieldLabel.TextXAlignment = Enum.TextXAlignment.Left
+shieldLabel.Text = "INVULNERABLE"
+shieldLabel.TextTransparency = 1
+shieldLabel.ZIndex = 8
+shieldLabel.Parent = housing
+local shieldStroke = textStroke(shieldLabel, 1.5)
+shieldStroke.Transparency = 1
+
+-- big centre banner for phase changes / defeat
+local banner = Instance.new("TextLabel")
+banner.BackgroundTransparency = 1
+banner.AnchorPoint = Vector2.new(0.5, 0.5)
+banner.Position = UDim2.fromScale(0.5, 0.36)
+banner.Size = UDim2.fromScale(0.7, 0.12)
+banner.Font = NAME_FONT
+banner.TextScaled = true
+banner.TextColor3 = WHITE
+banner.TextTransparency = 1
+banner.Text = ""
+banner.Parent = gui
+local bannerStroke = textStroke(banner, 3)
+bannerStroke.Transparency = 1
+local bannerGrad = nameGrad:Clone()
+bannerGrad.Parent = banner
+local bannerScale = Instance.new("UIScale") bannerScale.Parent = banner
+
+local function showBanner(text, hold)
+	banner.Text = text
+	bannerScale.Scale = 2.2
+	banner.TextTransparency = 1
+	bannerStroke.Transparency = 1
+	tween(bannerScale, 0.35, { Scale = 1 }, Enum.EasingStyle.Back)
+	tween(banner, 0.2, { TextTransparency = 0 })
+	tween(bannerStroke, 0.2, { Transparency = 0 })
+	task.delay(hold or 1.6, function()
+		tween(banner, 0.5, { TextTransparency = 1 })
+		tween(bannerStroke, 0.5, { Transparency = 1 })
+	end)
+end
+
+--==================================================
+-- SPIRAL ENERGY GAUGE (bottom left)
+--==================================================
+local gauge = Instance.new("Frame")
+gauge.Name = "SpiralEnergy"
+gauge.AnchorPoint = Vector2.new(0, 1)
+gauge.Position = UDim2.new(0.02, 0, 0.965, 0)
+gauge.Size = UDim2.fromScale(0.3, 0.1)
+gauge.BackgroundTransparency = 1
+gauge.Parent = gui
+local gaugeAspect = Instance.new("UIAspectRatioConstraint") gaugeAspect.AspectRatio = 4.4 gaugeAspect.Parent = gauge
+local gaugeCap = Instance.new("UISizeConstraint") gaugeCap.MaxSize = Vector2.new(420, 96) gaugeCap.MinSize = Vector2.new(180, 40) gaugeCap.Parent = gauge
+local gaugeScale = Instance.new("UIScale") gaugeScale.Parent = gauge
+
+-- spinning spiral emblem (concentric rotating rings with gradient arcs)
+local emblem = Instance.new("Frame")
+emblem.BackgroundColor3 = SPIRAL_DARK
+emblem.Size = UDim2.fromScale(0.23, 1)
+emblem.Parent = gauge
+local emAspect = Instance.new("UIAspectRatioConstraint") emAspect.Parent = emblem
+corner(emblem, UDim.new(0.5, 0))
+local emStroke = stroke(emblem, SPIRAL, 3)
+local rings = {}
+for i = 1, 3 do
+	local ring = Instance.new("Frame")
+	ring.AnchorPoint = Vector2.new(0.5, 0.5)
+	ring.Position = UDim2.fromScale(0.5, 0.5)
+	local sz = 1 - i * 0.22
+	ring.Size = UDim2.fromScale(sz, sz)
+	ring.BackgroundColor3 = SPIRAL
+	ring.BackgroundTransparency = 0
+	ring.Parent = emblem
+	corner(ring, UDim.new(0.5, 0))
+	local g = Instance.new("UIGradient")
+	g.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.45, 0.85),
+		NumberSequenceKeypoint.new(0.5, 1),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	g.Parent = ring
+	table.insert(rings, { Frame = ring, Grad = g, Speed = 90 + i * 70, Dir = (i % 2 == 0) and -1 or 1 })
+end
+local emCore = Instance.new("Frame")
+emCore.AnchorPoint = Vector2.new(0.5, 0.5)
+emCore.Position = UDim2.fromScale(0.5, 0.5)
+emCore.Size = UDim2.fromScale(0.22, 0.22)
+emCore.BackgroundColor3 = WHITE
+emCore.Parent = emblem
+corner(emCore, UDim.new(0.5, 0))
+
+local gaugeTitle = Instance.new("TextLabel")
+gaugeTitle.BackgroundTransparency = 1
+gaugeTitle.Position = UDim2.fromScale(0.27, 0.02)
+gaugeTitle.Size = UDim2.fromScale(0.5, 0.34)
+gaugeTitle.Font = NAME_FONT
+gaugeTitle.TextScaled = true
+gaugeTitle.TextXAlignment = Enum.TextXAlignment.Left
+gaugeTitle.TextColor3 = SPIRAL
+gaugeTitle.Text = "SPIRAL ENERGY"
+gaugeTitle.Parent = gauge
+textStroke(gaugeTitle, 1.5)
+
+local gaugeCount = Instance.new("TextLabel")
+gaugeCount.BackgroundTransparency = 1
+gaugeCount.Position = UDim2.fromScale(0.78, 0.02)
+gaugeCount.Size = UDim2.fromScale(0.2, 0.34)
+gaugeCount.Font = UI_FONT
+gaugeCount.TextScaled = true
+gaugeCount.TextXAlignment = Enum.TextXAlignment.Right
+gaugeCount.TextColor3 = WHITE
+gaugeCount.Text = "0/5"
+gaugeCount.Parent = gauge
+textStroke(gaugeCount, 1.5)
+
+local cellHolder = Instance.new("Frame")
+cellHolder.BackgroundTransparency = 1
+cellHolder.Position = UDim2.fromScale(0.27, 0.44)
+cellHolder.Size = UDim2.fromScale(0.71, 0.5)
+cellHolder.Parent = gauge
+local cellLayout = Instance.new("UIListLayout")
+cellLayout.FillDirection = Enum.FillDirection.Horizontal
+cellLayout.Padding = UDim.new(0.025, 0)
+cellLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+cellLayout.Parent = cellHolder
+
+local cells = {}
+local function buildCells(max)
+	for _, c in ipairs(cells) do c.Frame:Destroy() end
+	cells = {}
+	for i = 1, max do
+		local cell = Instance.new("Frame")
+		cell.Size = UDim2.fromScale((1 - 0.025 * (max - 1)) / max, 1)
+		cell.BackgroundColor3 = SPIRAL_DARK
+		cell.BorderSizePixel = 0
+		cell.LayoutOrder = i
+		cell.Parent = cellHolder
+		corner(cell, UDim.new(0.3, 0))
+		local cs = stroke(cell, SPIRAL, 2, 0.5)
+		-- slanted like a drill thread
+		local glow = Instance.new("Frame")
+		glow.AnchorPoint = Vector2.new(0.5, 0.5)
+		glow.Position = UDim2.fromScale(0.5, 0.5)
+		glow.Size = UDim2.fromScale(0, 0)
+		glow.BackgroundColor3 = SPIRAL
+		glow.BorderSizePixel = 0
+		glow.Parent = cell
+		corner(glow, UDim.new(0.3, 0))
+		local gg = Instance.new("UIGradient")
+		gg.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(40, 200, 90)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(200, 255, 200)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(40, 200, 90)),
+		})
+		gg.Rotation = 60
+		gg.Parent = glow
+		local cscale = Instance.new("UIScale") cscale.Parent = cell
+		table.insert(cells, { Frame = cell, Glow = glow, Stroke = cs, Grad = gg, Scale = cscale, On = false })
+	end
+end
+
+local function setEnergy(value, max, animate)
+	if #cells ~= max then buildCells(max) end
+	gaugeCount.Text = tostring(value) .. "/" .. tostring(max)
+	for i, c in ipairs(cells) do
+		local on = i <= value
+		if on ~= c.On then
+			c.On = on
+			if on then
+				if animate then
+					c.Scale.Scale = 1.5
+					tween(c.Scale, 0.35, { Scale = 1 }, Enum.EasingStyle.Back)
+				end
+				tween(c.Glow, animate and 0.25 or 0, { Size = UDim2.fromScale(1, 1) })
+				tween(c.Stroke, 0.25, { Transparency = 0 })
+			else
+				tween(c.Glow, animate and 0.2 or 0, { Size = UDim2.fromScale(0, 0) })
+				tween(c.Stroke, 0.2, { Transparency = 0.5 })
+			end
+		end
+	end
+	if value >= max and animate then
+		gaugeScale.Scale = 1.12
+		tween(gaugeScale, 0.4, { Scale = 1 }, Enum.EasingStyle.Back)
+	end
+end
+
+local function readEnergy(animate)
+	local max = player:GetAttribute("SpiralEnergyMax") or 5
+	local value = math.clamp(player:GetAttribute("SpiralEnergy") or 0, 0, max)
+	setEnergy(value, max, animate)
+end
+player:GetAttributeChangedSignal("SpiralEnergy"):Connect(function() readEnergy(true) end)
+player:GetAttributeChangedSignal("SpiralEnergyMax"):Connect(function() readEnergy(false) end)
+readEnergy(false)
+
+--==================================================
+-- BOSS BINDING
+--==================================================
+local boss, humanoid
+local shownHealth = 1
+local chipTarget, chipDelayUntil = 1, 0
+local introDone = false
+local conns = {}
+
+local function formatHp(h, m)
+	local function f(n)
+		if n >= 1e6 then return string.format("%.1fM", n / 1e6) end
+		if n >= 1e4 then return string.format("%.1fK", n / 1e3) end
+		return tostring(math.floor(n + 0.5))
+	end
+	return f(h) .. " / " .. f(m)
+end
+
+local lastHealth
+local function onHealth()
+	if not humanoid then return end
+	local pct = math.clamp(humanoid.Health / math.max(humanoid.MaxHealth, 1), 0, 1)
+	hpLabel.Text = formatHp(math.max(humanoid.Health, 0), humanoid.MaxHealth)
+	if lastHealth and humanoid.Health < lastHealth and introDone then
+		-- hit: flash the fill, jolt the bar, chip bar waits then drains
+		hitFlash.BackgroundTransparency = 0.2
+		tween(hitFlash, 0.25, { BackgroundTransparency = 1 })
+		local base = UDim2.fromScale(0.5, 0.045)
+		bar.Position = base + UDim2.fromOffset(math.random(-6, 6), math.random(-3, 3))
+		tween(bar, 0.12, { Position = base })
+		chipDelayUntil = os.clock() + 0.45
+	end
+	lastHealth = humanoid.Health
+	chipTarget = pct
+	if introDone then
+		tween(fill, 0.18, { Size = UDim2.fromScale(pct, 1) })
+	end
+	shownHealth = pct
+end
+
+local function onInvulnerable()
+	local on = boss and boss:GetAttribute("Invulnerable") == true
+	tween(shield, 0.3, { BackgroundTransparency = on and 0.35 or 1 })
+	tween(shieldLabel, 0.3, { TextTransparency = on and 0 or 1 })
+	tween(shieldStroke, 0.3, { Transparency = on and 0 or 1 })
+	tween(housingStroke, 0.3, { Color = on and VIOLET or ICE })
+end
+
+local phaseShown = 0
+local function onPhase()
+	local phase = boss and boss:GetAttribute("Phase") or 0
+	if phase < 1 then phase = 1 end
+	subLabel.Text = "PHASE " .. phase .. "  //  " .. (phase >= 2 and "DESPAIR OF THE UNIVERSE" or "THE END OF ALL SPIRALS")
+	if introDone and phase > phaseShown and phaseShown > 0 then
+		showBanner("PHASE " .. phase, 1.8)
+		-- phase 2 turns the bar violet
+		fillGrad.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(90, 20, 200)),
+			ColorSequenceKeypoint.new(0.45, VIOLET),
+			ColorSequenceKeypoint.new(0.55, WHITE),
+			ColorSequenceKeypoint.new(0.65, VIOLET),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(90, 20, 200)),
+		})
+		barScale.Scale = 1.08
+		tween(barScale, 0.5, { Scale = 1 }, Enum.EasingStyle.Elastic)
+	end
+	phaseShown = phase
+end
+
+local function onDefeated()
+	if boss and boss:GetAttribute("Defeated") then
+		showBanner((boss:GetAttribute("DisplayName") or "ANTI-SPIRAL"):upper() .. " DEFEATED", 3.5)
+		tween(fill, 0.4, { Size = UDim2.fromScale(0, 1) })
+		task.delay(1.5, function()
+			tween(barScale, 0.6, { Scale = 0.6 }, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+			for _, d in ipairs(bar:GetDescendants()) do
+				if d:IsA("GuiObject") then
+					pcall(function() tween(d, 0.6, { BackgroundTransparency = 1 }) end)
+					if d:IsA("TextLabel") then tween(d, 0.6, { TextTransparency = 1 }) end
+				elseif d:IsA("UIStroke") then
+					tween(d, 0.6, { Transparency = 1 })
+				end
+			end
+		end)
+	end
+end
+
+local function bind(model)
+	for _, c in ipairs(conns) do c:Disconnect() end
+	conns = {}
+	boss = model
+	humanoid = model:FindFirstChildOfClass("Humanoid") or model:WaitForChild("Humanoid", 10)
+	if not humanoid then return end
+	table.insert(conns, humanoid.HealthChanged:Connect(onHealth))
+	table.insert(conns, humanoid:GetPropertyChangedSignal("MaxHealth"):Connect(onHealth))
+	table.insert(conns, model:GetAttributeChangedSignal("Invulnerable"):Connect(onInvulnerable))
+	table.insert(conns, model:GetAttributeChangedSignal("Phase"):Connect(onPhase))
+	table.insert(conns, model:GetAttributeChangedSignal("Defeated"):Connect(onDefeated))
+	lastHealth = humanoid.Health
+	onHealth()
+	onInvulnerable()
+	onPhase()
+end
+
+--==================================================
+-- INTRO ANIMATION
+--==================================================
+local function glitchType(label, text, duration)
+	local chars = "!<>-_/[]{}=+*^?#%01XZ"
+	local start = os.clock()
+	while os.clock() - start < duration do
+		local p = (os.clock() - start) / duration
+		local revealed = math.floor(#text * p)
+		local out = text:sub(1, revealed)
+		for i = revealed + 1, #text do
+			if text:sub(i, i) == " " then
+				out = out .. " "
+			else
+				local r = math.random(1, #chars)
+				out = out .. chars:sub(r, r)
+			end
+		end
+		label.Text = out
+		RunService.RenderStepped:Wait()
+	end
+	label.Text = text
+end
+
+local function playIntro()
+	hudWanted = true
+	gui.Enabled = true
+	local display = (boss and boss:GetAttribute("DisplayName") or "Anti-Spiral"):upper()
+	local spaced = display:gsub(".", "%0 "):sub(1, -2)
+
+	-- 1. a thin line of light cracks open across the screen
+	housing.Size = UDim2.fromScale(0, 0.04)
+	housing.BackgroundColor3 = WHITE
+	tween(housing, 0.45, { Size = UDim2.fromScale(0.8, 0.04) }, Enum.EasingStyle.Quart)
+	task.wait(0.45)
+	-- 2. it opens into the housing
+	tween(housing, 0.3, { Size = UDim2.fromScale(0.8, 0.3), BackgroundColor3 = VOID }, Enum.EasingStyle.Back)
+	for _, c in ipairs({ { capL, capLStroke, capLCore }, { capR, capRStroke, capRCore } }) do
+		c[1].Rotation = -135
+		tween(c[1], 0.5, { Rotation = 45, BackgroundTransparency = 0 }, Enum.EasingStyle.Back)
+		tween(c[2], 0.4, { Transparency = 0 })
+		tween(c[3], 0.4, { BackgroundTransparency = 0 })
+	end
+	task.wait(0.3)
+	-- 3. the name glitches into existence
+	task.spawn(glitchType, nameLabel, spaced, 0.9)
+	task.wait(0.4)
+	-- 4. the fill surges from empty to current health
+	local pct = humanoid and math.clamp(humanoid.Health / math.max(humanoid.MaxHealth, 1), 0, 1) or 1
+	fill.Size = UDim2.fromScale(0, 1)
+	chip.Size = UDim2.fromScale(0, 1)
+	tween(fill, 1.1, { Size = UDim2.fromScale(pct, 1) }, Enum.EasingStyle.Quart)
+	tween(chip, 1.1, { Size = UDim2.fromScale(pct, 1) }, Enum.EasingStyle.Quart)
+	task.wait(1.1)
+	sweep.Position = UDim2.fromScale(-0.2, 0)
+	tween(sweep, 0.6, { Position = UDim2.fromScale(1.1, 0) })
+	tween(subLabel, 0.4, { TextTransparency = 0 })
+	tween(hpLabel, 0.4, { TextTransparency = 0 })
+	tween(hpStroke, 0.4, { Transparency = 0 })
+	barScale.Scale = 1.06
+	tween(barScale, 0.4, { Scale = 1 }, Enum.EasingStyle.Back)
+
+	-- spiral gauge slides in from the left
+	gauge.Position = UDim2.new(-0.4, 0, 0.965, 0)
+	gauge.Visible = true
+	tween(gauge, 0.6, { Position = UDim2.new(0.02, 0, 0.965, 0) }, Enum.EasingStyle.Back)
+	introDone = true
+	chipTarget = pct
+end
+
+--==================================================
+-- IDLE ANIMATION
+--==================================================
+local t = 0
+local nextSweep = 3
+RunService.RenderStepped:Connect(function(dt)
+	-- never draw over a cutscene (e.g. a replay after the fight began)
+	local cs = player.PlayerGui:FindFirstChild("CutsceneGui")
+	local inCutscene = cs ~= nil and cs.Enabled
+	gui.Enabled = hudWanted and not inCutscene
+	if not gui.Enabled then return end
+	t += dt
+	-- shimmering energy running through the fill
+	fillGrad.Offset = Vector2.new(math.sin(t * 0.8) * 0.35, 0)
+	nameGrad.Offset = Vector2.new(math.sin(t * 0.6) * 0.5, 0)
+	shieldGrad.Offset = Vector2.new((t * 0.4) % 0.2, 0)
+	-- housing outline breathes
+	housingStroke.Thickness = 2 + math.sin(t * 2.2) * 0.8
+	-- end caps spin slowly
+	if introDone then
+		capL.Rotation = 45 + t * 25
+		capR.Rotation = 45 - t * 25
+	end
+	-- chip drains after the delay
+	if introDone and os.clock() > chipDelayUntil then
+		local cur = chip.Size.X.Scale
+		if cur > chipTarget then
+			chip.Size = UDim2.fromScale(math.max(chipTarget, cur - dt * 0.35), 1)
+		else
+			chip.Size = UDim2.fromScale(chipTarget, 1)
+		end
+	end
+	-- low health: the bar pulses
+	if introDone and shownHealth < 0.25 and shownHealth > 0 then
+		housingStroke.Color = ICE:Lerp(CHIP, (math.sin(t * 6) + 1) / 2)
+	end
+	-- periodic light sweep
+	if introDone and t > nextSweep then
+		nextSweep = t + 4 + math.random() * 2
+		sweep.Position = UDim2.fromScale(-0.2, 0)
+		tween(sweep, 0.7, { Position = UDim2.fromScale(1.1, 0) })
+	end
+	-- spiral emblem
+	for _, r in ipairs(rings) do
+		r.Grad.Rotation = (r.Grad.Rotation + dt * r.Speed * r.Dir) % 360
+	end
+	local full = (player:GetAttribute("SpiralEnergy") or 0) >= (player:GetAttribute("SpiralEnergyMax") or 5)
+	emStroke.Thickness = full and (3 + math.sin(t * 8) * 1.5) or 3
+	for i, c in ipairs(cells) do
+		if c.On then
+			c.Grad.Offset = Vector2.new(math.sin(t * 3 + i * 0.7) * 0.4, 0)
+		end
+	end
+end)
+
+--==================================================
+-- START
+--==================================================
+local function findBoss()
+	local tagged = CollectionService:GetTagged("Boss")
+	return tagged[1]
+end
+
+local started = false
+local function tryStart()
+	if started then return end
+	if player:GetAttribute("CutsceneDone") ~= true then return end
+	local model = findBoss()
+	if not model then return end
+	started = true
+	gauge.Visible = false
+	bind(model)
+	task.spawn(playIntro)
+end
+
+player:GetAttributeChangedSignal("CutsceneDone"):Connect(tryStart)
+CollectionService:GetInstanceAddedSignal("Boss"):Connect(function() tryStart() end)
+tryStart()

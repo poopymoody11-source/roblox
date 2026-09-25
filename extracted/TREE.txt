@@ -1,0 +1,592 @@
+AssetService [AssetService]
+AvatarSettings [AvatarSettings]
+  DefaultAvatarRules [AvatarRules]
+    … 1×AvatarBodyRules, 1×AvatarCollisionRules, 1×AvatarAbilityRules, 1×AvatarAnimationRules, 1×AvatarAccessoryRules, 1×AvatarClothingRules
+CSGDictionaryService [CSGDictionaryService]
+Chat [Chat]
+CollectionService [CollectionService]
+ConfigureServerService [ConfigureServerService]
+ContextActionService [ContextActionService]
+CookiesService [CookiesService]
+DataStoreService [DataStoreService]
+Debris [Debris]
+FilteredSelection [Instance]
+GamePassService [GamePassService]
+GuidRegistryService [GuidRegistryService]
+HttpService [HttpService]
+InsertService [InsertService]
+  InsertionHash [StringValue]
+Instance [LodDataService]
+Instance [ScriptService]
+Instance [TimerService]
+Lighting [Lighting]
+  SunRays [SunRaysEffect]
+  Bloom [BloomEffect]
+  DepthOfField [DepthOfFieldEffect]
+  RealmSky [Sky]
+  Atmosphere [Atmosphere]
+LocalizationService [LocalizationService]
+LuaWebService [LuaWebService]
+MaterialService [MaterialService]
+  Studs [MaterialVariant]
+  2022 Stud [MaterialVariant]
+NonReplicatedCSGDictionaryService [NonReplicatedCSGDictionaryService]
+Packages [Packages]
+PermissionsService [PermissionsService]
+PhysicsService [PhysicsService]
+PlayerEmulatorService [PlayerEmulatorService]
+Players [Players]
+ProximityPromptService [ProximityPromptService]
+ReplicatedFirst [ReplicatedFirst]
+  CutsceneCover [LocalScript]  (26 lines)
+ReplicatedStorage [ReplicatedStorage]
+  BossFight [Folder]
+    … 1×RemoteEvent
+  SwingAnims [Folder]
+    … 3×Animation
+  BatAssets [Folder]
+    … 33×Model, 17×Part
+  BatRemotes [Folder]
+    … 4×RemoteEvent
+  PlayerProjectiles [Folder]
+  PlayerAnims [Folder]
+    … 1×Animation
+  StingerAim [RemoteEvent]
+  SpiralAura [Model]
+    … 35×Part, 1×Humanoid
+  FinalCutscene [Folder]
+    Timeline [ModuleScript]  (115 lines)
+    Client [Folder]
+      Kit [ModuleScript]  (2059 lines)
+      ChGrass [ModuleScript]  (1444 lines)
+      ChSpace [ModuleScript]  (672 lines)
+      ChHole [ModuleScript]  (119 lines)
+      ChAnti [ModuleScript]  (581 lines)
+      ChArena [ModuleScript]  (690 lines)
+      ChRise [ModuleScript]  (1187 lines)
+      ChSolar [ModuleScript]  (1936 lines)
+      Dodge [ModuleScript]  (564 lines)
+      SpiralKit [ModuleScript]  (1393 lines)
+      ChEntry [ModuleScript]  (1779 lines)
+      ChHand [ModuleScript]  (925 lines)
+      ChAwaken [ModuleScript]  (1437 lines)
+    … 2106×Folder, 1×RemoteEvent
+Selection [Selection]
+SerializationService [SerializationService]
+ServerScriptService [ServerScriptService]
+  CutsceneStreamingService [Script]  (135 lines)
+  BossService [Script]  (72 lines)
+  SpiralEnergyService [Script]  (224 lines)
+  PrivatePartyRouter [Script]  (139 lines)
+  GalaxyRotation [Script]  (17 lines)
+  BatService [Script]  (333 lines)
+  FinalCutsceneServer [Script]  (344 lines)
+  FinalBossLink [Script]  (125 lines)
+ServerStorage [ServerStorage]
+  MoonAnimator2Saves [Folder]
+    … 1089×StringValue
+  BossController [ModuleScript]  (317 lines)
+  BossConfig [ModuleScript]  (60 lines)
+  BossUtil [ModuleScript]  (1041 lines)
+  BossAttacks [Folder]
+    Melee [ModuleScript]  (154 lines)
+    BossProjectile [ModuleScript]  (156 lines)
+    MapProjectile [ModuleScript]  (64 lines)
+    Summon [ModuleScript]  (324 lines)
+    GasterRandom [ModuleScript]  (116 lines)
+    GasterCircle [ModuleScript]  (61 lines)
+    SpiralLance [ModuleScript]  (306 lines)
+    SpiralPinwheel [ModuleScript]  (188 lines)
+    … 10×Folder
+  RBX_ANIMSAVES [Model]
+    … 34×ObjectValue
+  BossAbilities [Folder]
+    … 138×Model, 103×Part, 14×Tool
+  BossProjectileTypes [ModuleScript]  (54 lines)
+  SpiralEnergy [ModuleScript]  (44 lines)
+  BossSpikes [ModuleScript]  (250 lines)
+  BossStingers [ModuleScript]  (378 lines)
+  SpiralPickups [ModuleScript]  (95 lines)
+  BossGasterBlasters [ModuleScript]  (317 lines)
+  OldCutscene_Backup [Folder]
+    Scripts [Folder]
+      CutsceneDirector [LocalScript]  (2278 lines)
+    CutsceneStage [Folder]
+      MoonPlayer [ModuleScript]  (710 lines)
+      CutsceneConfig [ModuleScript]  (424 lines)
+      … 1207×Folder
+    … 1939×Folder, 1×TerrainRegion
+  BLP_UI_Ref [ScreenGui]
+    master [Frame]
+      RobuxShop [ScreenGui]
+        Container [Frame]
+          items [ScrollingFrame]
+            Gamepasses [Folder]
+              veritybundle [Frame]
+                yellowrgb [LocalScript]  (15 lines)
+                UIStroke [UIStroke]
+                  rgb [LocalScript]  (8 lines)
+                SprakleArea [Frame]
+                  SparkleScript [LocalScript]  (120 lines)
+                buy [Frame]
+                  ImageButton [ImageButton]
+                    highlight [LocalScript]  (26 lines)
+                  … 2×TextLabel, 1×UIStroke, 1×UICorner
+                verity [CanvasGroup]
+                  rays [LocalScript]  (29 lines)
+                  … 4×ImageLabel
+                … 11×Frame, 2×TextLabel, 1×UICorner, 1×ImageLabel
+              lapeacebundle [Frame]
+                whitergb [LocalScript]  (15 lines)
+                UIStroke [UIStroke]
+                  rgb [LocalScript]  (8 lines)
+                SprakleArea [Frame]
+                  SparkleScript [LocalScript]  (120 lines)
+                buy [Frame]
+                  ImageButton [ImageButton]
+                    highlight [LocalScript]  (26 lines)
+                  … 2×TextLabel, 1×UIStroke, 1×UICorner
+                verity [CanvasGroup]
+                  rays [LocalScript]  (29 lines)
+                  … 4×ImageLabel
+                … 11×Frame, 2×TextLabel, 1×UICorner, 1×ImageLabel
+              veritycost [ImageLabel]
+                hover? [LocalScript]  (14 lines)
+                … 2×TextLabel
+              lapeacecost [ImageLabel]
+                hover? [LocalScript]  (14 lines)
+                … 2×TextLabel
+              PeacePoints [Folder]
+                10 [Frame]
+                  buy [Frame]
+                    ImageButton [ImageButton]
+                      highlight [LocalScript]  (26 lines)
+                    … 2×TextLabel, 1×UIStroke, 1×UICorner
+                  … 4×TextLabel, 3×ImageLabel, 1×UIStroke, 1×UICorner
+                100 [Frame]
+                  buy [Frame]
+                    ImageButton [ImageButton]
+                      highlight [LocalScript]  (26 lines)
+                    … 2×TextLabel, 1×UIStroke, 1×UICorner
+                  … 4×TextLabel, 3×ImageLabel, 1×UIStroke, 1×UICorner
+                1K [Frame]
+                  buy [Frame]
+                    ImageButton [ImageButton]
+                      highlight [LocalScript]  (26 lines)
+                    … 2×TextLabel, 1×UIStroke, 1×UICorner
+                  … 4×TextLabel, 3×ImageLabel, 1×UIStroke, 1×UICorner
+                10K [Frame]
+                  buy [Frame]
+                    ImageButton [ImageButton]
+                      highlight [LocalScript]  (26 lines)
+                    … 2×TextLabel, 1×UIStroke, 1×UICorner
+                  … 4×TextLabel, 3×ImageLabel, 1×UIStroke, 1×UICorner
+                100K [Frame]
+                  buy [Frame]
+                    ImageButton [ImageButton]
+                      highlight [LocalScript]  (26 lines)
+                    … 2×TextLabel, 1×UIStroke, 1×UICorner
+                  … 4×TextLabel, 3×ImageLabel, 1×UIStroke, 1×UICorner
+                1M [Frame]
+                  buy [Frame]
+                    ImageButton [ImageButton]
+                      highlight [LocalScript]  (26 lines)
+                    … 2×TextLabel, 1×UIStroke, 1×UICorner
+                  … 4×CanvasGroup, 4×TextLabel, 1×UIStroke, 1×UICorner, 1×ImageLabel
+                100M [Frame]
+                  buy [Frame]
+                    ImageButton [ImageButton]
+                      highlight [LocalScript]  (26 lines)
+                    … 2×TextLabel, 1×UIStroke, 1×UICorner
+                  icon [CanvasGroup]
+                    rays [LocalScript]  (29 lines)
+                    … 3×ImageLabel
+                  … 4×TextLabel, 1×UIStroke, 1×UICorner, 1×ImageLabel
+                1B [Frame]
+                  pink rgb [LocalScript]  (16 lines)
+                  UIStroke [UIStroke]
+                    rgb [LocalScript]  (8 lines)
+                  buy [Frame]
+                    ImageButton [ImageButton]
+                      highlight [LocalScript]  (26 lines)
+                    … 2×TextLabel, 1×UIStroke, 1×UICorner
+                  off [ImageLabel]
+                    hover? [LocalScript]  (14 lines)
+                    … 2×TextLabel
+                  verity [CanvasGroup]
+                    rays [LocalScript]  (29 lines)
+                    … 4×ImageLabel
+                  SprakleArea [Frame]
+                    SparkleScript [LocalScript]  (120 lines)
+                  … 4×TextLabel, 1×UICorner, 1×ImageLabel
+              Passes [Folder]
+                2xMoney [Frame]
+                  buy [Frame]
+                    ImageButton [ImageButton]
+                      highlight [LocalScript]  (26 lines)
+                    … 2×TextLabel, 1×UIStroke, 1×UICorner
+                  … 4×TextLabel, 3×ImageLabel, 1×UIStroke, 1×UICorner, 1×UIGradient
+                2xAscensions [Frame]
+                  buy [Frame]
+                    ImageButton [ImageButton]
+                      highlight [LocalScript]  (26 lines)
+                    … 2×TextLabel, 1×UIStroke, 1×UICorner
+                  … 4×TextLabel, 3×ImageLabel, 1×UIStroke, 1×UICorner, 1×UIGradient
+                elytra [Frame]
+                  buy [Frame]
+                    ImageButton [ImageButton]
+                      highlight [LocalScript]  (26 lines)
+                    … 2×TextLabel, 1×UIStroke, 1×UICorner
+                  … 4×TextLabel, 3×ImageLabel, 1×UIStroke, 1×UICorner, 1×UIGradient
+                OPROBE [Frame]
+                  buy [Frame]
+                    ImageButton [ImageButton]
+                      highlight [LocalScript]  (26 lines)
+                    … 2×TextLabel, 1×UIStroke, 1×UICorner
+                  … 4×TextLabel, 3×ImageLabel, 1×UIStroke, 1×UICorner, 1×UIGradient
+                AutoSell [Frame]
+                  buy [Frame]
+                    ImageButton [ImageButton]
+                      highlight [LocalScript]  (26 lines)
+                    … 2×TextLabel, 1×UIStroke, 1×UICorner
+                  … 4×TextLabel, 3×ImageLabel, 1×UIStroke, 1×UICorner, 1×UIGradient
+                unlockallislands [Frame]
+                  pink rgb [LocalScript]  (16 lines)
+                  buy [Frame]
+                    ImageButton [ImageButton]
+                      highlight [LocalScript]  (26 lines)
+                    … 2×TextLabel, 1×UIStroke, 1×UICorner
+                  verity [CanvasGroup]
+                    rays [LocalScript]  (29 lines)
+                    … 4×ImageLabel
+                  … 4×TextLabel, 3×Frame, 1×UIStroke, 1×UICorner, 1×ImageLabel
+                OPSTAFF [Frame]
+                  pink rgb [LocalScript]  (16 lines)
+                  buy [Frame]
+                    ImageButton [ImageButton]
+                      highlight [LocalScript]  (26 lines)
+                    … 2×TextLabel, 1×UIStroke, 1×UICorner
+                  icon [CanvasGroup]
+                    rays [LocalScript]  (29 lines)
+                  verity [CanvasGroup]
+                    rays [LocalScript]  (29 lines)
+                    … 4×ImageLabel
+                  … 4×TextLabel, 3×Frame, 1×UIStroke, 1×UICorner, 1×ImageLabel
+                admin [Frame]
+                  pink rgb [LocalScript]  (16 lines)
+                  buy [Frame]
+                    ImageButton [ImageButton]
+                      highlight [LocalScript]  (26 lines)
+                    … 2×TextLabel, 1×UIStroke, 1×UICorner
+                  verity [CanvasGroup]
+                    rays [LocalScript]  (29 lines)
+                    … 4×ImageLabel
+                  off [ImageLabel]
+                    hover? [LocalScript]  (14 lines)
+                    … 2×TextLabel
+                  SprakleArea [Frame]
+                    SparkleScript [LocalScript]  (120 lines)
+                  UIStroke [UIStroke]
+                    rgb [LocalScript]  (8 lines)
+                  … 4×TextLabel, 3×Frame, 1×ImageLabel, 1×UICorner
+            … 6×TextLabel, 1×UIGradient, 1×UIStroke, 1×UICorner
+          … 15×Frame
+        … 14×Frame
+      rebirth [ScreenGui]
+        AscensionClient [LocalScript]  (412 lines)
+        Container [Frame]
+          buy [Frame]
+            ImageButton [ImageButton]
+              highlight [LocalScript]  (26 lines)
+              … 1×UICorner
+            … 2×TextLabel, 1×UIStroke, 1×UICorner, 1×ImageLabel
+          buyR$ [Frame]
+            pink rgb [LocalScript]  (16 lines)
+            UIStroke [UIStroke]
+              rgb [LocalScript]  (8 lines)
+            ImageButton [ImageButton]
+              highlight [LocalScript]  (26 lines)
+              … 1×UICorner
+            SprakleArea [Frame]
+              SparkleScript [LocalScript]  (120 lines)
+            … 2×TextLabel, 1×UICorner, 1×ImageLabel
+          … 10×Frame, 8×TextLabel, 1×UICorner, 1×UIShadow, 1×UIStroke, 1×UIGradient
+        … 38×Frame
+      teleport [ScreenGui]
+        TeleportClient [LocalScript]  (365 lines)
+        Container [Frame]
+          home [Frame]
+            teleport [Frame]
+              ImageButton [ImageButton]
+                highlight [LocalScript]  (26 lines)
+                … 1×UICorner
+              … 2×TextLabel, 1×UIStroke, 1×UICorner
+            … 4×ImageLabel, 4×TextLabel, 1×UIStroke, 1×UICorner
+          verity [Frame]
+            teleport [Frame]
+              ImageButton [ImageButton]
+                highlight [LocalScript]  (26 lines)
+                … 1×UICorner
+              … 2×TextLabel, 1×UIStroke, 1×UICorner
+            … 4×ImageLabel, 4×TextLabel, 1×UIStroke, 1×UICorner
+          lapeace [Frame]
+            teleport [Frame]
+              ImageButton [ImageButton]
+                highlight [LocalScript]  (26 lines)
+                … 1×UICorner
+              … 2×TextLabel, 1×UIStroke, 1×UICorner
+            … 4×ImageLabel, 4×TextLabel, 1×UIStroke, 1×UICorner
+          67 [Frame]
+            teleport [Frame]
+              ImageButton [ImageButton]
+                highlight [LocalScript]  (26 lines)
+                … 1×UICorner
+              … 2×TextLabel, 1×UIStroke, 1×UICorner
+            … 4×ImageLabel, 4×TextLabel, 1×UIStroke, 1×UICorner
+          … 1×UICorner, 1×UIShadow, 1×UIStroke, 1×UIGradient
+        … 38×Frame
+      RegularShop [ScreenGui]
+        ShopClient [LocalScript]  (453 lines)
+        Container [Frame]
+          cloaklist [ScrollingFrame]
+            verity_lapis [Frame]
+              buy [Frame]
+                ImageButton [ImageButton]
+                  highlight [LocalScript]  (26 lines)
+                … 2×TextLabel, 1×UIStroke, 1×UICorner
+              … 17×ImageLabel, 2×TextLabel, 1×UICorner, 1×UIStroke, 1×UIGradient
+            totem_lapis [Frame]
+              buy [Frame]
+                ImageButton [ImageButton]
+                  highlight [LocalScript]  (26 lines)
+                … 2×TextLabel, 1×UIStroke, 1×UICorner
+              … 17×ImageLabel, 2×TextLabel, 1×UICorner, 1×UIStroke, 1×UIGradient
+            rgb_lapis [Frame]
+              buy [Frame]
+                ImageButton [ImageButton]
+                  highlight [LocalScript]  (26 lines)
+                … 2×TextLabel, 1×UIStroke, 1×UICorner
+              … 18×ImageLabel, 2×TextLabel, 1×UICorner, 1×UIStroke, 1×UIGradient
+            normal_lapis [Frame]
+              buy [Frame]
+                ImageButton [ImageButton]
+                  highlight [LocalScript]  (26 lines)
+                … 2×TextLabel, 1×UIStroke, 1×UICorner
+              … 17×ImageLabel, 2×TextLabel, 1×UICorner, 1×UIStroke, 1×UIGradient
+            malevolent_lapis [Frame]
+              buy [Frame]
+                ImageButton [ImageButton]
+                  highlight [LocalScript]  (26 lines)
+                … 2×TextLabel, 1×UIStroke, 1×UICorner
+              … 18×ImageLabel, 2×TextLabel, 1×UICorner, 1×UIStroke, 1×UIGradient
+            lapeace_lapis [Frame]
+              buy [Frame]
+                ImageButton [ImageButton]
+                  highlight [LocalScript]  (26 lines)
+                … 2×TextLabel, 1×UIStroke, 1×UICorner
+              … 17×ImageLabel, 2×TextLabel, 1×UICorner, 1×UIStroke
+            interstellar_lapis [Frame]
+              buy [Frame]
+                ImageButton [ImageButton]
+                  highlight [LocalScript]  (26 lines)
+                … 2×TextLabel, 1×UIStroke, 1×UICorner
+              … 17×ImageLabel, 2×TextLabel, 1×UICorner, 1×UIStroke
+            hell_lapis [Frame]
+              buy [Frame]
+                ImageButton [ImageButton]
+                  highlight [LocalScript]  (26 lines)
+                … 2×TextLabel, 1×UIStroke, 1×UICorner
+              … 17×ImageLabel, 2×TextLabel, 1×UICorner, 1×UIStroke, 1×UIGradient
+            golden_lapis [Frame]
+              buy [Frame]
+                ImageButton [ImageButton]
+                  highlight [LocalScript]  (26 lines)
+                … 2×TextLabel, 1×UIStroke, 1×UICorner
+              … 17×ImageLabel, 2×TextLabel, 1×UICorner, 1×UIStroke
+            emerald_lapis [Frame]
+              buy [Frame]
+                ImageButton [ImageButton]
+                  highlight [LocalScript]  (26 lines)
+                … 2×TextLabel, 1×UIStroke, 1×UICorner
+              … 17×ImageLabel, 2×TextLabel, 1×UICorner, 1×UIStroke, 1×UIGradient
+            diamond_lapis [Frame]
+              buy [Frame]
+                ImageButton [ImageButton]
+                  highlight [LocalScript]  (26 lines)
+                … 2×TextLabel, 1×UIStroke, 1×UICorner
+              … 17×ImageLabel, 2×TextLabel, 1×UICorner, 1×UIStroke, 1×UIGradient
+            67_lapis [Frame]
+              buy [Frame]
+                ImageButton [ImageButton]
+                  highlight [LocalScript]  (26 lines)
+                … 2×TextLabel, 1×UIStroke, 1×UICorner
+              … 18×ImageLabel, 2×TextLabel, 1×UICorner, 1×UIStroke, 1×UIGradient
+            op_lapis [Frame]
+              rgb_bg [LocalScript]  (10 lines)
+              ImageLabel [ImageLabel]
+                TextButton [TextButton]
+                  TextLabel [TextLabel]
+                    text rgb [LocalScript]  (10 lines)
+                    … 1×UIStroke
+                  … 1×ImageLabel
+                … 1×UICorner, 1×UIStroke
+              buy [Frame]
+                ImageButton [ImageButton]
+                  highlight [LocalScript]  (26 lines)
+                … 2×TextLabel, 1×UIStroke, 1×UICorner
+              … 2×TextLabel, 1×UICorner, 1×UIStroke
+            … 4×ImageLabel, 1×UIStroke, 1×UICorner
+          … 34×Frame, 1×UIGradient, 1×UICorner, 1×UIShadow, 1×UIStroke
+      Money [ScreenGui]
+        Left [Frame]
+          TextLabel [TextLabel]
+            moneycounter [LocalScript]  (105 lines)
+            … 1×UIStroke
+      QuestUI [ScreenGui]
+        questtoggle [LocalScript]  (76 lines)
+        … 24×Frame
+      dialog [ScreenGui]
+        dialogResponses [Frame]
+          template [ImageButton]
+            text [TextLabel]
+              update size [LocalScript]  (18 lines)
+              … 1×UIStroke
+          … 1×UIListLayout
+      Sell [ScreenGui]
+        SellCient [LocalScript]  (728 lines)
+        buttons [Frame]
+          all [Frame]
+            ImageButton [ImageButton]
+              highlight [LocalScript]  (26 lines)
+            … 2×TextLabel, 1×UIStroke, 1×UICorner
+          quarter [Frame]
+            ImageButton [ImageButton]
+              highlight [LocalScript]  (26 lines)
+            … 2×TextLabel, 1×UIStroke, 1×UICorner
+          one [Frame]
+            ImageButton [ImageButton]
+              highlight [LocalScript]  (26 lines)
+            … 2×TextLabel, 1×UIStroke, 1×UICorner
+          half [Frame]
+            ImageButton [ImageButton]
+              highlight [LocalScript]  (26 lines)
+            … 2×TextLabel, 1×UIStroke, 1×UICorner
+          … 1×UICorner, 1×UIStroke, 1×ImageLabel, 1×UIGradient
+        … 336×Frame
+      LapisSelect [ScreenGui]
+        LapisSelect [LocalScript]  (519 lines)
+        buttons [Frame]
+          all [Frame]
+            ImageButton [ImageButton]
+              highlight [LocalScript]  (26 lines)
+            … 2×TextLabel, 1×UIStroke, 1×UICorner
+          … 1×UICorner, 1×UIStroke, 1×ImageLabel, 1×UIGradient
+        … 336×Frame
+      InventoryGui [ScreenGui]
+        InventoryClient [LocalScript]  (767 lines)
+        … 385×Frame
+      … 17×ScreenGui, 1×UIAspectRatioConstraint
+  ChSolar_backup [ModuleScript]  (1425 lines)
+  ChSolar_pre_dodge [ModuleScript]  (1679 lines)
+  GalaxyRealm_BuildKit [Folder]
+    RealmLib [ModuleScript]  (140 lines)
+    … 2×Model
+  OldArenaFX_Backup [Folder]
+    … 841×Model, 10×Folder, 1×Sky, 1×Configuration
+  ArenaBackup [Folder]
+    … 1889×Model, 17×Folder
+  ChEntry [ModuleScript]  (1266 lines)
+  FC_Backup_PreCharge [Folder]
+    ChEntry [ModuleScript]  (1266 lines)
+    ChHand [ModuleScript]  (861 lines)
+    Timeline [ModuleScript]  (115 lines)
+    ChAwaken [ModuleScript]  (1384 lines)
+  RemovedTrueLapis [Folder]
+    … 273×Model
+ServiceVisibilityService [ServiceVisibilityService]
+SoundService [SoundService]
+StarterGui [StarterGui]
+StarterPack [StarterPack]
+  VerityBat [Tool]
+    … 10×UnionOperation, 2×Part
+StarterPlayer [StarterPlayer]
+  StarterPlayerScripts [StarterPlayerScripts]
+    BossHealthBar [LocalScript]  (719 lines)
+    BatClient [LocalScript]  (128 lines)
+    StingerAimClient [LocalScript]  (36 lines)
+    BossScreenShakeClient [LocalScript]  (50 lines)
+    SpiralClient [LocalScript]  (313 lines)
+    BossMinionClient [LocalScript]  (59 lines)
+    FinalCutsceneClient [LocalScript]  (799 lines)
+    GalaxyRealmClient [LocalScript]  (142 lines)
+  StarterCharacterScripts [StarterCharacterScripts]
+StudioData [StudioData]
+Teams [Teams]
+Teleport Service [TeleportService]
+TestService [TestService]
+TextChatService [TextChatService]
+  ChatWindowConfiguration [ChatWindowConfiguration]
+  ChatInputBarConfiguration [ChatInputBarConfiguration]
+  BubbleChatConfiguration [BubbleChatConfiguration]
+    … 1×UIGradient, 1×ImageLabel, 1×UICorner, 1×UIPadding
+  ChannelTabsConfiguration [ChannelTabsConfiguration]
+TouchInputService [TouchInputService]
+TweenService [TweenService]
+UGCAvatarService [UGCAvatarService]
+VRService [VRService]
+VideoCaptureService [VideoCaptureService]
+VideoService [VideoService]
+VoiceChatService [VoiceChatService]
+Workspace [Workspace]
+  Camera [Camera]
+  octagon [Part]
+    … 1×Decal
+  Terrain [Terrain]
+  stravant's lightning [Part]
+    … 1×Decal
+  smoke/fog [Part]
+    … 1×Decal
+   [Model]
+    … 628×Model, 304×Part
+  Heads [Model]
+    … 34×Part
+  GasterBlaster [Model]
+    … 19×MeshPart, 2×Humanoid, 2×Part, 1×ObjectValue
+  Beams [Model]
+    … 30×Part
+  Part [Part]
+    … 1×Decal
+  Auras [Model]
+    … 293×Model
+  spinny [Part]
+    … 1×Decal
+  Meteor [Part]
+  Big [Model]
+    … 29×Part
+  Particle Storage [Model]
+    … 35×Part
+  Anime [Model]
+    … 138×Part
+  TemplateR6 [Model]
+    … 266×Model, 39×Part, 8×Humanoid, 1×Shirt, 1×Pants
+  pentagon [Part]
+    … 1×Decal
+  smoke flipbook [Part]
+    … 1×Decal
+  BossFight [Folder]
+    … 10026×Model, 25×Folder
+  ArenaSpawn [SpawnLocation]
+  smoke flipbook 2 [Part]
+    … 1×Decal
+  fire flipbook [Part]
+    … 1×Decal
+  vfx pack [Model]
+    … 56×Part
+  LaPeaceMap [Folder]
+    … 26445×Folder, 911×Model
+  OldBossArena [Model]
+    … 73×Model, 12×Part
+  _HandTest [MeshPart]
+    … 2×Attachment, 1×StringValue, 1×PointLight
+  _HandTestMarker [Part]
+  _HandTestMarker [Part]
