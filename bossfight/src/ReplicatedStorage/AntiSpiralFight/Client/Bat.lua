@@ -308,7 +308,7 @@ end
 --------------------------------------------------------------------------
 function Bat.init(ctx)
 	K, S, Fx, Warn, net = ctx.K, ctx.S, ctx.Fx, ctx.Warn, ctx.Net
-	shared = ReplicatedStorage:WaitForChild("BossFight")
+	shared = ReplicatedStorage:WaitForChild("AntiSpiralFight")
 	getChest = ctx.chest
 	buildHud()
 

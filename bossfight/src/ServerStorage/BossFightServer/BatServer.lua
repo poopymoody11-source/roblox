@@ -230,7 +230,7 @@ end
 function B.init(F)
 	local S, cfg = F.S, F.Config.Bat
 	-- (the clients read the cooldowns for their ability bar from here)
-	local shared = ReplicatedStorage:WaitForChild("BossFight")
+	local shared = ReplicatedStorage:WaitForChild("AntiSpiralFight")
 	shared:SetAttribute("SwingCooldown", cfg.SwingCooldown)
 	shared:SetAttribute("ComboReset", cfg.ComboReset)
 	shared:SetAttribute("DashCooldown", cfg.DashCooldown)

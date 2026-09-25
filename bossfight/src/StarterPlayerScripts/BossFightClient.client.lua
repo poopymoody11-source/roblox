@@ -4,7 +4,7 @@
 -- brings the Anti-Spiral to life (walk plan -> procedural rig),
 -- lays the galaxy road under him, takes the lock-on camera, and
 -- runs every attack's visuals as the server announces them.
--- Code: ReplicatedStorage.BossFight
+-- Code: ReplicatedStorage.AntiSpiralFight
 --==================================================
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -13,7 +13,7 @@ local Debris = game:GetService("Debris")
 
 local player = Players.LocalPlayer
 
-local shared = ReplicatedStorage:WaitForChild("BossFight")
+local shared = ReplicatedStorage:WaitForChild("AntiSpiralFight")
 local S = require(shared:WaitForChild("Shared"))
 local client = shared:WaitForChild("Client")
 local net = shared:WaitForChild(S.NET)

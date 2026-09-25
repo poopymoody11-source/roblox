@@ -1,4 +1,4 @@
-<roblox version="4"><Item class="Folder" referent="RBX13"><Properties><string name="Name">BossFight</string></Properties><Item class="Folder" referent="RBX11"><Properties><string name="Name">Client</string></Properties><Item class="Folder" referent="RBX5"><Properties><string name="Name">Attacks</string></Properties><Item class="ModuleScript" referent="RBX1"><Properties><string name="Name">ConstellationLances</string><ProtectedString name="Source"><![CDATA[--==================================================
+<roblox version="4"><Item class="Folder" referent="RBX13"><Properties><string name="Name">AntiSpiralFight</string></Properties><Item class="Folder" referent="RBX11"><Properties><string name="Name">Client</string></Properties><Item class="Folder" referent="RBX5"><Properties><string name="Name">Attacks</string></Properties><Item class="ModuleScript" referent="RBX1"><Properties><string name="Name">ConstellationLances</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- ATTACK 4: CONSTELLATION LANCES (client)
 -- He points to the sky. Stars ignite over the arena and join
 -- into constellations; each line burns red on the floor below,
@@ -899,7 +899,7 @@ end
 --------------------------------------------------------------------------
 function Bat.init(ctx)
 	K, S, Fx, Warn, net = ctx.K, ctx.S, ctx.Fx, ctx.Warn, ctx.Net
-	shared = ReplicatedStorage:WaitForChild("BossFight")
+	shared = ReplicatedStorage:WaitForChild("AntiSpiralFight")
 	getChest = ctx.chest
 	buildHud()
 
@@ -2420,7 +2420,7 @@ S.GRACE = 0.2          -- the server waits this long after T for late parry clai
 S.WARN_LOCK = 2.4      -- the red lock-on shows this long before impact
 S.PROMPT_LEAD = 0.9    -- the click prompt shows this long before impact
 
--- remotes (made by the server in ReplicatedStorage.BossFight.Net)
+-- remotes (made by the server in ReplicatedStorage.AntiSpiralFight.Net)
 S.NET = "Net"
 
 function S.now()

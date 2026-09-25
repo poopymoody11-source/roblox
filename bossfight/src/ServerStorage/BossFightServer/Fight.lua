@@ -21,7 +21,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local CollectionService = game:GetService("CollectionService")
 
-local S = require(ReplicatedStorage:WaitForChild("BossFight"):WaitForChild("Shared"))
+local S = require(ReplicatedStorage:WaitForChild("AntiSpiralFight"):WaitForChild("Shared"))
 local Config = require(script.Parent:WaitForChild("Config"))
 
 local F = {}
@@ -32,7 +32,7 @@ F.rng = Random.new()
 --------------------------------------------------------------------------
 -- remotes
 --------------------------------------------------------------------------
-local shared = ReplicatedStorage:WaitForChild("BossFight")
+local shared = ReplicatedStorage:WaitForChild("AntiSpiralFight")
 local net = shared:FindFirstChild(S.NET) or Instance.new("Folder")
 net.Name = S.NET
 net.Parent = shared

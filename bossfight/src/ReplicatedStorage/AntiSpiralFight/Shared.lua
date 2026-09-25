@@ -22,7 +22,7 @@ S.GRACE = 0.2          -- the server waits this long after T for late parry clai
 S.WARN_LOCK = 2.4      -- the red lock-on shows this long before impact
 S.PROMPT_LEAD = 0.9    -- the click prompt shows this long before impact
 
--- remotes (made by the server in ReplicatedStorage.BossFight.Net)
+-- remotes (made by the server in ReplicatedStorage.AntiSpiralFight.Net)
 S.NET = "Net"
 
 function S.now()

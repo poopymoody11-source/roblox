@@ -2,7 +2,7 @@
 -- BOSS FIGHT (server entry)
 -- Runs the reworked Anti-Spiral fight once the final cutscene
 -- hands over (workspace attribute FC_State = "Fight").
--- Code: ServerStorage.BossFightServer (+ ReplicatedStorage.BossFight)
+-- Code: ServerStorage.BossFightServer (+ ReplicatedStorage.AntiSpiralFight)
 --
 -- STUDIO TESTING: set the workspace attribute BF_TestFight = true
 -- (before pressing Play) to jump past the cutscene to the fight.
