@@ -85,6 +85,7 @@ local plan
 local function setPlan(p)
 	plan = p
 	model:SetAttribute("Motion", S.encodePlan(p))
+	shared:SetAttribute("BossMotion", model:GetAttribute("Motion"))
 end
 
 function F.rootAt(t)
@@ -119,6 +120,16 @@ local function hold()
 	local a = F.angleAt()
 	local t = S.now()
 	setPlan({ T0 = t, T1 = t, A0 = a, A1 = a, F0 = 0, F1 = 0, FM = 0, Y = plan.Y })
+end
+
+-- his state, copied onto the shared folder (every client always has that;
+-- the model itself may not have streamed in to them)
+local function publish()
+	for _, k in ipairs({ "DisplayName", "Phase", "Invulnerable", "Defeated", "Motion" }) do
+		shared:SetAttribute("Boss" .. k, model:GetAttribute(k))
+	end
+	shared:SetAttribute("BossHealth", humanoid.Health)
+	shared:SetAttribute("BossMaxHealth", humanoid.MaxHealth)
 end
 
 function F.setInvulnerable(on)
@@ -330,6 +341,15 @@ function F.init(bossModel)
 		end
 	end
 	humanoid.Died:Connect(onDeath)
+	humanoid.HealthChanged:Connect(publish)
+	model.AttributeChanged:Connect(publish)
+	publish()
+	print("[BossFight] server ready: " .. #script.Parent.Attacks:GetChildren() .. " attacks loaded")
+end
+
+-- a travelling hit checked every frame (rings, sweeping beams)
+function F.continuousHit(hit, untilT)
+	return F.ringHit(hit, untilT)
 end
 
 local function pick(phase, last)
@@ -352,6 +372,7 @@ function F.run()
 	setPhase(1)
 	F.setInvulnerable(false)
 	F.fx("Start", { T0 = S.now() })
+	print("[BossFight] fight started")
 	task.wait(1.5)
 	local last
 	local dir = F.rng:NextNumber() < 0.5 and 1 or -1
@@ -372,6 +393,7 @@ function F.run()
 			local params = table.clone(mod.Defaults or {})
 			for k, v in pairs(entry.Params or {}) do params[k] = v end
 			local token = F.Token
+			print("[BossFight] attack: " .. entry.Module)
 			local ok, err = pcall(mod.Run, F, params, token)
 			if not ok then warn("[BossFight] " .. entry.Module .. " failed: " .. tostring(err)) end
 			task.wait(phase.AttackDelay or 1)

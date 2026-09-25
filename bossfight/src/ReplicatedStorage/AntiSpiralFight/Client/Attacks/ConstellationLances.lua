@@ -59,6 +59,7 @@ function A.start(ctx, d)
 			return true
 		end,
 	})
+	Warn.callout("CONSTELLATION LANCES")
 	K.sfx(K.S.Choir, 0.5, 1.1)
 	K.sfx(K.S.Sting, 0.5, 1.2)
 	local conn

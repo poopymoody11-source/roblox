@@ -97,6 +97,8 @@ end
 -- line:   { Kind = "line", A = Vector3, B = Vector3, W = number }
 -- ring:   { Kind = "ring", O = Vector3, R0 = number, Speed = number, W = number, H = number, T0 = number }
 --         (a shockwave: radius R0 + Speed * (t - T0), W thick, H tall; jump it)
+-- sweep:  { Kind = "sweep", O = Vector3, A0 = number, A1 = number, T0 = number, T1 = number, W = number, L = number }
+--         (a beam from O, L long and W wide, turning from angle A0 to A1 between T0 and T1)
 -- Positions are compared flat (XZ), against a character's root.
 --------------------------------------------------------------------------
 function S.ringRadius(shape, t)
@@ -118,8 +120,32 @@ function S.inside(shape, pos, t, feetHeight)
 		if math.abs(d - r) > shape.W / 2 + 1.5 then return false end
 		-- (jump it: feet clear of the wall's top)
 		return (feetHeight or 0) < shape.H
+	elseif shape.Kind == "sweep" then
+		if t < shape.T0 or t > shape.T1 then return false end
+		local a = S.sweepAngle(shape, t)
+		local dir = Vector3.new(math.cos(a), 0, math.sin(a))
+		local rel = p - S.flat(shape.O)
+		local along = rel:Dot(dir)
+		if along < 0 or along > (shape.L or 600) then return false end
+		return (rel - dir * along).Magnitude <= shape.W / 2 + 1.5
 	end
 	return false
+end
+
+function S.sweepAngle(shape, t)
+	local u = math.clamp((t - shape.T0) / math.max(shape.T1 - shape.T0, 1e-3), 0, 1)
+	return shape.A0 + (shape.A1 - shape.A0) * u
+end
+
+-- when a sweeping beam crosses a point (for prompts)
+function S.sweepArrival(shape, pos)
+	local rel = S.flat(pos) - S.flat(shape.O)
+	local phi = math.atan2(rel.Z, rel.X)
+	local mid = (shape.A0 + shape.A1) / 2
+	-- (the angle nearest the sweep's middle, so it doesn't wrap)
+	phi = mid + ((phi - mid + math.pi) % (2 * math.pi) - math.pi)
+	local u = (phi - shape.A0) / (shape.A1 - shape.A0)
+	return shape.T0 + math.clamp(u, -1, 2) * (shape.T1 - shape.T0)
 end
 
 -- when a ring shockwave reaches a point (for prompts)
@@ -132,6 +158,10 @@ end
 function S.shapeCentre(shape, t)
 	if shape.Kind == "circle" then return shape.P end
 	if shape.Kind == "line" then return shape.A:Lerp(shape.B, 0.5) end
+	if shape.Kind == "sweep" then
+		local a = S.sweepAngle(shape, t or shape.T0)
+		return shape.O + Vector3.new(math.cos(a), 0, math.sin(a)) * (shape.L or 600) * 0.5
+	end
 	return shape.O
 end
 

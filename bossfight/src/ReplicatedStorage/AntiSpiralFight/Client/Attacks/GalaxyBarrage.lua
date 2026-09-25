@@ -9,6 +9,7 @@ local RunService = game:GetService("RunService")
 local Debris = game:GetService("Debris")
 
 local A = {}
+local Warn
 
 local RAISED = {
 	Waist = { 10, 0, 0 }, RightShoulder = { 165, 0, 28 }, LeftShoulder = { 165, 0, -28 },
@@ -30,7 +31,9 @@ function A.start(ctx, d)
 	local host = K.part({ Name = "BarrageHost", Size = Vector3.one, Transparency = 1, CFrame = CFrame.new(S.CENTER) }, Fx.Folder)
 	local gals = {}
 	for i, p in ipairs(d.Portals) do gals[i] = { G = Fx.galaxy(host), P = p } end
-	ctx.Barrage = { Id = d.Id, Pulse = 0 }
+	ctx.Barrage = { Id = d.Id, Pulse = 0, Gals = gals }
+	Warn = ctx.Warn
+	Warn.callout("GALAXY BARRAGE")
 	local B = ctx.Barrage
 	Rig:act({
 		Until = d.CloseT + 0.8,
@@ -64,8 +67,10 @@ function A.start(ctx, d)
 		end
 		local amount = K.k(now, d.T0 + 0.2, d.OpenT, K.E.outCubic) * (1 - K.k(now, d.CloseT - 0.5, d.CloseT + 0.4))
 		for i, g in ipairs(gals) do
-			local size = 150 + 10 * math.sin(now * 2 + i)
-			g.G.set(g.P, S.CENTER + Vector3.new(0, 20, 0), size, amount, now + i)
+			-- (each one flares as something is flung out of it)
+			local flare = math.max(0, 1 - (os.clock() - (g.Flash or 0)) / 0.3)
+			local size = (150 + 10 * math.sin(now * 2 + i)) * (1 + 0.25 * flare)
+			g.G.set(g.P, S.CENTER + Vector3.new(0, 20, 0), size, math.min(1, amount * (1 + 0.5 * flare)), now + i)
 		end
 	end)
 end
@@ -78,9 +83,16 @@ function A.shot(ctx, d)
 	if B then
 		B.Pulse = os.clock()
 		B.Side = (B.Side == "Left") and "Right" or "Left"
+		local best, bd = nil, math.huge
+		for _, g in ipairs(B.Gals) do
+			local dd = (g.P - d.From).Magnitude
+			if dd < bd then best, bd = g, dd end
+		end
+		if best then best.Flash = os.clock() end
 	end
+	local giant = d.Kind == "giant"
 	local body
-	if d.Kind == "planet" and d.Model then
+	if (d.Kind == "planet" or giant) and d.Model then
 		body = K.planet(d.Model, d.Size, CFrame.new(d.From), Fx.Folder)
 	end
 	local glow
@@ -104,8 +116,18 @@ function A.shot(ctx, d)
 		Texture = "1851669703", Color = ColorSequence.new(Color3.new(1, 1, 1), Fx.VIOLET_HOT), Size = K.ns(0, d.Size * 0.3, 1, 0),
 		Lifetime = NumberRange.new(0.3, 0.6), Speed = NumberRange.new(2, 8), SpreadAngle = Vector2.new(180, 180), Rate = 25, Brightness = 4,
 	})
+	if giant then
+		-- the finale: something the size of a house, glowing, falling on everyone
+		glow = ctx.SK.glow(K, body, d.From, d.Size * 3, Fx.VIOLET, 2.5)
+		local shell = K.part({ Name = "Corona", Shape = Enum.PartType.Ball, Size = Vector3.one * d.Size * 1.15, Material = Enum.Material.ForceField, Color = Fx.MAGENTA, Transparency = 0.1, CFrame = body.CFrame }, body)
+		local w = Instance.new("WeldConstraint") w.Part0, w.Part1 = body, shell w.Parent = shell
+		shell.Anchored = false
+		Warn.callout("THE LAST WORLD")
+		K.sfx(K.S.Rumble, 1, 0.6)
+		K.sfx(K.S.Riser, 0.9, 0.7)
+	end
 	local zone = Fx.zone({ Kind = "circle", P = d.To, R = d.R }, d.T0, d.T)
-	local peak = d.From:Lerp(d.To, 0.5) + Vector3.new(0, 70, 0)
+	local peak = d.From:Lerp(d.To, 0.5) + Vector3.new(0, giant and 20 or 70, 0)
 	local function at(u)
 		local a = d.From:Lerp(peak, u)
 		local b = peak:Lerp(d.To + Vector3.new(0, d.Size * 0.4, 0), u)
@@ -150,7 +172,12 @@ function A.shot(ctx, d)
 				end)
 				trail.Color = ColorSequence.new(Fx.LIME, Fx.GREEN)
 			else
-				Fx.blast(d.To, d.R * 1.6, d.Kind == "star" and Color3.fromRGB(230, 180, 255) or Fx.VIOLET, { Shake = d.Kind == "star" and 0.6 or 1.4 })
+				Fx.blast(d.To, d.R * 1.6, d.Kind == "star" and Color3.fromRGB(230, 180, 255) or Fx.VIOLET, { Shake = d.Kind == "star" and 0.6 or (giant and 4 or 1.4), Volume = giant and 1.5 or 1 })
+				if giant then
+					Fx.blast(d.To, d.R * 2.6, Fx.MAGENTA, { Column = false, Shake = 0, Volume = 0 })
+					Fx.sound(K.S.Boom, d.To, 1.3, 0.6, 3000)
+					K.flash(0.4, Color3.fromRGB(255, 220, 255), 0.5)
+				end
 				body:Destroy()
 			end
 		end

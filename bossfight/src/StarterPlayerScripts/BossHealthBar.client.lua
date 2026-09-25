@@ -696,6 +696,10 @@ end)
 --==================================================
 local function findBoss()
 	local tagged = CollectionService:GetTagged("Boss")
+	-- (the fight's local stand-in always has his health, streamed in or not)
+	for _, m in ipairs(tagged) do
+		if m.Name == "AntiSpiralHUDProxy" then return m end
+	end
 	return tagged[1]
 end
 

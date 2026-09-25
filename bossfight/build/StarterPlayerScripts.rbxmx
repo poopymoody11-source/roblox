@@ -1,4 +1,4 @@
-<roblox version="4"><Item class="LocalScript" referent="RBX24"><Properties><string name="Name">BossFightClient</string><ProtectedString name="Source"><![CDATA[--==================================================
+<roblox version="4"><Item class="LocalScript" referent="RBX28"><Properties><string name="Name">BossFightClient</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- BOSS FIGHT (client entry)
 -- Once the cutscene hands over (player attribute CutsceneDone),
 -- brings the Anti-Spiral to life (walk plan -> procedural rig),
@@ -37,10 +37,107 @@ Fx.init(K, SK, S)
 Warn.init(K, S)
 Fx.onShake(Cam.shake)
 
-local model = workspace:WaitForChild("BossFight"):WaitForChild("Anti-Spiral")
-local hum = model:WaitForChild("Humanoid")
-hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
-hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+--------------------------------------------------------------------------
+-- HIM: the fight is drawn on our own copy of the Anti-Spiral (the cutscene's,
+-- which every client always has). The real one in workspace may not have
+-- streamed in to us at all - and when it does, it's hidden.
+--------------------------------------------------------------------------
+local src = FC:WaitForChild("Assets"):WaitForChild("AntiSpiral")
+local model = src:Clone()
+model.Name = "AntiSpiral_Fight"
+for _, d in ipairs(model:GetDescendants()) do
+	if d:IsA("BasePart") then
+		d.CanCollide, d.CanQuery, d.CanTouch = false, false, false
+		d.Anchored = d.Name == "HumanoidRootPart"
+	elseif d:IsA("Script") or d:IsA("LocalScript") then
+		d:Destroy()
+	end
+end
+local hb = model:FindFirstChild("Hitbox")
+if hb then hb:Destroy() end
+local hum = model:FindFirstChildOfClass("Humanoid")
+if hum then
+	hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+	hum.PlatformStand = true
+end
+
+local hidden = {}
+local function hideReal(inst)
+	if inst:IsA("BasePart") then
+		inst.LocalTransparencyModifier = 1
+		hidden[inst] = true
+	elseif inst:IsA("Highlight") or inst:IsA("ParticleEmitter") or inst:IsA("Beam") or inst:IsA("Light") then
+		inst.Enabled = false
+	end
+end
+local function watchReal()
+	local bf = workspace:WaitForChild("BossFight")
+	local function hook(real)
+		if real.Name ~= "Anti-Spiral" or not real:IsA("Model") then return end
+		local hh = real:FindFirstChildOfClass("Humanoid")
+		if hh then hh.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None end
+		for _, d in ipairs(real:GetDescendants()) do hideReal(d) end
+		real.DescendantAdded:Connect(hideReal)
+		-- (the stone he took in the cutscene is welded to his chest: bring it across)
+		task.spawn(function()
+			local gem = real:WaitForChild("StolenLapeace", 30)
+			local torso = model:FindFirstChild("UpperTorso")
+			local realTorso = real:FindFirstChild("UpperTorso")
+			if gem and torso and realTorso and gem:IsA("Model") then
+				local rel = realTorso.CFrame:ToObjectSpace(gem:GetPivot())
+				local copy = gem:Clone()
+				for _, d in ipairs(copy:GetDescendants()) do
+					if d:IsA("WeldConstraint") or d:IsA("Weld") then d:Destroy() end
+				end
+				copy:PivotTo(torso.CFrame * rel)
+				for _, d in ipairs(copy:GetDescendants()) do
+					if d:IsA("BasePart") then
+						d.Anchored, d.Massless, d.LocalTransparencyModifier = false, true, 0
+						local w = Instance.new("WeldConstraint")
+						w.Part0, w.Part1 = d, torso
+						w.Parent = d
+					end
+				end
+				copy.Parent = model
+				for _, d in ipairs(gem:GetDescendants()) do hideReal(d) end
+			end
+		end)
+	end
+	for _, c in ipairs(bf:GetChildren()) do hook(c) end
+	bf.ChildAdded:Connect(hook)
+end
+task.spawn(watchReal)
+-- (the cutscene un-hides the real one as it hands over: keep it hidden)
+RunService.Heartbeat:Connect(function()
+	for p in pairs(hidden) do
+		if p.Parent then p.LocalTransparencyModifier = 1 else hidden[p] = nil end
+	end
+end)
+
+--------------------------------------------------------------------------
+-- a stand-in for the boss HUD: a local Humanoid that mirrors his health
+--------------------------------------------------------------------------
+do
+	local proxy = Instance.new("Model")
+	proxy.Name = "AntiSpiralHUDProxy"
+	local ph = Instance.new("Humanoid")
+	ph.Parent = proxy
+	proxy.Parent = ReplicatedStorage
+	local function sync()
+		local max = shared:GetAttribute("BossMaxHealth")
+		if type(max) == "number" and max > 0 then
+			ph.MaxHealth = max
+			ph.Health = shared:GetAttribute("BossHealth") or max
+		end
+		for _, k in ipairs({ "DisplayName", "Phase", "Invulnerable", "Defeated" }) do
+			proxy:SetAttribute(k, shared:GetAttribute("Boss" .. k))
+		end
+	end
+	shared.AttributeChanged:Connect(sync)
+	sync()
+	game:GetService("CollectionService"):AddTag(proxy, "Boss")
+end
 
 --------------------------------------------------------------------------
 -- context handed to every attack
@@ -171,6 +268,9 @@ handlers.Shot = function(d) attacks.GalaxyBarrage.shot(ctx, d) end
 handlers.FistSlam = function(d) attacks.FistSlam.start(ctx, d) end
 handlers.StompQuake = function(d) attacks.StompQuake.start(ctx, d) end
 handlers.ConstellationLances = function(d) attacks.ConstellationLances.start(ctx, d) end
+handlers.FistHammer = function(d) attacks.FistSlam.hammer(ctx, d) end
+handlers.AnnihilationBeam = function(d) attacks.AnnihilationBeam.start(ctx, d) end
+handlers.SpiralCollapse = function(d) attacks.SpiralCollapse.start(ctx, d) end
 
 handlers.Resolve = function(d)
 	if d.User == player.UserId then Warn.result(d.Id, d.Result) end
@@ -180,7 +280,7 @@ handlers.Resolve = function(d)
 		Fx.bolt(d.Pos + Vector3.new(0, 2, 0), ctx.chest(), perfect)
 		if perfect and d.User == player.UserId then
 			K.flash(0.25, Color3.fromRGB(255, 255, 190), 0.35)
-			Cam.shake(1.2, 0.3)
+			Bat.impactFrame(true)
 		end
 	end
 end
@@ -222,15 +322,17 @@ end)
 -- start
 --------------------------------------------------------------------------
 local function plan()
-	return S.decodePlan(model:GetAttribute("Motion"))
+	return S.decodePlan(shared:GetAttribute("BossMotion"))
 end
 
 local function begin()
 	if ready then return end
+	print("[BossFight] client: the fight is on")
+	model.Parent = workspace
 	rig = Rig.new(K, SK, S, model)
 	ctx.Rig = rig
 	rig:setPlan(plan())
-	model:GetAttributeChangedSignal("Motion"):Connect(function()
+	shared:GetAttributeChangedSignal("BossMotion"):Connect(function()
 		local p = plan()
 		if p then rig:setPlan(p) end
 	end)
@@ -248,7 +350,7 @@ local function begin()
 		Warn.update(now)
 	end)
 	Cam.start(ctx.chest)
-	Bat.setActive(not model:GetAttribute("Defeated"))
+	Bat.setActive(not shared:GetAttribute("BossDefeated"))
 	ready = true
 	-- (late: anything announced while we were getting ready)
 	for _, q in ipairs(queue) do
@@ -266,7 +368,7 @@ end
 player:GetAttributeChangedSignal("CutsceneDone"):Connect(check)
 workspace:GetAttributeChangedSignal("FC_State"):Connect(check)
 check()
-]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX25"><Properties><string name="Name">BossHealthBar</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX29"><Properties><string name="Name">BossHealthBar</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- BOSS HUD  (CLIENT)
 --
 -- Anti-Spiral boss bar (top centre). (The Spiral Energy
@@ -964,6 +1066,10 @@ end)
 --==================================================
 local function findBoss()
 	local tagged = CollectionService:GetTagged("Boss")
+	-- (the fight's local stand-in always has his health, streamed in or not)
+	for _, m in ipairs(tagged) do
+		if m.Name == "AntiSpiralHUDProxy" then return m end
+	end
 	return tagged[1]
 end
 

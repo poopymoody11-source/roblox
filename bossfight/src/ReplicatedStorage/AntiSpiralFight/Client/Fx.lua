@@ -358,18 +358,21 @@ end
 --------------------------------------------------------------------------
 -- THE VIOLET GALAXY: SK.burst from the cutscene, in the Anti-Spiral's colours
 --------------------------------------------------------------------------
-function Fx.galaxy(host)
+-- palette (optional): { main, accent, pale } - his violet by default
+function Fx.galaxy(host, palette)
+	local C1, C2, C3 = VIOLET, MAGENTA, Color3.fromRGB(210, 170, 255)
+	if palette then C1, C2, C3 = palette[1], palette[2], palette[3] end
 	local G = {}
-	G.V1 = K.quad(host, CFrame.new(), 10, 10, SPIRAL_TEX, { Color = VIOLET, Brightness = 2.4, Transparency = 0.35 })
-	G.V2 = K.quad(host, CFrame.new(), 10, 10, SPIRAL2_TEX, { Color = MAGENTA, Brightness = 2.6, Transparency = 0.45 })
-	G.V3 = K.quad(host, CFrame.new(), 10, 10, SPIRAL_TEX, { Color = Color3.fromRGB(210, 170, 255), Brightness = 1.6, Transparency = 0.55 })
+	G.V1 = K.quad(host, CFrame.new(), 10, 10, SPIRAL_TEX, { Color = C1, Brightness = 2.4, Transparency = 0.35 })
+	G.V2 = K.quad(host, CFrame.new(), 10, 10, SPIRAL2_TEX, { Color = C2, Brightness = 2.6, Transparency = 0.45 })
+	G.V3 = K.quad(host, CFrame.new(), 10, 10, SPIRAL_TEX, { Color = C3, Brightness = 1.6, Transparency = 0.55 })
 	G.Arms = {}
 	local ARMS, SEGS = 4, 10
 	for a = 1, ARMS do
 		local list = {}
 		for i = 1, SEGS do
 			local b = K.ray(host, Vector3.zero, UP, 10, 10, ENERGY, {
-				Color = (a % 2 == 0) and MAGENTA or VIOLET, Brightness = 4, Transparency = 0.1, Segments = 2,
+				Color = (a % 2 == 0) and C2 or C1, Brightness = 4, Transparency = 0.1, Segments = 2,
 				Mode = Enum.TextureMode.Wrap, Length = 300, Speed = -3,
 			})
 			b.Enabled = false
@@ -377,12 +380,12 @@ function Fx.galaxy(host)
 		end
 		G.Arms[a] = list
 	end
-	G.Glow = SK.glow(K, host, Vector3.zero, 10, VIOLET, 2.5, SOFT)
-	G.Core = SK.glow(K, host, Vector3.zero, 10, Color3.fromRGB(245, 230, 255), 5, SOFT)
+	G.Glow = SK.glow(K, host, Vector3.zero, 10, C1, 2.5, SOFT)
+	G.Core = SK.glow(K, host, Vector3.zero, 10, C3:Lerp(Color3.new(1, 1, 1), 0.6), 5, SOFT)
 	G.Rays = {}
 	local r = Random.new(7)
 	for i = 1, 8 do
-		local b = K.ray(host, Vector3.zero, UP, 10, 1, "rbxasset://sky/sun.jpg", { Color = (i % 3 == 0) and Color3.new(1, 1, 1) or VIOLET, Brightness = 3, Transparency = K.ns(0, 0.1, 1, 1), Segments = 1 })
+		local b = K.ray(host, Vector3.zero, UP, 10, 1, "rbxasset://sky/sun.jpg", { Color = (i % 3 == 0) and Color3.new(1, 1, 1) or C1, Brightness = 3, Transparency = K.ns(0, 0.1, 1, 1), Segments = 1 })
 		b.Enabled = false
 		G.Rays[i] = { B = b, D = r:NextUnitVector(), L = r:NextNumber(0.6, 1.3), P = r:NextNumber(0, 6) }
 	end

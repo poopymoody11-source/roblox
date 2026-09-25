@@ -38,6 +38,8 @@ return {
 				{ Module = "FistSlam", Weight = 3 },
 				{ Module = "StompQuake", Weight = 2 },
 				{ Module = "ConstellationLances", Weight = 2 },
+				{ Module = "AnnihilationBeam", Weight = 2 },
+				{ Module = "SpiralCollapse", Weight = 1.5 },
 			},
 		},
 		{
@@ -52,6 +54,8 @@ return {
 				{ Module = "FistSlam", Weight = 3, Params = { Waves = 3, ExtraZones = 4 } },
 				{ Module = "StompQuake", Weight = 2, Params = { Rings = 5, Speed = 85 } },
 				{ Module = "ConstellationLances", Weight = 2, Params = { Lines = 9 } },
+				{ Module = "AnnihilationBeam", Weight = 2, Params = { Sweeps = 2, Sweep = 1.9 } },
+				{ Module = "SpiralCollapse", Weight = 1.5, Params = { Strength = 13, R = 85 } },
 			},
 		},
 	},

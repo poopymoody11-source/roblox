@@ -1,4 +1,56 @@
-<roblox version="4"><Item class="Folder" referent="RBX23"><Properties><string name="Name">BossFightServer</string></Properties><Item class="Folder" referent="RBX19"><Properties><string name="Name">Attacks</string></Properties><Item class="ModuleScript" referent="RBX15"><Properties><string name="Name">ConstellationLances</string><ProtectedString name="Source"><![CDATA[--==================================================
+<roblox version="4"><Item class="Folder" referent="RBX27"><Properties><string name="Name">BossFightServer</string></Properties><Item class="Folder" referent="RBX23"><Properties><string name="Name">Attacks</string></Properties><Item class="ModuleScript" referent="RBX17"><Properties><string name="Name">AnnihilationBeam</string><ProtectedString name="Source"><![CDATA[--==================================================
+-- ATTACK 5: ANNIHILATION BEAM
+-- He thrusts out a palm; violet light gathers in it... then a
+-- beam tears out of it and sweeps across the arena. It's too
+-- tall to jump: parry it as it reaches you, or dash through.
+--==================================================
+local A = {}
+
+A.Defaults = {
+	Charge = 1.9,     -- the orb gathering
+	Sweep = 2.3,      -- seconds to cross the arena
+	Arc = 100,        -- degrees swept
+	W = 16,           -- beam width on the floor
+	Damage = 40,
+	Sweeps = 1,       -- (phase 2 sends it back the other way)
+}
+
+function A.Run(F, P, token)
+	local S = F.S
+	local t0 = F.now() + 0.15
+	local bossPos = F.rootAt(t0).Position
+	local toBoss = S.flat(bossPos - S.CENTER).Unit
+	local origin = S.CENTER + toBoss * (S.ARENA_R + 8)
+	local centreA = math.atan2(-toBoss.Z, -toBoss.X) -- (from the rim, across the arena)
+	local half = math.rad(P.Arc) / 2
+	local dir = F.rng:NextNumber() < 0.5 and 1 or -1
+	local hand = dir > 0 and "Right" or "Left"
+	local fireT = t0 + P.Charge
+	local sweeps = {}
+	local t = fireT
+	for i = 1, P.Sweeps do
+		local d = (i % 2 == 1) and dir or -dir
+		local shape = {
+			Kind = "sweep", O = origin, A0 = centreA - half * d, A1 = centreA + half * d,
+			T0 = t, T1 = t + P.Sweep, W = P.W, L = 2 * S.ARENA_R + 20,
+		}
+		local hit = { Id = F.newId("AB"), Shape = shape, Damage = P.Damage, Name = "ANNIHILATION BEAM", Knock = 50 }
+		table.insert(sweeps, hit)
+		t = shape.T1 + 0.35
+	end
+	local list = {}
+	for _, h in ipairs(sweeps) do table.insert(list, { Id = h.Id, Shape = h.Shape }) end
+	F.fx("AnnihilationBeam", { T0 = t0, FireT = fireT, Hand = hand, Origin = origin, Sweeps = list })
+	for _, h in ipairs(sweeps) do
+		F.waitUntil(h.Shape.T0 - 0.05)
+		if F.cancelled(token) then return end
+		F.continuousHit(h, h.Shape.T1 + 0.05)
+	end
+	F.waitUntil(sweeps[#sweeps].Shape.T1 + 0.6)
+end
+
+return A
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX18"><Properties><string name="Name">ConstellationLances</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- ATTACK 4: CONSTELLATION LANCES
 -- He points to the sky: stars ignite over the arena and join
 -- into constellations, their lines burning red on the floor
@@ -65,7 +117,7 @@ function A.Run(F, P, token)
 end
 
 return A
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX16"><Properties><string name="Name">FistSlam</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX19"><Properties><string name="Name">FistSlam</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- ATTACK 2: FIST SLAM
 -- He rears back and brings his fists down: red zones open on
 -- the arena (one under every player, plus a few more), fill up,
@@ -83,6 +135,10 @@ A.Defaults = {
 	WaveGap = 0.55,   -- rest between one wave's last slam and the next wave's warning
 	Stagger = 0.16,   -- between slams in a wave
 	Damage = 35,
+	Hammer = true,     -- the finale: both fists, one huge zone over the crowd
+	HammerR = 50,
+	HammerWarn = 1.9,
+	HammerDamage = 50,
 }
 
 function A.Run(F, P, token)
@@ -137,11 +193,30 @@ function A.Run(F, P, token)
 		F.waitUntil(last + 0.2)
 		waveT = last + P.WaveGap
 	end
+	if P.Hammer and not F.cancelled(token) then
+		-- over the middle of everyone (kept on the arena)
+		local sum, n = Vector3.zero, 0
+		for _, t in ipairs(F.targets()) do sum += t.Root.Position n += 1 end
+		local c = n > 0 and sum / n or S.CENTER
+		local off = S.flat(c - S.CENTER)
+		if off.Magnitude > S.ARENA_R - P.HammerR * 0.5 then c = S.CENTER + off.Unit * (S.ARENA_R - P.HammerR * 0.5) end
+		local p = S.surface(c.X, c.Z)
+		local hit = F.hit({
+			T = waveT + P.HammerWarn,
+			Shape = { Kind = "circle", P = p, R = P.HammerR },
+			Damage = P.HammerDamage,
+			Name = "HAMMER OF DESPAIR",
+			Target = "all",
+			Knock = 110,
+		})
+		F.fx("FistHammer", { T0 = waveT, T = hit.T, Id = hit.Id, P = p, R = P.HammerR })
+		waveT = hit.T + 0.6
+	end
 	F.waitUntil(waveT)
 end
 
 return A
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX17"><Properties><string name="Name">GalaxyBarrage</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX20"><Properties><string name="Name">GalaxyBarrage</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- ATTACK 1: GALAXY BARRAGE
 -- He raises his arms and tears violet galaxies open in the sky
 -- over the arena; planets, moons and stars pour out of them at
@@ -156,6 +231,7 @@ A.Defaults = {
 	Interval = 0.34,   -- seconds between shots
 	Windup = 1.5,      -- the galaxies opening
 	Travel = { 1.6, 2.1 },
+	Finale = true,     -- a planet the size of a house, at everyone
 }
 
 -- what can come out: name (the lock-on label), size, damage, speed factor
@@ -197,7 +273,7 @@ function A.Run(F, P, token)
 	local openT = t0 + P.Windup
 	local lastT = openT + (P.Shots - 1) * P.Interval
 	local id = F.newId("GB")
-	F.fx("GalaxyBarrage", { Id = id, T0 = t0, OpenT = openT, CloseT = lastT + P.Travel[2] + 0.8, Portals = portals })
+	F.fx("GalaxyBarrage", { Id = id, T0 = t0, OpenT = openT, CloseT = lastT + P.Travel[2] + (P.Finale and 4.3 or 0.8), Portals = portals })
 
 	local targets = F.targets()
 	for i = 1, P.Shots do
@@ -230,11 +306,72 @@ function A.Run(F, P, token)
 			From = from, To = land, T0 = tl, T = hit.T, Target = tgt.Player.UserId, Spin = rng:NextNumber(-3, 3),
 		})
 	end
+	if P.Finale and not F.cancelled(token) then
+		F.waitUntil(lastT + 0.6)
+		local tg = F.targets()
+		if #tg > 0 then
+			local sum = Vector3.zero
+			for _, t in ipairs(tg) do sum += t.Root.Position end
+			local c = sum / #tg
+			local off = S.flat(c - S.CENTER)
+			if off.Magnitude > S.ARENA_R - 30 then c = S.CENTER + off.Unit * (S.ARENA_R - 30) end
+			local land = S.surface(c.X, c.Z)
+			local tl = F.now()
+			local hit = F.hit({
+				T = tl + 2.9,
+				Shape = { Kind = "circle", P = land, R = 32 },
+				Damage = 45,
+				Name = "JUPITER",
+				Target = "all",
+				Knock = 100,
+			})
+			F.fx("Shot", {
+				Attack = id, Id = hit.Id, Kind = "giant", Model = "jupiter", Name = "JUPITER", Size = 64, R = 32,
+				From = portals[math.ceil(#portals / 2)] + S.UP * 60, To = land, T0 = tl, T = hit.T, Target = "all", Spin = 0.6,
+			})
+			lastT = hit.T - P.Travel[2]
+		end
+	end
 	F.waitUntil(lastT + P.Travel[2] + 0.3)
 end
 
 return A
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX18"><Properties><string name="Name">StompQuake</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX21"><Properties><string name="Name">SpiralCollapse</string><ProtectedString name="Source"><![CDATA[--==================================================
+-- ATTACK 6: SPIRAL COLLAPSE
+-- He claps his hands together over his head and a black hole
+-- opens above the arena, dragging everyone toward it (the pull
+-- is applied on each client). Fight your way out of the red
+-- before it collapses - or stand your ground and parry the blast.
+--==================================================
+local A = {}
+
+A.Defaults = {
+	Windup = 1.4,     -- the clap
+	Pull = 4.2,       -- seconds of pull before it collapses
+	Strength = 10,    -- studs/s toward the centre (walk speed is 16)
+	R = 75,           -- the blast radius
+	Damage = 45,
+}
+
+function A.Run(F, P, token)
+	local S = F.S
+	local t0 = F.now() + 0.15
+	local openT = t0 + P.Windup
+	local blastT = openT + P.Pull
+	local hit = F.hit({
+		T = blastT,
+		Shape = { Kind = "circle", P = S.CENTER, R = P.R },
+		Damage = P.Damage,
+		Name = "SPIRAL COLLAPSE",
+		Knock = 90,
+	})
+	F.fx("SpiralCollapse", { T0 = t0, OpenT = openT, BlastT = blastT, Id = hit.Id, R = P.R, Strength = P.Strength, Centre = S.CENTER })
+	F.waitUntil(blastT + 0.8)
+	if F.cancelled(token) then return end
+end
+
+return A
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX22"><Properties><string name="Name">StompQuake</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- ATTACK 3: STOMP QUAKE
 -- He lifts a foot high over the galaxy floor and brings it down
 -- at the rim: shockwave rings roll out across the whole arena.
@@ -283,7 +420,7 @@ function A.Run(F, P, token)
 end
 
 return A
-]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX20"><Properties><string name="Name">BatServer</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX24"><Properties><string name="Name">BatServer</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- THE SPIRAL BAT (server)
 -- Builds the bat (a drill-headed Gurren bat: black grip, gold
 -- fittings, a spiral-grooved barrel and a spinning green drill
@@ -351,139 +488,178 @@ local function ball(tool, handle, name, y, dia, color, material)
 	return p
 end
 
+-- a small block welded to `base` at c0 (for the spiral strands and fins)
+local function chip(tool, base, name, c0, size, color, material)
+	local p = part({ Name = name, Size = size, Color = color, Material = material or Enum.Material.Neon })
+	local w = Instance.new("Weld")
+	w.Part0 = base
+	w.Part1 = p
+	w.C0 = c0
+	w.Parent = p
+	p.Parent = tool
+	return p
+end
+
+-- the barrel's radius at height y (it flares from the grip to the drill)
+local BARREL_Y0, BARREL_Y1 = 1.0, 4.2
+local function barrelR(y)
+	local u = math.clamp((y - BARREL_Y0) / (BARREL_Y1 - BARREL_Y0), 0, 1)
+	return 0.21 + 0.18 * u ^ 1.3
+end
+
+local function drillCone()
+	local src = ReplicatedStorage:FindFirstChild("FinalCutscene")
+	src = src and src:FindFirstChild("Assets")
+	src = src and src:FindFirstChild("DrillCone")
+	if src and src:IsA("MeshPart") then
+		local d = src:Clone()
+		for _, c in ipairs(d:GetChildren()) do c:Destroy() end
+		d.Anchored, d.CanCollide, d.CanQuery, d.CanTouch, d.Massless = false, false, false, false, true
+		return d
+	end
+	local d = part({ Size = Vector3.one })
+	local m = Instance.new("SpecialMesh")
+	m.MeshType = Enum.MeshType.FileMesh
+	m.MeshId = "rbxassetid://1778999"
+	m.Parent = d
+	return d
+end
+B.drillCone = drillCone
+
 function B.buildTool()
 	local tool = Instance.new("Tool")
 	tool.Name = TOOL_NAME
-	tool.ToolTip = "Spiral Bat  -  Click: swing / parry   Q: Spiral Dash   E: Drill Break"
+	tool.ToolTip = "Spiral Bat"
 	tool.CanBeDropped = false
 	tool.RequiresHandle = true
 	tool.Grip = CFrame.new()
 
-	-- the grip, wrapped
-	local handle = part({ Name = "Handle", Size = Vector3.new(0.34, 1.6, 0.34), Color = BLACK, Material = Enum.Material.Fabric, Transparency = 1 })
+	-- the grip: black, taped in green
+	local handle = part({ Name = "Handle", Size = Vector3.new(0.36, 1.7, 0.36), Transparency = 1 })
 	handle.Parent = tool
-	rod(tool, handle, "Grip", 0, 1.6, 0.34, BLACK, Enum.Material.Fabric)
-	for i = 0, 3 do
-		rod(tool, handle, "Wrap" .. i, -0.55 + i * 0.36, 0.09, 0.37, GREEN, Enum.Material.Neon)
+	rod(tool, handle, "Grip", 0, 1.7, 0.36, BLACK, Enum.Material.Fabric)
+	for i = 0, 4 do
+		local w = chip(tool, handle, "Tape" .. i, CFrame.new(0, -0.62 + i * 0.3, 0) * CFrame.Angles(0, 0, math.rad(90 - 14)),
+			Vector3.new(0.07, 0.395, 0.395), GREEN, Enum.Material.Neon)
+		w.Shape = Enum.PartType.Cylinder
 	end
-	ball(tool, handle, "Knob", -0.88, 0.52, GOLD)
-	rod(tool, handle, "Guard", 0.86, 0.14, 0.62, GOLD)
-	rod(tool, handle, "Collar", 1.0, 0.18, 0.46, STEEL)
+	-- the pommel: gold, with a spiral gem
+	ball(tool, handle, "Knob", -0.95, 0.56, GOLD)
+	rod(tool, handle, "KnobCollar", -0.78, 0.1, 0.44, GOLD)
+	ball(tool, handle, "Gem", -1.2, 0.26, GREEN, Enum.Material.Neon)
+	-- the guard, with fins
+	rod(tool, handle, "Guard", 0.9, 0.14, 0.7, GOLD)
+	for s = -1, 1, 2 do
+		chip(tool, handle, "Fin", CFrame.new(s * 0.42, 0.92, 0) * CFrame.Angles(0, 0, math.rad(-s * 35)), Vector3.new(0.34, 0.12, 0.1), GOLD, Enum.Material.Metal)
+	end
 
-	-- the barrel: flaring out to the drill
-	local segs = 6
+	-- the barrel: gunmetal, flaring toward the drill
+	local segs = 8
 	for i = 1, segs do
-		local u = (i - 0.5) / segs
-		rod(tool, handle, "Barrel" .. i, 1.05 + (i - 0.5) * 0.42, 0.44, 0.4 + 0.3 * u, STEEL, Enum.Material.Metal)
+		local y0 = BARREL_Y0 + (i - 1) * (BARREL_Y1 - BARREL_Y0) / segs
+		local y1 = BARREL_Y0 + i * (BARREL_Y1 - BARREL_Y0) / segs
+		rod(tool, handle, "Barrel" .. i, (y0 + y1) / 2, (y1 - y0) + 0.02, 2 * barrelR((y0 + y1) / 2), STEEL, Enum.Material.Metal)
 	end
-	-- gold bands and the green core showing between them
-	rod(tool, handle, "BandLow", 1.55, 0.1, 0.52, GOLD)
-	rod(tool, handle, "Core", 2.35, 0.7, 0.62, GREEN, Enum.Material.Neon)
-	rod(tool, handle, "BandHigh", 3.2, 0.12, 0.76, GOLD)
-	rod(tool, handle, "Crown", 3.62, 0.22, 0.86, GOLD)
+	-- its core showing through, and the gold bands
+	local core = rod(tool, handle, "Core", 2.55, 0.5, 2 * barrelR(2.55) + 0.05, GREEN, Enum.Material.Neon)
+	local shell = rod(tool, handle, "CoreShell", 2.55, 0.62, 2 * barrelR(2.55) + 0.14, LIME, Enum.Material.ForceField)
+	shell.Transparency = 0.2
+	rod(tool, handle, "BandLow", 1.35, 0.1, 2 * barrelR(1.35) + 0.08, GOLD)
+	rod(tool, handle, "BandMid", 3.1, 0.1, 2 * barrelR(3.1) + 0.08, GOLD)
+	rod(tool, handle, "Crown", BARREL_Y1 + 0.08, 0.2, 2 * barrelR(BARREL_Y1) + 0.14, GOLD)
 
-	-- the drill tip (spins on the client)
-	local src = ReplicatedStorage:FindFirstChild("FinalCutscene")
-	src = src and src:FindFirstChild("Assets")
-	src = src and src:FindFirstChild("DrillCone")
-	local drill
-	if src and src:IsA("MeshPart") then
-		drill = src:Clone()
-		for _, d in ipairs(drill:GetChildren()) do d:Destroy() end
-		drill.Anchored, drill.CanCollide, drill.CanQuery, drill.CanTouch, drill.Massless = false, false, false, false, true
-		drill.Size = Vector3.new(0.95, 1.9, 0.95)
-	else
-		drill = part({ Size = Vector3.new(0.95, 1.9, 0.95) })
-		local m = Instance.new("SpecialMesh")
-		m.MeshType = Enum.MeshType.FileMesh
-		m.MeshId = "rbxassetid://1778999"
-		m.Scale = Vector3.new(0.73, 0.99, 0.76)
-		m.Parent = drill
+	-- the spiral: two glowing strands winding up the barrel
+	local turns, per = 2.5, 16
+	for strand = 0, 1 do
+		for i = 0, per - 1 do
+			local u = i / (per - 1)
+			local y = BARREL_Y0 + 0.15 + u * (BARREL_Y1 - BARREL_Y0 - 0.3)
+			local a = strand * math.pi + u * turns * 2 * math.pi
+			local r = barrelR(y) + 0.02
+			local pos = Vector3.new(math.cos(a) * r, y, math.sin(a) * r)
+			-- (each chip lies along the helix: tangent is its long axis)
+			local tangent = Vector3.new(-math.sin(a) * r * turns * 2 * math.pi, BARREL_Y1 - BARREL_Y0, math.cos(a) * r * turns * 2 * math.pi).Unit
+			local out = Vector3.new(math.cos(a), 0, math.sin(a))
+			local cf = CFrame.fromMatrix(pos, tangent, out)
+			chip(tool, handle, "Spiral", cf, Vector3.new(0.3, 0.07, 0.1), strand == 0 and GREEN or LIME, Enum.Material.Neon)
+		end
 	end
+
+	-- the drill: a spinning lime cone with dark flutes (the client spins it)
+	local drill = drillCone()
 	drill.Name = "Drill"
+	drill.Size = Vector3.new(1.0, 2.1, 1.0)
 	drill.Color = LIME
 	drill.Material = Enum.Material.Neon
 	local dw = Instance.new("Weld")
 	dw.Name = "DrillWeld"
 	dw.Part0 = handle
 	dw.Part1 = drill
-	dw.C0 = CFrame.new(0, 3.72 + 0.95, 0)
+	dw.C0 = CFrame.new(0, BARREL_Y1 + 0.2 + 1.05, 0)
 	dw.Parent = drill
 	drill.Parent = tool
-
-	-- spiral grooves up the barrel (two curved beams, counter-wound)
-	local a0 = Instance.new("Attachment")
-	a0.Name = "SpiralBase"
-	a0.Position = Vector3.new(0, 1.0, 0)
-	a0.Parent = handle
-	local a1 = Instance.new("Attachment")
-	a1.Name = "SpiralTip"
-	a1.Position = Vector3.new(0, 5.4, 0)
-	a1.Parent = handle
-	for i = 1, 2 do
-		local b = Instance.new("Beam")
-		b.Name = "Spiral" .. i
-		b.Attachment0 = a0
-		b.Attachment1 = a1
-		b.Width0 = 0.32
-		b.Width1 = 0.08
-		b.Color = ColorSequence.new(i == 1 and GREEN or LIME, Color3.new(1, 1, 1))
-		b.LightEmission = 1
-		b.Brightness = 4
-		b.Texture = "rbxassetid://10365550877"
-		b.TextureSpeed = 2.5
-		b.TextureMode = Enum.TextureMode.Wrap
-		b.TextureLength = 1.2
-		b.CurveSize0 = i == 1 and 0.9 or -0.9
-		b.CurveSize1 = i == 1 and -0.9 or 0.9
-		b.Segments = 20
-		b.FaceCamera = true
-		b.Parent = handle
+	for f = 0, 2 do
+		for i = 0, 6 do
+			local u = i / 6
+			local y = -0.95 + u * 1.8               -- (drill space: base -1.05 .. tip +1.05)
+			local r = 0.5 * (1 - (y + 1.05) / 2.1) + 0.02
+			local a = f * 2 * math.pi / 3 + u * 1.6 * math.pi
+			local pos = Vector3.new(math.cos(a) * r, y, math.sin(a) * r)
+			local tangent = Vector3.new(-math.sin(a) * r * 1.6 * math.pi, 1.8, math.cos(a) * r * 1.6 * math.pi).Unit
+			chip(tool, drill, "Flute", CFrame.fromMatrix(pos, tangent, Vector3.new(math.cos(a), 0, math.sin(a))),
+				Vector3.new(0.3, 0.06, 0.09 * (1 - u * 0.6)), Color3.fromRGB(20, 70, 30), Enum.Material.Metal)
+		end
 	end
-	-- the swing trail (the client turns it on mid-swing)
+	local tipGlow = Instance.new("Attachment")
+	tipGlow.Name = "Tip"
+	tipGlow.Position = Vector3.new(0, 1.05, 0)
+	tipGlow.Parent = drill
+
+	-- swing trail (the client turns it on mid-swing)
 	local t0 = Instance.new("Attachment")
 	t0.Name = "TrailBase"
 	t0.Position = Vector3.new(0, 1.6, 0)
 	t0.Parent = handle
 	local t1 = Instance.new("Attachment")
 	t1.Name = "TrailTip"
-	t1.Position = Vector3.new(0, 5.5, 0)
+	t1.Position = Vector3.new(0, 6.3, 0)
 	t1.Parent = handle
 	local trail = Instance.new("Trail")
 	trail.Name = "SwingTrail"
 	trail.Attachment0 = t0
 	trail.Attachment1 = t1
-	trail.Lifetime = 0.22
+	trail.Lifetime = 0.2
 	trail.MinLength = 0.05
 	trail.LightEmission = 1
-	trail.Brightness = 3
-	trail.Color = ColorSequence.new(LIME, GREEN)
-	trail.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(1, 1) })
-	trail.WidthScale = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0.2) })
+	trail.Brightness = 4
+	trail.Texture = "rbxassetid://10365550877"
+	trail.TextureMode = Enum.TextureMode.Stretch
+	trail.Color = ColorSequence.new(Color3.new(1, 1, 1), GREEN)
+	trail.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.6, 0.5), NumberSequenceKeypoint.new(1, 1) })
+	trail.WidthScale = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0.3) })
 	trail.Enabled = false
 	trail.Parent = handle
 
-	-- spiral sparks off the core, and its light
-	local core = tool:FindFirstChild("Core")
+	-- spiral energy off the core, and its light
 	local e = Instance.new("ParticleEmitter")
 	e.Name = "Sparks"
 	e.Texture = "rbxassetid://11381556016"
 	e.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid8x8
 	e.FlipbookMode = Enum.ParticleFlipbookMode.OneShot
 	e.Color = ColorSequence.new(GREEN, LIME)
-	e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.9), NumberSequenceKeypoint.new(1, 0) })
+	e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.8), NumberSequenceKeypoint.new(1, 0) })
 	e.Lifetime = NumberRange.new(0.3, 0.55)
 	e.Speed = NumberRange.new(1, 3)
 	e.SpreadAngle = Vector2.new(180, 180)
-	e.Rate = 14
+	e.Rate = 10
 	e.LightEmission = 1
 	e.Brightness = 2.5
 	e.Rotation = NumberRange.new(0, 360)
 	e.Parent = core
 	local light = Instance.new("PointLight")
 	light.Color = GREEN
-	light.Range = 10
-	light.Brightness = 1.6
+	light.Range = 9
+	light.Brightness = 1.4
 	light.Parent = core
 	return tool
 end
@@ -610,7 +786,7 @@ function B.init(F)
 end
 
 return B
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX21"><Properties><string name="Name">Config</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX25"><Properties><string name="Name">Config</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- BOSS FIGHT: CONFIG
 -- Tune the fight here. Attack modules live in ./Attacks and
 -- are listed per phase by name; Params override each
@@ -650,6 +826,8 @@ return {
 				{ Module = "FistSlam", Weight = 3 },
 				{ Module = "StompQuake", Weight = 2 },
 				{ Module = "ConstellationLances", Weight = 2 },
+				{ Module = "AnnihilationBeam", Weight = 2 },
+				{ Module = "SpiralCollapse", Weight = 1.5 },
 			},
 		},
 		{
@@ -664,11 +842,13 @@ return {
 				{ Module = "FistSlam", Weight = 3, Params = { Waves = 3, ExtraZones = 4 } },
 				{ Module = "StompQuake", Weight = 2, Params = { Rings = 5, Speed = 85 } },
 				{ Module = "ConstellationLances", Weight = 2, Params = { Lines = 9 } },
+				{ Module = "AnnihilationBeam", Weight = 2, Params = { Sweeps = 2, Sweep = 1.9 } },
+				{ Module = "SpiralCollapse", Weight = 1.5, Params = { Strength = 13, R = 85 } },
 			},
 		},
 	},
 }
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX22"><Properties><string name="Name">Fight</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX26"><Properties><string name="Name">Fight</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- BOSS FIGHT: SERVER CORE
 -- The Anti-Spiral's state (health, phase, where he's walking),
 -- the remotes, and every hit: attacks schedule hits with an
@@ -755,6 +935,7 @@ local plan
 local function setPlan(p)
 	plan = p
 	model:SetAttribute("Motion", S.encodePlan(p))
+	shared:SetAttribute("BossMotion", model:GetAttribute("Motion"))
 end
 
 function F.rootAt(t)
@@ -789,6 +970,16 @@ local function hold()
 	local a = F.angleAt()
 	local t = S.now()
 	setPlan({ T0 = t, T1 = t, A0 = a, A1 = a, F0 = 0, F1 = 0, FM = 0, Y = plan.Y })
+end
+
+-- his state, copied onto the shared folder (every client always has that;
+-- the model itself may not have streamed in to them)
+local function publish()
+	for _, k in ipairs({ "DisplayName", "Phase", "Invulnerable", "Defeated", "Motion" }) do
+		shared:SetAttribute("Boss" .. k, model:GetAttribute(k))
+	end
+	shared:SetAttribute("BossHealth", humanoid.Health)
+	shared:SetAttribute("BossMaxHealth", humanoid.MaxHealth)
 end
 
 function F.setInvulnerable(on)
@@ -1000,6 +1191,15 @@ function F.init(bossModel)
 		end
 	end
 	humanoid.Died:Connect(onDeath)
+	humanoid.HealthChanged:Connect(publish)
+	model.AttributeChanged:Connect(publish)
+	publish()
+	print("[BossFight] server ready: " .. #script.Parent.Attacks:GetChildren() .. " attacks loaded")
+end
+
+-- a travelling hit checked every frame (rings, sweeping beams)
+function F.continuousHit(hit, untilT)
+	return F.ringHit(hit, untilT)
 end
 
 local function pick(phase, last)
@@ -1022,6 +1222,7 @@ function F.run()
 	setPhase(1)
 	F.setInvulnerable(false)
 	F.fx("Start", { T0 = S.now() })
+	print("[BossFight] fight started")
 	task.wait(1.5)
 	local last
 	local dir = F.rng:NextNumber() < 0.5 and 1 or -1
@@ -1042,6 +1243,7 @@ function F.run()
 			local params = table.clone(mod.Defaults or {})
 			for k, v in pairs(entry.Params or {}) do params[k] = v end
 			local token = F.Token
+			print("[BossFight] attack: " .. entry.Module)
 			local ok, err = pcall(mod.Run, F, params, token)
 			if not ok then warn("[BossFight] " .. entry.Module .. " failed: " .. tostring(err)) end
 			task.wait(phase.AttackDelay or 1)

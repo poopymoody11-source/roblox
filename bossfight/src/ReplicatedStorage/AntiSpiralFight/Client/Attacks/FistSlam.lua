@@ -59,6 +59,7 @@ function A.start(ctx, d)
 		table.insert(zones, ent)
 		Warn.add({ Id = z.Id, T = z.T, Shape = shape, Name = "FIST", Target = z.Target, Rad = z.R, Pos = function() return z.P + Vector3.new(0, 4, 0) end })
 	end
+	if d.Wave == 1 then ctx.Warn.callout("FIST SLAM") end
 	local windup, slam = poses(d.Hand)
 	local strike = first - 0.3
 	Rig:act({
@@ -135,6 +136,106 @@ function A.start(ctx, d)
 			end
 		end
 		if not alive then conn:Disconnect() end
+	end)
+end
+
+-- the finale: both fists clasped overhead, brought down on everyone
+local OVERHEAD = {
+	Waist = { 18, 0, 0 }, RightShoulder = { 178, 0, -6 }, LeftShoulder = { 178, 0, 6 },
+	RightElbow = { 55, 0, 0 }, LeftElbow = { 55, 0, 0 },
+}
+local HAMMERED = {
+	Waist = { -34, 0, 0 }, RightShoulder = { 58, 0, -8 }, LeftShoulder = { 58, 0, 8 },
+	RightElbow = { 0, 0, 0 }, LeftElbow = { 0, 0, 0 },
+}
+
+function A.hammer(ctx, d)
+	local K, S, Fx, Warn, Rig = ctx.K, ctx.S, ctx.Fx, ctx.Warn, ctx.Rig
+	local epoch = ctx.epoch()
+	local shape = { Kind = "circle", P = d.P, R = d.R }
+	local zone = Fx.zone(shape, d.T0, d.T)
+	Warn.add({ Id = d.Id, T = d.T, Shape = shape, Name = "HAMMER OF DESPAIR", Target = "all", Rad = d.R, Pos = function() return d.P + Vector3.new(0, 6, 0) end })
+	Warn.callout("HAMMER OF DESPAIR")
+	local strike = d.T - 0.35
+	Rig:act({
+		Until = d.T + 1.2,
+		Root = function(t)
+			local rise = K.k(t, d.T0, strike - 0.1) * (1 - K.k(t, strike, d.T))
+			local drop = K.k(t, strike, d.T, K.E.inQuad) * (1 - K.k(t, d.T + 0.3, d.T + 1.2))
+			return CFrame.new(0, 14 * rise - 34 * drop, 0) * CFrame.Angles(math.rad(8 * rise - 14 * drop), 0, 0)
+		end,
+		Upper = function(t)
+			if t < strike then
+				Rig:pose(Rig.REST, OVERHEAD, K.k(t, d.T0, strike - 0.15, K.E.outCubic))
+			elseif t < d.T + 0.3 then
+				Rig:pose(OVERHEAD, HAMMERED, K.k(t, strike, d.T, K.E.inQuad))
+			else
+				Rig:pose(HAMMERED, Rig.REST, K.k(t, d.T + 0.3, d.T + 1.2))
+			end
+			ctx.SK.hang(Rig.SB, "Right", 1, 0)
+			ctx.SK.hang(Rig.SB, "Left", 1, 0)
+			Rig.SB.lookAt(d.P, 0.9, Rig.RootCF)
+			return true
+		end,
+	})
+	K.sfx(K.S.Riser, 0.8, 0.9)
+	K.sfx(K.S.Heist, 0.5, 1)
+	local fists
+	local done = false
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		local now = S.now()
+		if ctx.epoch() ~= epoch then
+			conn:Disconnect()
+			zone.destroy()
+			if fists then for _, f in ipairs(fists) do f:Destroy() end end
+			return
+		end
+		zone.update(now)
+		local fall = 0.55
+		if now >= d.T - fall and not fists then
+			fists = { fist(K, Fx, d.R * 1.25), fist(K, Fx, d.R * 1.25) }
+			K.sfx(K.S.FireWhoosh, 0.9, 0.6)
+		end
+		if fists and not done then
+			local u = K.E.inQuad(K.remap(now, d.T - fall, d.T))
+			for i, f in ipairs(fists) do
+				local side = (i == 1 and -1 or 1) * d.R * 0.33
+				local top = d.P + Vector3.new(side, 420, 0)
+				local bottom = d.P + Vector3.new(side, f.Size.Y * 0.4, 0)
+				f.CFrame = CFrame.new(top:Lerp(bottom, u)) * CFrame.Angles(0, 0, math.rad(i == 1 and 8 or -8))
+			end
+		end
+		if not done and now >= d.T then
+			done = true
+			zone.destroy()
+			if Warn.claimed(d.Id) then
+				Fx.parryBurst(d.P + Vector3.new(0, 8, 0), true)
+				for _, f in ipairs(fists) do
+					f.Color = Fx.GREEN
+					K.tween(f, 0.5, { CFrame = f.CFrame + Vector3.new(0, 120, 0), Transparency = 1 })
+				end
+			else
+				Fx.blast(d.P, d.R * 1.3, Fx.VIOLET, { Sound = K.S.RockBoom, Shake = 4, Volume = 1.5 })
+				Fx.blast(d.P, d.R * 2.2, Fx.MAGENTA, { Column = false, Shake = 0, Volume = 0 })
+				Fx.sound(K.S.Boom, d.P, 1.2, 0.7, 3000)
+				K.flash(0.3, Color3.fromRGB(255, 220, 255), 0.4)
+				-- the arena cracks: rubble thrown up round the crater
+				for i = 1, 20 do
+					local a = i / 20 * math.pi * 2
+					local r = d.R * (0.8 + math.random() * 0.4)
+					local p = d.P + Vector3.new(math.cos(a) * r, 0, math.sin(a) * r)
+					local c = K.part({ Name = "Rubble", Size = Vector3.new(math.random(2, 5), math.random(2, 5), math.random(2, 5)), Material = Enum.Material.Slate,
+						Color = Color3.fromRGB(60, 40, 90), CFrame = CFrame.new(p) * CFrame.Angles(math.random() * 6, math.random() * 6, math.random() * 6) }, Fx.Folder)
+					K.tween(c, 0.25, { CFrame = c.CFrame + Vector3.new(0, math.random(3, 8), 0) }, Enum.EasingStyle.Back)
+					task.delay(0.9, function() K.tween(c, 0.6, { CFrame = c.CFrame - Vector3.new(0, 8, 0), Transparency = 1 }) end)
+					game:GetService("Debris"):AddItem(c, 1.6)
+				end
+				for _, f in ipairs(fists) do K.tween(f, 0.7, { Transparency = 1, Size = f.Size * 1.1 }) end
+			end
+			task.delay(0.8, function() for _, f in ipairs(fists) do f:Destroy() end end)
+			conn:Disconnect()
+		end
 	end)
 end
 

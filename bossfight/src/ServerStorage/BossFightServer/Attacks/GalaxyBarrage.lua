@@ -13,6 +13,7 @@ A.Defaults = {
 	Interval = 0.34,   -- seconds between shots
 	Windup = 1.5,      -- the galaxies opening
 	Travel = { 1.6, 2.1 },
+	Finale = true,     -- a planet the size of a house, at everyone
 }
 
 -- what can come out: name (the lock-on label), size, damage, speed factor
@@ -54,7 +55,7 @@ function A.Run(F, P, token)
 	local openT = t0 + P.Windup
 	local lastT = openT + (P.Shots - 1) * P.Interval
 	local id = F.newId("GB")
-	F.fx("GalaxyBarrage", { Id = id, T0 = t0, OpenT = openT, CloseT = lastT + P.Travel[2] + 0.8, Portals = portals })
+	F.fx("GalaxyBarrage", { Id = id, T0 = t0, OpenT = openT, CloseT = lastT + P.Travel[2] + (P.Finale and 4.3 or 0.8), Portals = portals })
 
 	local targets = F.targets()
 	for i = 1, P.Shots do
@@ -86,6 +87,32 @@ function A.Run(F, P, token)
 			Attack = id, Id = hit.Id, Kind = k.Kind, Model = k.Model, Name = k.Name, Size = k.Size, R = k.R,
 			From = from, To = land, T0 = tl, T = hit.T, Target = tgt.Player.UserId, Spin = rng:NextNumber(-3, 3),
 		})
+	end
+	if P.Finale and not F.cancelled(token) then
+		F.waitUntil(lastT + 0.6)
+		local tg = F.targets()
+		if #tg > 0 then
+			local sum = Vector3.zero
+			for _, t in ipairs(tg) do sum += t.Root.Position end
+			local c = sum / #tg
+			local off = S.flat(c - S.CENTER)
+			if off.Magnitude > S.ARENA_R - 30 then c = S.CENTER + off.Unit * (S.ARENA_R - 30) end
+			local land = S.surface(c.X, c.Z)
+			local tl = F.now()
+			local hit = F.hit({
+				T = tl + 2.9,
+				Shape = { Kind = "circle", P = land, R = 32 },
+				Damage = 45,
+				Name = "JUPITER",
+				Target = "all",
+				Knock = 100,
+			})
+			F.fx("Shot", {
+				Attack = id, Id = hit.Id, Kind = "giant", Model = "jupiter", Name = "JUPITER", Size = 64, R = 32,
+				From = portals[math.ceil(#portals / 2)] + S.UP * 60, To = land, T0 = tl, T = hit.T, Target = "all", Spin = 0.6,
+			})
+			lastT = hit.T - P.Travel[2]
+		end
 	end
 	F.waitUntil(lastT + P.Travel[2] + 0.3)
 end

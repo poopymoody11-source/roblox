@@ -67,6 +67,7 @@ function A.start(ctx, d)
 		end
 	end)
 	K.sfx(K.S.Rumble, 0.7, 0.8)
+	Warn.callout("STOMP QUAKE")
 	Warn.pop("JUMP THE SHOCKWAVES!", Color3.fromRGB(255, 200, 220), false, Vector2.new(0.5, 0.3))
 
 	-- the rings: a wall of light (quads round the circle) + a glow on the floor

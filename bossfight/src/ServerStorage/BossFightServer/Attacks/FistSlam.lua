@@ -16,6 +16,10 @@ A.Defaults = {
 	WaveGap = 0.55,   -- rest between one wave's last slam and the next wave's warning
 	Stagger = 0.16,   -- between slams in a wave
 	Damage = 35,
+	Hammer = true,     -- the finale: both fists, one huge zone over the crowd
+	HammerR = 50,
+	HammerWarn = 1.9,
+	HammerDamage = 50,
 }
 
 function A.Run(F, P, token)
@@ -69,6 +73,25 @@ function A.Run(F, P, token)
 		local last = list[#list] and list[#list].T or impact
 		F.waitUntil(last + 0.2)
 		waveT = last + P.WaveGap
+	end
+	if P.Hammer and not F.cancelled(token) then
+		-- over the middle of everyone (kept on the arena)
+		local sum, n = Vector3.zero, 0
+		for _, t in ipairs(F.targets()) do sum += t.Root.Position n += 1 end
+		local c = n > 0 and sum / n or S.CENTER
+		local off = S.flat(c - S.CENTER)
+		if off.Magnitude > S.ARENA_R - P.HammerR * 0.5 then c = S.CENTER + off.Unit * (S.ARENA_R - P.HammerR * 0.5) end
+		local p = S.surface(c.X, c.Z)
+		local hit = F.hit({
+			T = waveT + P.HammerWarn,
+			Shape = { Kind = "circle", P = p, R = P.HammerR },
+			Damage = P.HammerDamage,
+			Name = "HAMMER OF DESPAIR",
+			Target = "all",
+			Knock = 110,
+		})
+		F.fx("FistHammer", { T0 = waveT, T = hit.T, Id = hit.Id, P = p, R = P.HammerR })
+		waveT = hit.T + 0.6
 	end
 	F.waitUntil(waveT)
 end

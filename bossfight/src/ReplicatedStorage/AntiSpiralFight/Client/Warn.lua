@@ -103,6 +103,41 @@ function W.pop(text, color, big, pos)
 end
 
 --------------------------------------------------------------------------
+-- an attack's name, slammed in under the boss bar (glitching in, like his name)
+--------------------------------------------------------------------------
+function W.callout(text)
+	local holder = frame(root, { Name = "Callout", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.21), Size = UDim2.fromScale(0.5, 0.06), BackgroundTransparency = 1, ZIndex = 70 })
+	local t = label(holder, { Text = "", Size = UDim2.fromScale(1, 1), TextColor3 = Color3.new(1, 1, 1), ZIndex = 71, StrokeTh = 4 })
+	grad(t, Color3.fromRGB(255, 150, 235), Color3.fromRGB(165, 85, 255), 0)
+	local sc = Instance.new("UIScale")
+	sc.Scale = 1.6
+	sc.Parent = holder
+	tween(sc, 0.25, { Scale = 1 }, Enum.EasingStyle.Back)
+	local chars = "!<>-_/[]{}=+*^?#%01XZ"
+	task.spawn(function()
+		local t0 = os.clock()
+		while os.clock() - t0 < 0.35 do
+			local k = math.floor(#text * (os.clock() - t0) / 0.35)
+			local out = text:sub(1, k)
+			for i = k + 1, #text do
+				local r = math.random(1, #chars)
+				out ..= text:sub(i, i) == " " and " " or chars:sub(r, r)
+			end
+			t.Text = out
+			task.wait()
+		end
+		t.Text = text
+		task.wait(1.3)
+		tween(t, 0.35, { TextTransparency = 1 })
+		local st = t:FindFirstChildOfClass("UIStroke")
+		if st then tween(st, 0.35, { Transparency = 1 }) end
+		task.wait(0.4)
+		holder:Destroy()
+	end)
+	K.sfx(K.S.CutIn, 0.5, 1.2)
+end
+
+--------------------------------------------------------------------------
 -- the lock-on (the cutscene's dodge warning)
 --------------------------------------------------------------------------
 local function makeLock(name)
@@ -240,12 +275,16 @@ end
 
 local function impactT(h, pos)
 	if h.Shape.Kind == "ring" then return S.ringArrival(h.Shape, pos) end
+	if h.Shape.Kind == "sweep" then return S.sweepArrival(h.Shape, pos) end
 	return h.T
 end
 
 -- would it catch me where I stand? (rings: if I don't jump)
 local function inPath(h, pos, T)
 	if h.Shape.Kind == "ring" then return S.onArena(pos, -5) end
+	if h.Shape.Kind == "sweep" then
+		return T >= h.Shape.T0 - 0.05 and T <= h.Shape.T1 + 0.05 and S.onArena(pos, -5)
+	end
 	return S.inside(h.Shape, pos, T, 0)
 end
 
@@ -333,13 +372,14 @@ function W.update(now)
 		local id = order[i]
 		local h = hits[id]
 		local T = pos and impactT(h, pos) or h.T or now
-		if now > (h.T or T) + 2.5 or (h.Shape.Kind == "ring" and now > h.Shape.T0 + 12) then
+		local over = (h.Shape.Kind == "ring" and now > h.Shape.T0 + 12) or (h.Shape.Kind == "sweep" and now > h.Shape.T1 + 2)
+		if over or (h.T and now > h.T + 2.5) then
 			if h.Lock then endLock(h, true, "") end
 			hits[id] = nil
 			table.remove(order, i)
 		else
 			-- the lock-on: things aimed at me
-			if h.Target == myId and pos then
+			if (h.Target == myId or h.Target == "all") and pos then
 				if not h.Lock and not h.Result and now >= T - S.WARN_LOCK and now < T then
 					h.Lock = makeLock(h.Name or "INCOMING")
 					h.LockT = now
