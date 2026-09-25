@@ -33,8 +33,8 @@ function A.Run(F, P, token)
 	end
 	local list = {}
 	for _, r in ipairs(rings) do
-		-- (SPACE: jump it, and a jump on the beat parries it)
-		local hit = { Id = F.newId("SQ"), Shape = r.Shape, Damage = P.Damage, Name = "SHOCKWAVE", Knock = 30, Qte = F.qte.single("SPACE"), Counter = 20, CounterPerfect = 32 }
+		-- (jump it)
+		local hit = { Id = F.newId("SQ"), Shape = r.Shape, Damage = P.Damage, Name = "SHOCKWAVE", Knock = 30 }
 		r.Hit = hit
 		table.insert(list, { Id = hit.Id, Shape = r.Shape })
 	end

@@ -45,6 +45,7 @@ local function remote(name)
 end
 F.FxRemote = remote("Fx")        -- server -> clients: attack visuals, hits, results
 F.QteRemote = remote("Qte")      -- client -> server: "I completed this hit's QTE" (id, time, grade)
+F.ActionRemote = remote("Action") -- client -> server: "roll", "punch"
 
 function F.fx(kind, data)
 	F.FxRemote:FireAllClients(kind, data)
@@ -72,6 +73,7 @@ end
 --------------------------------------------------------------------------
 local model, humanoid, root
 F.Token = 0 -- bumped on phase change / death: running attacks bail out
+F.Dazed = false
 F.SetPiecesUsed = {}
 F.Forced = {} -- set pieces waiting to go next
 F.Alive = true
@@ -178,7 +180,8 @@ local function setPhase(index)
 		hold()
 		F.fx("Phase", { Index = index, T0 = S.now(), Dur = ph.TransitionTime or 3 })
 		task.wait(ph.TransitionTime or 3)
-		if F.Alive then F.setInvulnerable(false) end
+		-- (back to normal: only hurt while dazed)
+		if F.Alive then F.setInvulnerable(not F.Dazed) end
 	end
 	transitioning = false
 end
@@ -194,8 +197,11 @@ local function onDeath()
 end
 
 -- returns true if it landed
+-- (a QTE counter lands whether he's dazed or not; everything else only while he's open)
 function F.damageBoss(amount, player, source)
-	if not F.Alive or model:GetAttribute("Invulnerable") then return false end
+	if not F.Alive or transitioning then return false end
+	local counter = source == "parry" or source == "ultimate"
+	if model:GetAttribute("Invulnerable") and not counter then return false end
 	humanoid.Health = math.max(humanoid.Health - amount, 0)
 	F.fx("BossHurt", { Amount = amount, Source = source, User = player and player.UserId or 0 })
 	if humanoid.Health <= 0 then
@@ -255,7 +261,15 @@ function QTE.randomChord(n)
 	return QTE.chord(keys)
 end
 function QTE.ultimate(steps)
-	return { Kind = "ultimate", Steps = steps, Early = 0.09, Late = 0.09, Perfect = 0.045 }
+	return { Kind = "ultimate", Steps = steps, Early = 0.24, Late = 0.18, Perfect = 0.08 }
+end
+-- keys one after another, `gap` apart, the last on the impact
+function QTE.sequence(keys, gap, kind)
+	local steps = {}
+	for i, k in ipairs(keys) do
+		table.insert(steps, { At = -(#keys - i) * (gap or 0.45), Keys = { k } })
+	end
+	return { Kind = kind or "sequence", Steps = steps, Early = 0.3, Late = 0.18, Perfect = 0.09 }
 end
 
 function F.isLive(id) return live[id] ~= nil end
@@ -285,6 +299,8 @@ local function resolve(hit, t, T)
 		else
 			F.damageBoss(dmg, player, "parry")
 		end
+	elseif (player:GetAttribute("IFrameUntil") or 0) >= T - 0.05 then
+		result = "evade"
 	else
 		result = "hit"
 		local mult = F.phase().DamageMultiplier or 1
@@ -295,14 +311,16 @@ local function resolve(hit, t, T)
 			t.Root.AssemblyLinearVelocity = away * hit.Knock + Vector3.new(0, hit.Knock * 0.5, 0)
 		end
 	end
-	F.fx("Resolve", { Id = hit.Id, User = player.UserId, Result = result, Pos = t.Root.Position, Kind = q and q.Kind or "none" })
+	F.fx("Resolve", { Id = hit.Id, User = player.UserId, Result = result, Pos = t.Root.Position, Kind = q and q.Kind or "none",
+		Knock = hit.Knock or 0, From = S.shapeCentre(hit.Shape, T) })
 end
 
 -- every hit is announced (its QTE, shape and timing) so each client can prompt it
+-- (QTEs are only for the big wind-ups: a hit has one only if its attack gives it one.
+-- Big = true marks those: they get the lock-on; everything else just gets the red icon)
 local function announce(hit)
-	if hit.Qte == nil then hit.Qte = QTE.single("CLICK") end
 	if hit.Qte == false then hit.Qte = nil end
-	F.fx("Hit", { Id = hit.Id, T = hit.T, Shape = hit.Shape, Name = hit.Name, Target = hit.Target, Qte = hit.Qte })
+	F.fx("Hit", { Id = hit.Id, T = hit.T, Shape = hit.Shape, Name = hit.Name, Target = hit.Target, Qte = hit.Qte, Big = hit.Big })
 end
 
 -- a timed hit: { Id, T, Shape, Damage, Name, Target (userId | "all"), Qte (spec | false), Counter, CounterPerfect, Knock }
@@ -401,6 +419,11 @@ function F.init(bossModel)
 			if not attacks[e.Module] then warn(("[BossFight] phase %d lists %s, but Attacks has no such module"):format(i, e.Module)) end
 		end
 	end
+	-- (the clients read these for their moves)
+	for _, k in ipairs({ "RollCooldown", "RollIFrames", "PunchRange", "PunchCooldown" }) do
+		shared:SetAttribute(k, Config[k])
+	end
+	shared:SetAttribute("BossDazed", false)
 	humanoid.Died:Connect(onDeath)
 	humanoid.HealthChanged:Connect(publish)
 	model.AttributeChanged:Connect(publish)
@@ -429,6 +452,69 @@ local function scaledHealth(n)
 	return math.floor(Config.MaxHealth * (1 + (Config.HealthPerExtraPlayer or 0.7) * math.max(n - 1, 0)))
 end
 
+--------------------------------------------------------------------------
+-- THE DAZE: after a few attacks he's spent - he slumps over the rim, his head
+-- down on the arena, and for a few seconds he can be punched
+--------------------------------------------------------------------------
+local dazeEnds = 0
+function F.weakPoint(t)
+	local p = F.rootAt(t).Position
+	local toBoss = S.flat(p - S.CENTER).Unit
+	return S.CENTER + toBoss * (S.ARENA_R - 10) + Vector3.new(0, 5, 0)
+end
+
+local function daze()
+	local t0 = S.now()
+	local dur = Config.DazeTime or 8
+	local weak = F.weakPoint(t0)
+	F.Dazed = true
+	dazeEnds = t0 + dur
+	model:SetAttribute("Dazed", true)
+	shared:SetAttribute("BossDazed", true)
+	F.setInvulnerable(false)
+	F.fx("Daze", { T0 = t0, T1 = t0 + dur, Weak = weak })
+	print("[BossFight] dazed")
+	while S.now() < dazeEnds and F.Alive and not transitioning do task.wait(0.1) end
+	F.Dazed = false
+	model:SetAttribute("Dazed", false)
+	shared:SetAttribute("BossDazed", false)
+	F.setInvulnerable(true)
+	if not F.Alive then return end
+	-- he comes round with a roar that throws everyone off him
+	local rt = S.now() + 0.9
+	local ring = { Kind = "ring", O = weak, R0 = 0, Speed = 95, W = 8, H = 5, T0 = rt }
+	local hit = { Id = F.newId("DZ"), Shape = ring, Damage = 20, Name = "ROAR", Knock = 60, Qte = false }
+	F.fx("DazeEnd", { T0 = S.now(), RingT = rt, Weak = weak, Id = hit.Id, Shape = ring })
+	F.continuousHit(hit, rt + (2 * S.ARENA_R + 20) / ring.Speed)
+	task.wait(1.6)
+end
+
+-- the players' own moves: a roll (i-frames) and, while he's dazed, the punch
+local lastAct = {}
+F.ActionRemote.OnServerEvent:Connect(function(player, action)
+	local c = player.Character
+	local hum = c and c:FindFirstChildOfClass("Humanoid")
+	local root = c and c:FindFirstChild("HumanoidRootPart")
+	if not (hum and root and hum.Health > 0) then return end
+	local now = S.now()
+	lastAct[player] = lastAct[player] or { roll = 0, punch = 0 }
+	local L = lastAct[player]
+	if action == "roll" then
+		if now - L.roll < (Config.RollCooldown or 1.1) * 0.85 then return end
+		L.roll = now
+		player:SetAttribute("IFrameUntil", now + (Config.RollIFrames or 0.4))
+		F.fx("Roll", { User = player.UserId })
+	elseif action == "punch" then
+		if not F.Dazed or now - L.punch < (Config.PunchCooldown or 0.4) * 0.8 then return end
+		local weak = F.weakPoint(now)
+		if (S.flat(root.Position) - S.flat(weak)).Magnitude > (Config.PunchRange or 30) + 6 then return end
+		L.punch = now
+		F.damageBoss(Config.PunchDamage or 55, player, "punch")
+		F.fx("Punch", { User = player.UserId, At = weak })
+	end
+end)
+Players.PlayerRemoving:Connect(function(p) lastAct[p] = nil end)
+
 function F.run()
 	local n = math.max(#Players:GetPlayers(), 1)
 	humanoid.MaxHealth = scaledHealth(n)
@@ -442,10 +528,16 @@ function F.run()
 		humanoid.Health += add
 	end)
 	setPhase(1)
-	F.setInvulnerable(false)
+	-- (only ever hurt while he's dazed)
+	F.setInvulnerable(true)
+	-- the how-to-play cards first, then he comes for you
+	local intro = Config.IntroTime or 10
+	F.fx("Intro", { T0 = S.now(), Dur = intro })
+	task.wait(intro)
 	F.fx("Start", { T0 = S.now() })
 	print("[BossFight] fight started")
 	task.wait(1.5)
+	local sinceDaze = 0
 	local last
 	local dir = F.rng:NextNumber() < 0.5 and 1 or -1
 	while F.Alive do
@@ -473,6 +565,12 @@ function F.run()
 			local ok, err = pcall(mod.Run, F, params, token)
 			if not ok then warn("[BossFight] " .. entry.Module .. " failed: " .. tostring(err)) end
 			task.wait(phase.AttackDelay or 1)
+			-- (after a run of attacks - or a set piece - he's spent)
+			sinceDaze += 1
+			if F.Alive and not transitioning and (sinceDaze >= (Config.AttacksBeforeDaze or 3) or forced) then
+				sinceDaze = 0
+				daze()
+			end
 		else
 			task.wait(0.5)
 		end

@@ -56,7 +56,6 @@ function A.Run(F, P, token)
 			Name = "LANCE",
 			Target = l.Target,
 			Knock = 45,
-			Counter = 25, CounterPerfect = 40,
 		})
 		table.insert(list, { Id = hit.Id, A = l.A, B = l.B, W = P.W, T = hit.T, Target = l.Target })
 	end

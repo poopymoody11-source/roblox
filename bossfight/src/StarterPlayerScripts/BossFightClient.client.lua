@@ -17,7 +17,7 @@ local shared = ReplicatedStorage:WaitForChild("AntiSpiralFight")
 local S = require(shared:WaitForChild("Shared"))
 local client = shared:WaitForChild("Client")
 local net = shared:WaitForChild(S.NET)
-local Net = { Fx = net:WaitForChild("Fx"), Qte = net:WaitForChild("Qte") }
+local Net = { Fx = net:WaitForChild("Fx"), Qte = net:WaitForChild("Qte"), Action = net:WaitForChild("Action") }
 
 local FC = ReplicatedStorage:WaitForChild("FinalCutscene")
 local K = require(FC:WaitForChild("Client"):WaitForChild("Kit"))
@@ -30,6 +30,9 @@ local Cam = require(client:WaitForChild("Cam"))
 local Qte = require(client:WaitForChild("Qte"))
 local Aura = require(client:WaitForChild("Aura"))
 local CharAnim = require(client:WaitForChild("CharAnim"))
+local Moves = require(client:WaitForChild("Moves"))
+local Music = require(client:WaitForChild("Music"))
+local Tutorial = require(client:WaitForChild("Tutorial"))
 local attacks = {}
 for _, m in ipairs(client:WaitForChild("Attacks"):GetChildren()) do
 	if m:IsA("ModuleScript") then attacks[m.Name] = require(m) end
@@ -40,6 +43,7 @@ Warn.init(K, S)
 Qte.init(K, S, Warn, Net.Qte)
 Aura.init(K, SK)
 CharAnim.init(K)
+Music.init(K)
 Fx.onShake(Cam.shake)
 
 --------------------------------------------------------------------------
@@ -150,7 +154,8 @@ end
 local epoch = 0 -- (bumped on a phase change / his death: running visuals stop)
 local rig, road
 
-local ctx = { K = K, SK = SK, S = S, Fx = Fx, Warn = Warn, Cam = Cam, Qte = Qte, Net = Net, player = player }
+local ctx = { K = K, SK = SK, S = S, Fx = Fx, Warn = Warn, Cam = Cam, Qte = Qte, Net = Net, player = player,
+	Moves = Moves, Music = Music, CharAnim = CharAnim, Aura = Aura }
 function ctx.epoch() return epoch end
 function ctx.chest()
 	local ut = model:FindFirstChild("UpperTorso")
@@ -163,6 +168,7 @@ function ctx.handPos(side)
 	return h and h.H.Palm.Position or ctx.chest()
 end
 Fx.setBoss(model)
+Moves.init(ctx)
 
 --------------------------------------------------------------------------
 -- feedback on him
@@ -181,7 +187,7 @@ local function damageNumber(amount, source)
 	t.FontFace = Font.new("rbxasset://fonts/families/Inconsolata.json", Enum.FontWeight.Bold)
 	t.TextScaled = true
 	t.Text = tostring(math.floor(amount + 0.5))
-	t.TextColor3 = source == "ultimate" and Color3.fromRGB(255, 235, 120) or source == "parry" and Color3.fromRGB(140, 255, 170) or Color3.new(1, 1, 1)
+	t.TextColor3 = source == "ultimate" and Color3.fromRGB(255, 235, 120) or (source == "parry" or source == "punch") and Color3.fromRGB(140, 255, 170) or Color3.new(1, 1, 1)
 	t.Parent = bb
 	local st = Instance.new("UIStroke") st.Thickness = 3 st.Parent = t
 	K.tween(host, 0.9, { CFrame = host.CFrame + Vector3.new(0, 30, 0) })
@@ -250,6 +256,8 @@ function ctx.bossRecoil()
 	task.delay(1.6, function() if rig.Action == nil and prev and prev.Until and prev.Until > S.now() then rig:act(prev) end end)
 end
 
+ctx.roar = roar
+
 local function collapse(t0)
 	if not rig then return end
 	local parts = {}
@@ -291,7 +299,14 @@ end
 --------------------------------------------------------------------------
 local handlers = {}
 
+handlers.Intro = function(d)
+	Music.play("Intro", 1)
+	local left = d.Dur - math.max(S.now() - d.T0, 0)
+	if left > 3 then Tutorial.play(K, Warn.Gui:FindFirstChild("Root"), left) end
+end
+
 handlers.Start = function(d)
+	Music.play("Phase1", 1.2)
 	roar(d.T0, 2.2)
 	Fx.say("COME, SPIRAL APES.\nKNOW DESPAIR.", 1.6, true)
 end
@@ -304,8 +319,29 @@ handlers.ConstellationLances = function(d) attacks.ConstellationLances.start(ctx
 handlers.FistHammer = function(d) attacks.FistSlam.hammer(ctx, d) end
 handlers.AnnihilationBeam = function(d) attacks.AnnihilationBeam.start(ctx, d) end
 handlers.SpiralCollapse = function(d) attacks.SpiralCollapse.start(ctx, d) end
-handlers.BigBang = function(d) attacks.BigBang.start(ctx, d) end
-handlers.GalaxyCorruption = function(d) attacks.GalaxyCorruption.start(ctx, d) end
+-- (the set pieces get their own music, then the phase's theme comes back)
+local function setPieceMusic(untilT)
+	Music.play("SetPiece", 1)
+	task.delay(math.max(untilT - S.now(), 0), function()
+		Music.play((shared:GetAttribute("BossPhase") or 1) >= 2 and "Phase2" or "Phase1", 2)
+	end)
+end
+handlers.BigBang = function(d)
+	setPieceMusic(d.T + 5)
+	attacks.BigBang.start(ctx, d)
+end
+handlers.GalaxyCorruption = function(d)
+	setPieceMusic(d.EndT + 4)
+	attacks.GalaxyCorruption.start(ctx, d)
+end
+handlers.Daze = function(d) attacks.Daze.start(ctx, d) end
+handlers.DazeEnd = function(d) attacks.Daze.finish(ctx, d) end
+handlers.Punch = function(d) attacks.Daze.hit(ctx, d) end
+handlers.Roll = function(d)
+	if d.User == player.UserId then return end -- (mine played when I pressed it)
+	local who = Players:GetPlayerByUserId(d.User)
+	if who then Moves.rollFx(who.Character) end
+end
 handlers.CorruptBolt = function(d) attacks.GalaxyCorruption.bolt(ctx, d) end
 handlers.CorruptLance = function(d) attacks.GalaxyCorruption.lance(ctx, d) end
 handlers.CorruptFinale = function(d) attacks.GalaxyCorruption.finale(ctx, d) end
@@ -313,21 +349,21 @@ handlers.CorruptFinale = function(d) attacks.GalaxyCorruption.finale(ctx, d) end
 -- every hit: its prompts, and its lock-on
 handlers.Hit = function(d)
 	Qte.add(d)
-	Warn.add({ Id = d.Id, T = d.T, Shape = d.Shape, Name = d.Name, Target = d.Target })
+	Warn.add({ Id = d.Id, T = d.T, Shape = d.Shape, Name = d.Name, Target = d.Target, Big = d.Big, Qte = d.Qte })
 end
 
 -- a parry, on whoever made it: the move, the burst, the counter-bolt into him
 local animated = {} -- (my own parries animate the moment I land them)
 local function parryMove(char, kind, perfect)
 	if not char then return end
-	if kind == "chord" then
+	if kind == "chord" or kind == "sequence" then
 		CharAnim.play(char, CharAnim.Guard)
 	elseif perfect then
 		CharAnim.play(char, CharAnim.Spin)
 	else
 		CharAnim.play(char, CharAnim.Deflect)
 	end
-	Aura.flare(char, kind == "chord" and 1 or 0.7)
+	Aura.flare(char, kind ~= "single" and 1 or 0.7)
 end
 
 Qte.OnSuccess = function(h, grade)
@@ -338,8 +374,8 @@ Qte.OnSuccess = function(h, grade)
 	parryMove(char, kind, grade == "perfect")
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	if root then Fx.parryBurst(root.Position + root.CFrame.LookVector * 2 + Vector3.new(0, 1, 0), grade == "perfect") end
-	if kind == "chord" or grade == "perfect" then
-		Fx.impact(kind == "chord" and "GWG" or "G", 0.04)
+	if kind ~= "single" or grade == "perfect" then
+		Fx.impact(kind ~= "single" and "GWG" or "G", 0.04)
 		Cam.punch(-10, 0.35)
 		Fx.tint(Fx.GREEN, 0.35, 0.5, 0.3)
 	end
@@ -360,9 +396,31 @@ handlers.Resolve = function(d)
 		if d.Kind ~= "ultimate" then Fx.bolt(d.Pos + Vector3.new(0, 2, 0), ctx.chest(), perfect) end
 		if math.random() < 0.12 then Fx.say(({ "IMPOSSIBLE.", "...WHAT?", "INSOLENT APE." })[math.random(1, 3)], 0.9) end
 	elseif d.Result == "hit" then
-		CharAnim.play(char, CharAnim.Reel)
+		-- it lands: thrown back, a spray of blood, a shockwave off you
+		local big = (d.Knock or 0) >= 90
+		CharAnim.play(char, big and CharAnim.Blasted or CharAnim.Reel)
 		Aura.dim(char)
-		if mine then Cam.punch(6, 0.3) end
+		Fx.vfx(big and "Blood-02" or "Blood-01", d.Pos, big and 0.8 or 0.55, big and 10 or 6, 2)
+		Fx.blast(d.Pos, big and 10 or 6, Color3.fromRGB(255, 60, 80), { Column = false, Pack = false, Sound = K.S.Punch2, Volume = 0.8, Shake = 0 })
+		if mine then
+			local root = char and char:FindFirstChild("HumanoidRootPart")
+			local hum = char and char:FindFirstChildOfClass("Humanoid")
+			if root and d.From then
+				-- (your body is yours to move: the knockback happens here)
+				local away = S.flat(root.Position - d.From)
+				away = away.Magnitude > 0.5 and away.Unit or -root.CFrame.LookVector
+				local k = math.max(d.Knock or 30, 30)
+				root.AssemblyLinearVelocity = away * k * 0.85 + Vector3.new(0, k * 0.5, 0)
+			end
+			if big and hum then
+				hum:ChangeState(Enum.HumanoidStateType.FallingDown)
+				task.delay(1.1, function() if hum.Parent then hum:ChangeState(Enum.HumanoidStateType.GettingUp) end end)
+				Fx.impact("R", 0.035)
+			end
+			Cam.shake(big and 2.5 or 1.4, 0.4)
+			Cam.punch(big and 14 or 8, 0.35)
+			K.sfx(K.S.BodyFall, big and 0.9 or 0.5, 1.1)
+		end
 	end
 end
 
@@ -377,6 +435,7 @@ handlers.Phase = function(d)
 	Qte.cancelAll()
 	Cam.clearCuts()
 	roar(d.T0, d.Dur)
+	Music.play("Phase2", 1)
 	Fx.say("YOU PERSIST...\nTHEN KNOW TRUE DESPAIR.", 2, true)
 	Fx.impact("VBV", 0.06)
 end
@@ -387,6 +446,8 @@ handlers.Defeated = function(d)
 	Qte.cancelAll()
 	Cam.clearCuts()
 	collapse(d.T0)
+	Moves.setActive(false)
+	Music.play("Victory", 3)
 	Fx.impact("WBWBW", 0.06)
 	Fx.say("HOW... CAN A SPIRAL...\nSURPASS... ME...", 2.5, true)
 end
@@ -440,11 +501,12 @@ local function begin()
 	end)
 	Cam.start(ctx.chest, S.now)
 	Aura.setActive(true)
+	Moves.setActive(true)
 	ready = true
 	-- (late: anything announced while we were getting ready)
 	for _, q in ipairs(queue) do
 		local h = handlers[q[1]]
-		if h and q[1] ~= "Start" then pcall(h, q[2]) end
+		if h then pcall(h, q[2]) end
 	end
 	table.clear(queue)
 end

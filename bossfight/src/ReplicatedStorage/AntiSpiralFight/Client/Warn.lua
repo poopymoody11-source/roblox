@@ -93,6 +93,23 @@ function W.pop(text, color, big, pos)
 end
 
 --------------------------------------------------------------------------
+-- the danger icon: a red warning that pulses in the middle of the screen
+-- while something is about to land where you stand (MOVE! / JUMP! / ROLL!)
+--------------------------------------------------------------------------
+local danger
+local function buildDanger()
+	local f = frame(root, { Name = "Danger", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.34), Size = UDim2.fromScale(0.09, 0.09), BackgroundColor3 = Color3.new(1, 1, 1), Rotation = 45, Visible = false, ZIndex = 55 })
+	local ar = Instance.new("UIAspectRatioConstraint") ar.AspectRatio = 1 ar.DominantAxis = Enum.DominantAxis.Height ar.Parent = f
+	local c = Instance.new("UICorner") c.CornerRadius = UDim.new(0.18, 0) c.Parent = f
+	stroke(f, Color3.new(0, 0, 0), 5)
+	grad(f, Color3.fromRGB(140, 0, 20), RED)
+	local bang = label(f, { Text = "!", Rotation = -45, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.8, 0.8), ZIndex = 56, StrokeTh = 4 })
+	local word = label(root, { Name = "DangerWord", Text = "MOVE!", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0.4), Size = UDim2.fromScale(0.18, 0.05), TextColor3 = Color3.fromRGB(255, 90, 100), Visible = false, ZIndex = 56, StrokeTh = 4 })
+	local sc = Instance.new("UIScale") sc.Parent = f
+	return { F = f, Bang = bang, Word = word, Scale = sc }
+end
+
+--------------------------------------------------------------------------
 -- an attack's name, slammed in under the boss bar (glitching in, like his name)
 --------------------------------------------------------------------------
 function W.callout(text)
@@ -274,6 +291,7 @@ function W.update(now)
 	local pos = me()
 	local soonest, soonestT
 	local myId = player.UserId
+	local dangerT, dangerWord
 	for i = #order, 1, -1 do
 		local id = order[i]
 		local h = hits[id]
@@ -284,8 +302,15 @@ function W.update(now)
 			hits[id] = nil
 			table.remove(order, i)
 		else
-			-- the lock-on: things aimed at me
-			if (h.Target == myId or h.Target == "all") and pos then
+			-- the red icon: anything about to land where I stand (the QTE ones prompt instead)
+			if pos and not h.Result and not h.Qte and inPath(h, pos, T) and T - now <= 1.3 and T - now >= -0.05 then
+				if not dangerT or T < dangerT then
+					dangerT = T
+					dangerWord = h.Shape.Kind == "ring" and "JUMP!" or h.Shape.Kind == "sweep" and "ROLL!" or "MOVE!"
+				end
+			end
+			-- the lock-on: the big ones, aimed at me
+			if h.Big and (h.Target == myId or h.Target == "all") and pos then
 				if not h.Lock and not h.Result and now >= T - S.WARN_LOCK and now < T then
 					h.Lock = makeLock(h.Name or "INCOMING")
 					h.LockT = now
@@ -301,6 +326,21 @@ function W.update(now)
 					end
 				end
 			end
+		end
+	end
+	danger = danger or buildDanger()
+	local on = dangerT ~= nil
+	danger.F.Visible = on
+	danger.Word.Visible = on
+	if on then
+		local rem = math.max(dangerT - now, 0)
+		local beat = 0.5 + 0.5 * math.sin(os.clock() * (10 + 20 * (1 - rem / 1.3)))
+		danger.Scale.Scale = 1 + 0.18 * beat
+		danger.Word.Text = dangerWord
+		danger.Word.TextColor3 = Color3.fromRGB(255, 90, 100):Lerp(Color3.new(1, 1, 1), beat * 0.5)
+		if os.clock() - lastBeep >= 0.12 + 0.3 * (rem / 1.3) then
+			lastBeep = os.clock()
+			K.sfx(BEEP, 0.3, 1.9)
 		end
 	end
 	-- the beep: faster and higher as the nearest lock closes

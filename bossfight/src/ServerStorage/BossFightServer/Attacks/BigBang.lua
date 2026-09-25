@@ -28,14 +28,13 @@ function A.Run(F, P, token)
 		Name = "BIG BANG",
 		Target = "all",
 		Knock = 140,
-		-- every step on a knife-edge (see QTE.ultimate: +/-0.09 s, perfect +/-0.045 s)
-		Qte = F.qte.ultimate({
-			{ At = -1.5, Keys = { "CLICK" } },
-			{ At = -1.1, Keys = { "Q" } },
-			{ At = -0.72, Keys = { "CLICK", "SPACE" } },
-			{ At = -0.36, Keys = { "E" } },
-			{ At = 0, Keys = { "CLICK", "Q", "E" } },
-		}),
+		Big = true,
+		-- five keys, one after another (the tightest windows in the fight)
+		Qte = (function()
+			local q = F.qte.sequence({ "CLICK", "Q", "E", "F", "CLICK" }, 0.42, "ultimate")
+			q.Early, q.Late, q.Perfect = 0.24, 0.15, 0.07
+			return q
+		end)(),
 		Counter = math.floor(max * 0.08),
 		CounterPerfect = math.floor(max * 0.12),
 	})

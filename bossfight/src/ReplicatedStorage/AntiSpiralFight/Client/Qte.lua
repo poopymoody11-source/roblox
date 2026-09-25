@@ -1,11 +1,11 @@
 --==================================================
 -- QTE: THE PARRY PROMPTS (client)
--- Every hit you're standing in gets a prompt, in the dodge
--- prompt's style (a key in a disc, a ring closing on it):
---   single   - one key as it lands
---   chord    - several keys, all down inside the window
---   ultimate - a sequence of steps (some of them chords), each on
---              a knife-edge; the whole track shows along the top
+-- Only his biggest wind-ups have one (everything else, you just
+-- get out of the way). In the dodge prompt's style - a key in a
+-- disc, a ring closing on it - one key after another:
+--   sequence - a few keys in turn, the last as it lands
+--   ultimate - Big Bang's five, on tighter windows
+-- (single and chord still work, if an attack asks for them)
 -- Complete every step and the hit is claimed (the server has the
 -- last word). Early, late or wrong keys lose it.
 -- Keys: CLICK (mouse / tap / R2), SPACE (A), Q (X), E (Y), F (B).
@@ -132,10 +132,10 @@ local function buildUI(h)
 	ui.Row = row
 	-- its name (chords and the ultimate say what's coming)
 	if h.Qte.Kind ~= "single" then
-		ui.Title = label(holder, { Text = ult and "!! BIG BANG !! - PERFECT TIMING" or "PARRY - ALL AT ONCE", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 0, -6), Size = UDim2.fromScale(1.2, 0.34), TextColor3 = ult and GOLD or PINK, ZIndex = 63 }, 3)
+		ui.Title = label(holder, { Text = ult and "!! BIG BANG !! - HIT EVERY KEY" or "FIGHT BACK - HIT EACH KEY", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 0, -6), Size = UDim2.fromScale(1.2, 0.34), TextColor3 = ult and GOLD or PINK, ZIndex = 63 }, 3)
 	end
-	-- the ultimate's track: every step as a pip
-	if ult then
+	-- the sequence's track: every step as a pip, lit as you land them
+	if #h.Steps > 1 then
 		local track = frame(root, { Name = "QTETrack", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.52), Size = UDim2.fromScale(0.42, 0.05), BackgroundTransparency = 1, ZIndex = 61 })
 		local tl = Instance.new("UIListLayout")
 		tl.FillDirection = Enum.FillDirection.Horizontal
@@ -151,7 +151,7 @@ local function buildUI(h)
 			corner(pip, UDim.new(0.3, 0))
 			stroke(pip, Color3.new(0, 0, 0), 3)
 			ui.PipGrad = ui.PipGrad or {}
-			ui.PipGrad[i] = grad(pip, Color3.fromRGB(90, 20, 20), EMBER)
+			ui.PipGrad[i] = ult and grad(pip, Color3.fromRGB(90, 20, 20), EMBER) or grad(pip, VIOLET, PURPLE)
 			label(pip, { Text = table.concat(names, "+"), Size = UDim2.fromScale(0.9, 0.8), Position = UDim2.fromScale(0.05, 0.1), ZIndex = 63 }, 2)
 			ui.Pips[i] = pip
 		end
@@ -279,7 +279,6 @@ pressKey = function(key)
 			end
 		end
 	end
-	K.sfx(K.S.Ring, 0.2, 2)
 	if not best then
 		-- (on the ultimate, a stray key inside its window costs you)
 		if anyUlt and math.abs(now - anyUlt.T) <= 0.3 then fail(anyUlt.H, "wrong") end
@@ -294,6 +293,7 @@ pressKey = function(key)
 		fail(best, "late")
 		return
 	end
+	K.sfx(K.S.Ring, 0.25, 2)
 	bestStep.Done[key] = math.abs(err)
 	-- (the disc lights up)
 	for _, d in ipairs(best.UI.Discs) do
@@ -376,7 +376,7 @@ function Q.update(now)
 		elseif pos and not h.Failed and not h.Claimed then
 			local si, st = currentStep(h)
 			local stepT = st and (T + st.At)
-			local lead = h.Qte.Kind == "ultimate" and 1.0 or S.PROMPT_LEAD
+			local lead = (#h.Steps > 1) and 1.0 or S.PROMPT_LEAD
 			local want = st and inPath(h, pos, T) and now >= (T + h.Steps[1].At) - lead
 			if st and now > stepT + h.Qte.Late then
 				if h.UI or inPath(h, pos, T) then fail(h, "late") end

@@ -34,8 +34,8 @@ function A.Run(F, P, token)
 			Kind = "sweep", O = origin, A0 = centreA - half * d, A1 = centreA + half * d,
 			T0 = t, T1 = t + P.Sweep, W = P.W, L = 2 * S.ARENA_R + 20,
 		}
-		local hit = { Id = F.newId("AB"), Shape = shape, Damage = P.Damage, Name = "ANNIHILATION BEAM", Knock = 50,
-			Qte = F.qte.randomChord(2), Counter = 70, CounterPerfect = 110 }
+		-- (too tall to jump: roll through it)
+		local hit = { Id = F.newId("AB"), Shape = shape, Damage = P.Damage, Name = "ANNIHILATION BEAM", Knock = 50 }
 		table.insert(sweeps, hit)
 		t = shape.T1 + 0.35
 	end

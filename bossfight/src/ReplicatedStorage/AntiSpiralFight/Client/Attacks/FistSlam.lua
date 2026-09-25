@@ -59,10 +59,7 @@ function A.start(ctx, d)
 		table.insert(zones, ent)
 		Warn.add({ Id = z.Id, T = z.T, Shape = shape, Name = "FIST", Target = z.Target, Rad = z.R, Pos = function() return z.P + Vector3.new(0, 4, 0) end })
 	end
-	if d.Wave == 1 then
-		ctx.Warn.callout("FIST SLAM")
-		ctx.Fx.say("KNEEL.", 0.9)
-	end
+	if d.Wave == 1 then ctx.Fx.say("KNEEL.", 0.9) end
 	local firstDone = false
 	local windup, slam = poses(d.Hand)
 	local strike = first - 0.3

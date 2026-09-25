@@ -21,7 +21,6 @@ function A.start(ctx, d)
 	local sgn = side == "Right" and 1 or -1
 	local other = side == "Right" and "Left" or "Right"
 	local o = Vector3.new(d.Origin.X, S.CENTER.Y, d.Origin.Z)
-	Warn.callout("ANNIHILATION BEAM")
 	ctx.Fx.say("VANISH.", 1)
 
 	-- the beam's floor angle at t (before it fires: where it will start)
@@ -148,14 +147,6 @@ function A.start(ctx, d)
 	for _, sw in ipairs(d.Sweeps) do
 		Warn.add({ Id = sw.Id, Shape = sw.Shape, Name = "ANNIHILATION BEAM" })
 	end
-	-- the cut-in: right up against his palm as the light pours into it
-	ctx.Cam.cut(function(now)
-		local u = K.remap(now, d.FireT - 1.4, d.FireT + 0.4)
-		local toArena = S.flat(S.CENTER - palmPos).Unit
-		local side = toArena:Cross(UP)
-		local from = palmPos + toArena * (110 - 30 * u) + side * 45 + UP * 25
-		return CFrame.lookAt(from, palmPos), 60 - 12 * u
-	end, d.FireT - 1.4, d.FireT + 0.2, 0.25)
 	task.delay(math.max(d.FireT - 1.3 - S.now(), 0), function() Fx.vfx("Charge-01", palmPos, 8, nil, 2) end)
 	K.sfx(K.S.Riser, 0.8, 0.8)
 	K.sfx(K.S.DarkDrone, 0.7, 1.2)

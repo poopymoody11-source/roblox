@@ -1,4 +1,4 @@
-<roblox version="4"><Item class="Folder" referent="RBX19"><Properties><string name="Name">AntiSpiralFight</string></Properties><Item class="Folder" referent="RBX17"><Properties><string name="Name">Client</string></Properties><Item class="Folder" referent="RBX9"><Properties><string name="Name">Attacks</string></Properties><Item class="ModuleScript" referent="RBX1"><Properties><string name="Name">AnnihilationBeam</string><ProtectedString name="Source"><![CDATA[--==================================================
+<roblox version="4"><Item class="Folder" referent="RBX23"><Properties><string name="Name">AntiSpiralFight</string></Properties><Item class="Folder" referent="RBX21"><Properties><string name="Name">Client</string></Properties><Item class="Folder" referent="RBX10"><Properties><string name="Name">Attacks</string></Properties><Item class="ModuleScript" referent="RBX1"><Properties><string name="Name">AnnihilationBeam</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- ATTACK 5: ANNIHILATION BEAM (client)
 -- He leans over the rim and thrusts out a palm. Violet light
 -- rushes into it while a red fan burns across the arena to show
@@ -21,7 +21,6 @@ function A.start(ctx, d)
 	local sgn = side == "Right" and 1 or -1
 	local other = side == "Right" and "Left" or "Right"
 	local o = Vector3.new(d.Origin.X, S.CENTER.Y, d.Origin.Z)
-	Warn.callout("ANNIHILATION BEAM")
 	ctx.Fx.say("VANISH.", 1)
 
 	-- the beam's floor angle at t (before it fires: where it will start)
@@ -148,14 +147,6 @@ function A.start(ctx, d)
 	for _, sw in ipairs(d.Sweeps) do
 		Warn.add({ Id = sw.Id, Shape = sw.Shape, Name = "ANNIHILATION BEAM" })
 	end
-	-- the cut-in: right up against his palm as the light pours into it
-	ctx.Cam.cut(function(now)
-		local u = K.remap(now, d.FireT - 1.4, d.FireT + 0.4)
-		local toArena = S.flat(S.CENTER - palmPos).Unit
-		local side = toArena:Cross(UP)
-		local from = palmPos + toArena * (110 - 30 * u) + side * 45 + UP * 25
-		return CFrame.lookAt(from, palmPos), 60 - 12 * u
-	end, d.FireT - 1.4, d.FireT + 0.2, 0.25)
 	task.delay(math.max(d.FireT - 1.3 - S.now(), 0), function() Fx.vfx("Charge-01", palmPos, 8, nil, 2) end)
 	K.sfx(K.S.Riser, 0.8, 0.8)
 	K.sfx(K.S.DarkDrone, 0.7, 1.2)
@@ -697,15 +688,7 @@ function A.start(ctx, d)
 			return true
 		end,
 	})
-	Warn.callout("CONSTELLATION LANCES")
 	ctx.Fx.say("EVERY CONSTELLATION\nIS MY WEAPON.", 1.2)
-	-- the cut-in: flat on your back in the middle of the arena, looking up at the stars joining
-	ctx.Cam.cut(function(now)
-		local u = K.remap(now, d.T0, first - 0.3)
-		local from = S.CENTER + Vector3.new(0, 6, 0)
-		local toBoss = S.flat(ctx.chest() - S.CENTER).Unit
-		return CFrame.lookAt(from, S.CENTER + UP * HIGH + toBoss * (60 - 40 * u)), 85 - 10 * u
-	end, d.T0 + 0.25, first - 0.25, 0.3)
 	K.sfx(K.S.Choir, 0.5, 1.1)
 	K.sfx(K.S.Sting, 0.5, 1.2)
 	local conn
@@ -797,7 +780,245 @@ function A.lance(ctx, e, parried)
 end
 
 return A
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX4"><Properties><string name="Name">FistSlam</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX4"><Properties><string name="Name">Daze</string><ProtectedString name="Source"><![CDATA[--==================================================
+-- THE DAZE (client)
+-- Spent, he crashes forward over the rim - his head comes down on
+-- the arena - and for a few seconds he's open: stars circle his
+-- head, a green target marks it, and a bar counts down. Run up
+-- and punch. Then he comes round with a roar and a shockwave.
+--==================================================
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+local A = {}
+
+local UP = Vector3.yAxis
+local FONT = Font.new("rbxasset://fonts/families/Inconsolata.json", Enum.FontWeight.Bold)
+
+local SLUMP = {
+	Waist = { -22, 0, 0 }, Neck = { -18, 0, 0 },
+	RightShoulder = { 55, 0, 18 }, LeftShoulder = { 55, 0, -18 },
+	RightElbow = { 10, 0, 0 }, LeftElbow = { 10, 0, 0 },
+}
+
+local function tween(o, t, props)
+	TweenService:Create(o, TweenInfo.new(t, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props):Play()
+end
+
+-- the timer bar (bottom centre, over the QTE area)
+local function timerBar(ctx, t0, t1)
+	local root = ctx.Warn.Gui:FindFirstChild("Root")
+	local holder = Instance.new("Frame")
+	holder.Name = "DazeBar"
+	holder.AnchorPoint = Vector2.new(0.5, 0.5)
+	holder.Position = UDim2.fromScale(0.5, 0.2)
+	holder.Size = UDim2.fromScale(0.34, 0.05)
+	holder.BackgroundColor3 = Color3.new(1, 1, 1)
+	holder.ZIndex = 58
+	holder.Parent = root
+	local c = Instance.new("UICorner") c.CornerRadius = UDim.new(1, 0) c.Parent = holder
+	local st = Instance.new("UIStroke") st.Thickness = 4 st.Parent = holder
+	local g = Instance.new("UIGradient") g.Color = ColorSequence.new(Color3.fromRGB(10, 40, 20), Color3.fromRGB(20, 70, 35)) g.Rotation = -90 g.Parent = holder
+	local fill = Instance.new("Frame")
+	fill.Size = UDim2.fromScale(1, 1)
+	fill.BackgroundColor3 = Color3.new(1, 1, 1)
+	fill.ZIndex = 59
+	fill.Parent = holder
+	local fc = Instance.new("UICorner") fc.CornerRadius = UDim.new(1, 0) fc.Parent = fill
+	local fg = Instance.new("UIGradient") fg.Color = ColorSequence.new(Color3.fromRGB(70, 255, 120), Color3.fromRGB(190, 255, 90)) fg.Parent = fill
+	local lbl = Instance.new("TextLabel")
+	lbl.BackgroundTransparency = 1
+	lbl.Size = UDim2.fromScale(1, 1.1)
+	lbl.Position = UDim2.fromScale(0, -1.2)
+	lbl.FontFace = FONT
+	lbl.TextScaled = true
+	lbl.TextColor3 = Color3.new(1, 1, 1)
+	lbl.Text = "HE'S DAZED - PUNCH HIM!"
+	lbl.ZIndex = 60
+	lbl.Parent = holder
+	local ls = Instance.new("UIStroke") ls.Thickness = 3 ls.Parent = lbl
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		local now = ctx.S.now()
+		local u = math.clamp((t1 - now) / (t1 - t0), 0, 1)
+		fill.Size = UDim2.fromScale(u, 1)
+		lbl.Text = (ctx.Moves.inReach() and "PUNCH HIM!  " or "HE'S DAZED - GET TO HIS HEAD!  ") .. string.format("%.1f", math.max(t1 - now, 0))
+		if now >= t1 then
+			conn:Disconnect()
+			tween(holder, 0.3, { BackgroundTransparency = 1 })
+			tween(fill, 0.3, { BackgroundTransparency = 1 })
+			tween(lbl, 0.3, { TextTransparency = 1 })
+			tween(st, 0.3, { Transparency = 1 })
+			tween(ls, 0.3, { Transparency = 1 })
+			task.delay(0.35, function() holder:Destroy() end)
+		end
+	end)
+end
+
+function A.start(ctx, d)
+	local K, S, Fx, Rig, SK = ctx.K, ctx.S, ctx.Fx, ctx.Rig, ctx.SK
+	local epoch = ctx.epoch()
+	ctx.Moves.Weak = d.Weak
+	local T0, T1 = d.T0, d.T1
+	local fall = T0 + 0.7
+	Fx.say(({ "IMPOSSIBLE... MY BODY...", "THIS... CANNOT BE...", "WHY... DO YOU NOT... DESPAIR..." })[math.random(1, 3)], 1.4, true)
+	ctx.Warn.callout("DAZED!")
+	ctx.Music.duck(0.5, 0.4)
+	-- he crashes forward over the rim, head down on the arena
+	-- (lowered and pitched about his root so his head lands just inside the rim)
+	Rig:act({
+		Until = T1 + 1.2,
+		Root = function(t)
+			local down = K.k(t, T0, fall, K.E.inQuad) * (1 - K.k(t, T1 - 0.1, T1 + 1.1, K.E.inOutQuad))
+			local bob = math.sin(t * 2.2) * 3 * down
+			return CFrame.new(0, -177 * down + bob, 0) * CFrame.Angles(-math.rad(27 * down), math.rad(math.sin(t * 1.3) * 3 * down), math.rad(math.sin(t * 1.7) * 2 * down))
+		end,
+		Upper = function(t)
+			local down = K.k(t, T0, fall) * (1 - K.k(t, T1 - 0.1, T1 + 1.1))
+			local sway = { Waist = { -22, math.sin(t * 1.4) * 6, 0 }, Neck = { -18 + math.sin(t * 2.6) * 6, math.sin(t * 1.9) * 12, 0 },
+				RightShoulder = SLUMP.RightShoulder, LeftShoulder = SLUMP.LeftShoulder, RightElbow = SLUMP.RightElbow, LeftElbow = SLUMP.LeftElbow }
+			Rig:pose(Rig.REST, sway, down)
+			SK.hang(Rig.SB, "Right", 0.3, 0.3)
+			SK.hang(Rig.SB, "Left", 0.3, 0.3)
+			return true
+		end,
+	})
+	-- the crash
+	task.delay(math.max(fall - S.now(), 0), function()
+		if ctx.epoch() ~= epoch then return end
+		Fx.impact("WB", 0.05)
+		Fx.blast(d.Weak, 40, Fx.VIOLET, { Sound = K.S.RockBoom, Shake = 3, Volume = 1.4, Column = false })
+		ctx.Cam.punch(-10, 0.4)
+		K.sfx(K.S.BodyFall, 1, 0.5)
+	end)
+	timerBar(ctx, T0, T1)
+	-- the target on his head, and the stars going round it
+	local host = K.part({ Name = "DazeHost", Size = Vector3.one, Transparency = 1, CFrame = CFrame.new(d.Weak) }, Fx.Folder)
+	local ring = K.softRing(host, 32, 8, 10, { Brightness = 4, Alpha = 0 })
+	for _, q in ipairs(ring.Q) do q.Color = ColorSequence.new(Color3.new(1, 1, 1), Fx.GREEN) end
+	local ring2 = K.softRing(host, 32, 14, 15, { Brightness = 3, Alpha = 0 })
+	for _, q in ipairs(ring2.Q) do q.Color = ColorSequence.new(Fx.LIME) end
+	local spiral = K.quad(host, host.CFrame, 20, 20, "14426232568", { Color = Fx.GREEN, Brightness = 3, Transparency = 0.2 })
+	local bb = Instance.new("BillboardGui")
+	bb.Size = UDim2.fromOffset(200, 50)
+	bb.StudsOffsetWorldSpace = Vector3.new(0, 14, 0)
+	bb.AlwaysOnTop = true
+	bb.Parent = host
+	local tl = Instance.new("TextLabel")
+	tl.BackgroundTransparency = 1
+	tl.Size = UDim2.fromScale(1, 1)
+	tl.FontFace = FONT
+	tl.TextScaled = true
+	tl.Text = "PUNCH HERE"
+	tl.TextColor3 = Color3.fromRGB(190, 255, 170)
+	tl.Parent = bb
+	local ts = Instance.new("UIStroke") ts.Thickness = 3 ts.Parent = tl
+	local stars = {}
+	for i = 1, 6 do
+		local p = K.part({ Name = "DizzyStar", Shape = Enum.PartType.Ball, Size = Vector3.one * 6, Material = Enum.Material.Neon, Color = i % 2 == 0 and Color3.fromRGB(255, 240, 150) or Color3.fromRGB(230, 200, 255), Transparency = 1 }, Fx.Folder)
+		stars[i] = p
+	end
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		local now = S.now()
+		if ctx.epoch() ~= epoch or now > T1 + 0.4 then
+			conn:Disconnect()
+			host:Destroy()
+			for _, p in ipairs(stars) do p:Destroy() end
+			ctx.Moves.Weak = nil
+			return
+		end
+		local on = K.k(now, fall, fall + 0.3) * (1 - K.k(now, T1 - 0.2, T1 + 0.2))
+		local pulse = 0.5 + 0.5 * math.sin(now * 8)
+		local c = d.Weak + UP * 0.4
+		ring.update(CFrame.lookAt(c, c + UP), 8 + 2 * pulse, 10 + 3 * pulse, now)
+		ring.setTransparency(1 - on * 0.9)
+		ring2.update(CFrame.lookAt(c, c + UP), 14 + 4 * (now % 1), 15 + 4 * (now % 1), -now)
+		ring2.setTransparency(1 - on * 0.9 * (1 - now % 1))
+		K.moveQuad(spiral, CFrame.lookAt(c + UP * 0.2, c + UP * 2) * CFrame.Angles(0, 0, now * 2))
+		spiral.Transparency = NumberSequence.new(1 - 0.7 * on)
+		tl.TextTransparency = 1 - on
+		ts.Transparency = 1 - on
+		-- the stars: round his real head
+		local head = ctx.part("Head")
+		local hp = head and head.Position or (d.Weak + UP * 30)
+		for i, p in ipairs(stars) do
+			local a = now * 2.5 + i / #stars * math.pi * 2
+			p.CFrame = CFrame.new(hp + Vector3.new(math.cos(a) * 55, 30 + math.sin(a * 2) * 6, math.sin(a) * 55))
+			p.Transparency = 1 - on
+		end
+	end)
+end
+
+-- he comes round: a roar, and a shockwave off his head you have to jump
+function A.finish(ctx, d)
+	local K, S, Fx = ctx.K, ctx.S, ctx.Fx
+	local epoch = ctx.epoch()
+	ctx.Music.duck(1, 0.8)
+	ctx.roar(d.T0, 1.4)
+	Fx.say(({ "ENOUGH.", "I WILL ERASE YOU.", "KNEEL BEFORE THE VOID." })[math.random(1, 3)], 1, true)
+	local sh = d.Shape
+	local host = K.part({ Name = "RoarHost", Size = Vector3.one, Transparency = 1, CFrame = CFrame.new(d.Weak) }, Fx.Folder)
+	local SEG = 48
+	local walls = {}
+	for i = 1, SEG do
+		local q = K.quad(host, host.CFrame, 1, sh.H, "10365550877", { Color = Fx.VIOLET_HOT, Brightness = 3.5, Transparency = K.ns(0, 0.05, 0.7, 0.3, 1, 1) })
+		q.Enabled = false
+		walls[i] = q
+	end
+	ctx.Warn.add({ Id = d.Id, Shape = sh, Name = "ROAR" })
+	task.delay(math.max(d.RingT - S.now(), 0), function()
+		if ctx.epoch() == epoch then Fx.blast(d.Weak, 25, Fx.VIOLET, { Shake = 2.5, Column = false, Sound = K.S.Boom }) end
+	end)
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		local now = S.now()
+		local r = S.ringRadius(sh, now)
+		if ctx.epoch() ~= epoch or r > 2 * S.ARENA_R + 20 then
+			conn:Disconnect()
+			host:Destroy()
+			return
+		end
+		local o = Vector3.new(d.Weak.X, S.CENTER.Y, d.Weak.Z)
+		local da = 2 * math.pi / SEG
+		for i, q in ipairs(walls) do
+			local a0, a1 = (i - 1) * da, i * da
+			local p0 = o + Vector3.new(math.cos(a0) * r, 0, math.sin(a0) * r)
+			local p1 = o + Vector3.new(math.cos(a1) * r, 0, math.sin(a1) * r)
+			local mid = (p0 + p1) / 2
+			local show = now >= sh.T0 and S.onArena(mid, -2)
+			q.Enabled = show
+			if show then
+				local along = p1 - p0
+				K.moveQuad(q, CFrame.fromMatrix(mid + UP * sh.H / 2, along.Unit, UP))
+				K.setQuadSize(q, along.Magnitude * 1.02, sh.H)
+			end
+		end
+	end)
+end
+
+-- a punch landed on him (anyone's): his head snaps with it
+function A.hit(ctx, d)
+	local Fx = ctx.Fx
+	local who = Players:GetPlayerByUserId(d.User)
+	if who and who ~= ctx.player then
+		ctx.Moves.punchFx(who.Character, d.At + UP * 4, math.random() < 0.5)
+	end
+	Fx.emitAt(d.At + UP * 6, {
+		Texture = "1851669703", Color = ColorSequence.new(Color3.new(1, 1, 1), Fx.GREEN), Size = ctx.K.ns(0, 4, 1, 0),
+		Lifetime = NumberRange.new(0.3, 0.6), Speed = NumberRange.new(30, 70), SpreadAngle = Vector2.new(70, 70), Brightness = 5,
+	}, 12, 1)
+	-- (every few punches, a proper impact frame)
+	ctx.PunchCount = (ctx.PunchCount or 0) + 1
+	if ctx.PunchCount % 5 == 0 then
+		Fx.impact("G", 0.035)
+		ctx.Cam.punch(-8, 0.25)
+	end
+end
+
+return A
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX5"><Properties><string name="Name">FistSlam</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- ATTACK 2: FIST SLAM (client)
 -- He rears back, fist high, and red zones open on the arena.
 -- As they fill, he drives the fist down - and a violet fist of
@@ -858,10 +1079,7 @@ function A.start(ctx, d)
 		table.insert(zones, ent)
 		Warn.add({ Id = z.Id, T = z.T, Shape = shape, Name = "FIST", Target = z.Target, Rad = z.R, Pos = function() return z.P + Vector3.new(0, 4, 0) end })
 	end
-	if d.Wave == 1 then
-		ctx.Warn.callout("FIST SLAM")
-		ctx.Fx.say("KNEEL.", 0.9)
-	end
+	if d.Wave == 1 then ctx.Fx.say("KNEEL.", 0.9) end
 	local firstDone = false
 	local windup, slam = poses(d.Hand)
 	local strike = first - 0.3
@@ -1061,7 +1279,7 @@ function A.hammer(ctx, d)
 end
 
 return A
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX5"><Properties><string name="Name">GalaxyBarrage</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX6"><Properties><string name="Name">GalaxyBarrage</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- ATTACK 1: GALAXY BARRAGE (client)
 -- He throws his arms up and violet galaxies tear open over the
 -- arena; planets, moons and stars pour out of their hearts. Each
@@ -1072,7 +1290,6 @@ local RunService = game:GetService("RunService")
 local Debris = game:GetService("Debris")
 
 local A = {}
-local Warn
 
 local RAISED = {
 	Waist = { 10, 0, 0 }, RightShoulder = { 165, 0, 28 }, LeftShoulder = { 165, 0, -28 },
@@ -1095,17 +1312,9 @@ function A.start(ctx, d)
 	local gals = {}
 	for i, p in ipairs(d.Portals) do gals[i] = { G = Fx.galaxy(host), P = p } end
 	ctx.Barrage = { Id = d.Id, Pulse = 0, Gals = gals }
-	Warn = ctx.Warn
-	Warn.callout("GALAXY BARRAGE")
 	ctx.Fx.say("THE STARS THEMSELVES\nREJECT YOU.", 1.2)
-	-- the cut-in: from the arena, up past him to the sky tearing open
 	local mid = d.Portals[1]:Lerp(d.Portals[#d.Portals], 0.5)
 	ctx.Barrage.Mid = mid
-	ctx.Cam.cut(function(now)
-		local u = K.remap(now, d.T0, d.OpenT + 0.4)
-		local from = S.CENTER + (S.flat(mid - S.CENTER).Unit * -60) + Vector3.new(0, 12 + 20 * u, 0)
-		return CFrame.lookAt(from, mid:Lerp(ctx.chest(), 0.35 - 0.2 * u)), 62 - 8 * u
-	end, d.T0 + 0.2, d.OpenT + 0.5, 0.3)
 	task.delay(math.max(d.OpenT - S.now(), 0), function()
 		for _, p in ipairs(d.Portals) do
 			ctx.Fx.vfx("Portal-01", p, 7, nil, 3)
@@ -1282,7 +1491,7 @@ function A.shot(ctx, d)
 end
 
 return A
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX6"><Properties><string name="Name">GalaxyCorruption</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX7"><Properties><string name="Name">GalaxyCorruption</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- SET PIECE: GALAXY CORRUPTION (client)
 -- He reaches up and takes the sky: every galaxy in the realm
 -- turns to his violet (the cutscene's green whirlpools, in his
@@ -1538,7 +1747,7 @@ function A.finale(ctx, d)
 	local shape = { Kind = "circle", P = d.P, R = d.R }
 	local zone = Fx.zone(shape, d.T0, d.T)
 	Warn.add({ Id = d.Id, T = d.T, Shape = shape, Name = "EVERY GALAXY", Target = d.User, Rad = d.R, Pos = function() return d.P + UP * 4 end })
-	if d.User == ctx.player.UserId then Warn.callout("EVERY GALAXY - PARRY IT") end
+	if d.User == ctx.player.UserId then Warn.callout("EVERY GALAXY - MOVE!") end
 	local host = K.part({ Name = "FinaleHost", Size = Vector3.one, Transparency = 1, CFrame = CFrame.new(d.P) }, Fx.Folder)
 	local rays = {}
 	for i, g in ipairs(C and C.G or {}) do
@@ -1581,7 +1790,7 @@ function A.finale(ctx, d)
 end
 
 return A
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX7"><Properties><string name="Name">SpiralCollapse</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX8"><Properties><string name="Name">SpiralCollapse</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- ATTACK 6: SPIRAL COLLAPSE (client)
 -- He raises both hands and CLAPS: a black hole tears open over
 -- the arena. Its accretion disk spins up, rubble and starlight
@@ -1814,7 +2023,7 @@ function A.start(ctx, d)
 end
 
 return A
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX8"><Properties><string name="Name">StompQuake</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX9"><Properties><string name="Name">StompQuake</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- ATTACK 3: STOMP QUAKE (client)
 -- He shifts his weight, raises one foot high over the galaxy
 -- floor... and brings it down. The arena rim takes the blow and
@@ -1883,18 +2092,7 @@ function A.start(ctx, d)
 		end
 	end)
 	K.sfx(K.S.Rumble, 0.7, 0.8)
-	Warn.callout("STOMP QUAKE")
 	ctx.Fx.say("THE UNIVERSE TREMBLES\nAT MY STEP.", 1.2)
-	-- the cut-in: over the rim, down at the foot as it comes up... and down
-	ctx.Cam.cut(function(now)
-		local toBoss = S.flat(d.Origin - S.CENTER).Unit
-		local across = toBoss:Cross(Vector3.yAxis)
-		local foot = Rig:footGround(d.Foot)
-		local from = d.Origin - toBoss * 45 + across * 70 + Vector3.new(0, 30, 0)
-		return CFrame.lookAt(from, foot:Lerp(ctx.chest(), 0.45)), 66
-	end, d.T0 + 0.3, d.StompT + 0.35, 0.3)
-	Warn.pop("JUMP THE SHOCKWAVES!", Color3.fromRGB(255, 200, 220), false, Vector2.new(0.5, 0.3))
-
 	-- the rings: a wall of light (quads round the circle) + a glow on the floor
 	local host = K.part({ Name = "QuakeHost", Size = Vector3.one, Transparency = 1, CFrame = CFrame.new(d.Origin) }, Fx.Folder)
 	local rings = {}
@@ -1971,7 +2169,7 @@ function A.start(ctx, d)
 end
 
 return A
-]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX10"><Properties><string name="Name">Aura</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX11"><Properties><string name="Name">Aura</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- SPIRAL AURA (client)
 -- Everyone fights wearing the power the cutscene gave them: the
 -- same SpiralKit power-up (green veins, glowing eyes, the green
@@ -2075,7 +2273,7 @@ function Aura.init(kit, spiralKit)
 end
 
 return Aura
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX11"><Properties><string name="Name">Cam</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX12"><Properties><string name="Name">Cam</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- BOSS FIGHT: THE LOCK-ON CAMERA (client)
 -- Sits behind you on the line from the Anti-Spiral through you,
 -- and frames the two of you together: you low in the shot, him
@@ -2284,7 +2482,7 @@ UIS.InputChanged:Connect(function(input, processed)
 end)
 
 return C
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX12"><Properties><string name="Name">CharAnim</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX13"><Properties><string name="Name">CharAnim</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- CHARACTER ANIMATION (client)
 -- Keyframed poses on a real R6 character, played on every client
 -- (the server announces each parry, so everyone sees everyone's).
@@ -2404,8 +2602,43 @@ CA.Reel = {
 	{ 0.6, {} },
 }
 
+-- the roll: tucked up, heels over head (a quarter turn per key, so it turns all the way round)
+CA.Roll = {
+	{ 0, { Root = A(0, 0, 0), RS = A(60, 0, 20), LS = A(60, 0, -20), RH = A(40, 0, 0), LH = A(40, 0, 0) } },
+	{ 0.09, { Root = A(-90, 0, 0), Neck = A(-30, 0, 0), RS = A(120, 0, 10), LS = A(120, 0, -10), RH = A(95, 0, 0), LH = A(95, 0, 0) } },
+	{ 0.18, { Root = A(-180, 0, 0), Neck = A(-30, 0, 0), RS = A(120, 0, 10), LS = A(120, 0, -10), RH = A(100, 0, 0), LH = A(100, 0, 0) } },
+	{ 0.27, { Root = A(-270, 0, 0), Neck = A(-30, 0, 0), RS = A(120, 0, 10), LS = A(120, 0, -10), RH = A(95, 0, 0), LH = A(95, 0, 0) } },
+	{ 0.36, { Root = A(-355, 0, 0), RS = A(70, 0, 20), LS = A(70, 0, -20), RH = A(40, 0, 0), LH = A(20, 0, 0) } },
+	{ 0.48, {} },
+}
+
+-- the spiral punch: a wind-up, then a lunging straight right that twists through
+CA.Punch = {
+	{ 0, { Root = A(0, 25, 0), RS = A(-35, 0, 25), LS = A(40, 0, -30), RH = A(-10, 0, 0), LH = A(15, 0, 0) } },
+	{ 0.07, { Root = A(-6, 35, 0), Neck = A(0, -20, 0), RS = A(-45, 0, 30), LS = A(55, 0, -35), RH = A(-15, 0, 4), LH = A(20, 0, -4) } },
+	{ 0.13, { Root = A(-14, -40, 0), Neck = A(0, 30, 0), RS = A(95, 0, -8), LS = A(-30, 0, -40), RH = A(-30, 0, 6), LH = A(25, 0, -6) } },
+	{ 0.3, { Root = A(-10, -35, 0), Neck = A(0, 26, 0), RS = A(92, 0, -6), LS = A(-25, 0, -35), RH = A(-25, 0, 6), LH = A(20, 0, -6) } },
+	{ 0.42, {} },
+}
+-- (and its mirror, for the combo)
+CA.Punch2 = {
+	{ 0, { Root = A(0, -25, 0), LS = A(-35, 0, -25), RS = A(40, 0, 30), LH = A(-10, 0, 0), RH = A(15, 0, 0) } },
+	{ 0.07, { Root = A(-6, -35, 0), Neck = A(0, 20, 0), LS = A(-45, 0, -30), RS = A(55, 0, 35), LH = A(-15, 0, -4), RH = A(20, 0, 4) } },
+	{ 0.13, { Root = A(-14, 40, 0), Neck = A(0, -30, 0), LS = A(95, 0, 8), RS = A(-30, 0, 40), LH = A(-30, 0, -6), RH = A(25, 0, 6) } },
+	{ 0.3, { Root = A(-10, 35, 0), Neck = A(0, -26, 0), LS = A(92, 0, 6), RS = A(-25, 0, 35), LH = A(-25, 0, -6), RH = A(20, 0, 6) } },
+	{ 0.42, {} },
+}
+
+-- knocked flat by something big
+CA.Blasted = {
+	{ 0, {} },
+	{ 0.06, { Root = A(55, 0, 12), Neck = A(-40, 0, 0), RS = A(150, 0, 70), LS = A(140, 0, -80), RH = A(-40, 0, 20), LH = A(30, 0, -20) } },
+	{ 0.6, { Root = A(40, 0, 8), Neck = A(-25, 0, 0), RS = A(120, 0, 60), LS = A(110, 0, -60), RH = A(-20, 0, 12), LH = A(20, 0, -12) } },
+	{ 0.95, {} },
+}
+
 return CA
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX13"><Properties><string name="Name">Fx</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX14"><Properties><string name="Name">Fx</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- BOSS FIGHT: EFFECTS (client)
 -- The fight's visual kit, built on the cutscene's Kit / SpiralKit:
 --   road      - the ring of violet galaxy he walks on, below the rim
@@ -2850,6 +3083,35 @@ function Fx.blast(pos, radius, color, opts)
 		K.tween(col, 0.45, { Size = Vector3.new(160, radius * 0.05, radius * 0.05), Transparency = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 		Debris:AddItem(col, 0.5)
 	end
+	-- rubble thrown out of it, and a scorch left behind
+	if radius >= 10 and opts.Debris ~= false then
+		for _ = 1, math.clamp(math.floor(radius / 3), 3, 14) do
+			local sz = math.random(10, 26) / 10 * math.clamp(radius / 14, 0.6, 2.2)
+			local c = K.part({ Name = "Rubble", Size = Vector3.new(sz, sz * 0.8, sz * 1.1), Material = Enum.Material.Slate,
+				Color = Color3.fromRGB(math.random(40, 70), math.random(25, 45), math.random(70, 110)), CFrame = CFrame.new(p) }, folder)
+			local dir = Vector3.new(math.random() - 0.5, 0, math.random() - 0.5).Unit
+			local out = dir * radius * (0.6 + math.random() * 0.8)
+			local up = radius * (0.5 + math.random() * 0.8)
+			local spin = Vector3.new(math.random(), math.random(), math.random()) * 12
+			local r0 = os.clock()
+			task.spawn(function()
+				local life = 0.9 + math.random() * 0.4
+				while c.Parent do
+					local u = (os.clock() - r0) / life
+					if u >= 1 then break end
+					local pos = p + out * u + Vector3.new(0, up * 4 * u * (1 - u), 0)
+					c.CFrame = CFrame.new(pos) * CFrame.Angles(spin.X * u, spin.Y * u, spin.Z * u)
+					c.Transparency = math.max(0, (u - 0.7) / 0.3)
+					task.wait()
+				end
+				c:Destroy()
+			end)
+		end
+		local scorch = K.part({ Name = "Scorch", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.12, radius * 1.3, radius * 1.3), Material = Enum.Material.Neon,
+			Color = color:Lerp(Color3.new(0, 0, 0), 0.55), Transparency = 0.25, CFrame = CFrame.new(p + UP * 0.05) * CFrame.Angles(0, 0, math.pi / 2) }, folder)
+		K.tween(scorch, 3, { Transparency = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+		Debris:AddItem(scorch, 3.1)
+	end
 	-- (the VFX pack's explosion and cracks, for the heavier ones)
 	if opts.Pack ~= false and radius >= 12 then
 		Fx.vfx("Explosion-01", p + UP * 2, radius / 18, math.floor(8 + radius * 0.3), 4)
@@ -3002,14 +3264,289 @@ function Fx.bolt(from, to, perfect)
 end
 
 return Fx
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX14"><Properties><string name="Name">Qte</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX15"><Properties><string name="Name">Moves</string><ProtectedString name="Source"><![CDATA[--==================================================
+-- YOUR MOVES (client)
+--   CTRL / B / the ROLL button - a roll: a burst along the way
+--                                you're moving, untouchable for
+--                                a moment (the server's i-frames)
+--   CLICK / R2 / the PUNCH button - while he's dazed and you're at
+--                                his head: a spiral punch (left,
+--                                right, left...) that hurts him
+-- Everyone's rolls and punches play on every client.
+--==================================================
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+local ContextActionService = game:GetService("ContextActionService")
+local Debris = game:GetService("Debris")
+
+local M = {}
+
+local player = Players.LocalPlayer
+local K, S, Fx, CharAnim, Aura, net, shared, ctx
+local lastRoll, lastPunch = -99, -99
+local side = 1
+local active = false
+M.Weak = nil -- where his head is while he's dazed (the server's weak point)
+
+local GREEN = Color3.fromRGB(70, 255, 120)
+local LIME = Color3.fromRGB(190, 255, 90)
+
+local function attr(name, default)
+	local v = shared:GetAttribute(name)
+	return type(v) == "number" and v or default
+end
+
+local function me()
+	local c = player.Character
+	local hum = c and c:FindFirstChildOfClass("Humanoid")
+	local root = c and c:FindFirstChild("HumanoidRootPart")
+	if not (hum and root and hum.Health > 0) then return nil end
+	return c, hum, root
+end
+
+--------------------------------------------------------------------------
+-- effects (for anyone's)
+--------------------------------------------------------------------------
+function M.rollFx(char)
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+	CharAnim.play(char, CharAnim.Roll, 0.04)
+	local p = root.Position - Vector3.new(0, 2.5, 0)
+	Fx.emitAt(p, {
+		Texture = "10180479311", Color = ColorSequence.new(Color3.fromRGB(200, 190, 220)), Size = K.ns(0, 2, 1, 6),
+		Transparency = K.ns(0, 0.4, 1, 1), Lifetime = NumberRange.new(0.4, 0.7), Speed = NumberRange.new(4, 10),
+		SpreadAngle = Vector2.new(80, 10), LightEmission = 0.2, Rotation = NumberRange.new(0, 360),
+	}, 10, 1.2)
+	-- a green afterimage streak behind you
+	for k = 0, 2 do
+		task.delay(k * 0.06, function()
+			for _, part in ipairs(char:GetChildren()) do
+				if part:IsA("BasePart") and part.Transparency < 1 and part.Name ~= "HumanoidRootPart" then
+					local g = K.part({ Name = "Ghost", Size = part.Size, CFrame = part.CFrame, Material = Enum.Material.Neon, Color = k == 1 and LIME or GREEN, Transparency = 0.5 + k * 0.12 }, Fx.Folder)
+					K.tween(g, 0.3, { Transparency = 1 })
+					Debris:AddItem(g, 0.35)
+				end
+			end
+		end)
+	end
+	Fx.sound(K.S.Whoosh, root.Position, 0.7, 1.4, 150)
+end
+
+function M.punchFx(char, at, left)
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+	CharAnim.play(char, left and CharAnim.Punch2 or CharAnim.Punch, 0.04)
+	Aura.flare(char, 0.8)
+	task.delay(0.12, function()
+		local arm = char:FindFirstChild(left and "Left Arm" or "Right Arm")
+		local fist = arm and (arm.CFrame * CFrame.new(0, -1.2, 0)).Position or root.Position
+		-- a spiral drill of light off the fist, into him
+		local hit = at or (fist + root.CFrame.LookVector * 6)
+		Fx.emitAt(fist, {
+			Texture = "11381556016", FlipbookLayout = Enum.ParticleFlipbookLayout.Grid8x8, FlipbookMode = Enum.ParticleFlipbookMode.OneShot,
+			Color = ColorSequence.new(GREEN, LIME), Size = K.ns(0, 3, 1, 0), Lifetime = NumberRange.new(0.2, 0.4),
+			Speed = NumberRange.new(20, 50), SpreadAngle = Vector2.new(25, 25), Brightness = 4, Rotation = NumberRange.new(0, 360),
+		}, 14, 1)
+		Fx.vfx("Punch-0" .. math.random(1, 3), hit, 1.6, nil, 2)
+		Fx.vfx("Blood-Punch-01", hit, 0.6, 3, 2)
+		local host = K.part({ Name = "PunchHost", Size = Vector3.one, Transparency = 1, CFrame = CFrame.new(fist) }, Fx.Folder)
+		for i = 1, 2 do
+			local b = K.ray(host, fist, hit, 1.6, 0.4, "10365550877", { Color = i == 1 and GREEN or LIME, Brightness = 5, Segments = 12, Mode = Enum.TextureMode.Wrap, Length = 4, Speed = 8 })
+			b.CurveSize0, b.CurveSize1 = (i == 1 and 2 or -2), (i == 1 and -2 or 2)
+		end
+		Debris:AddItem(host, 0.18)
+		Fx.sound(math.random() < 0.5 and K.S.Punch or K.S.Punch2, hit, 1, 0.9 + math.random() * 0.2, 400)
+	end)
+end
+
+--------------------------------------------------------------------------
+-- actions (mine)
+--------------------------------------------------------------------------
+local function roll()
+	if not active then return end
+	local char, hum, root = me()
+	if not char then return end
+	local now = os.clock()
+	if now - lastRoll < attr("RollCooldown", 1.1) then return end
+	lastRoll = now
+	net.Action:FireServer("roll")
+	local dir = hum.MoveDirection
+	if dir.Magnitude < 0.1 then dir = root.CFrame.LookVector end
+	dir = Vector3.new(dir.X, 0, dir.Z).Unit
+	root.CFrame = CFrame.lookAt(root.Position, root.Position + dir)
+	local att = Instance.new("Attachment")
+	att.Parent = root
+	local lv = Instance.new("LinearVelocity")
+	lv.Attachment0 = att
+	lv.MaxForce = 1e6
+	lv.VelocityConstraintMode = Enum.VelocityConstraintMode.Plane
+	lv.PrimaryTangentAxis = Vector3.xAxis
+	lv.SecondaryTangentAxis = Vector3.zAxis
+	lv.PlaneVelocity = Vector2.new(dir.X, dir.Z) * 62
+	lv.RelativeTo = Enum.ActuatorRelativeTo.World
+	lv.Parent = root
+	Debris:AddItem(lv, 0.34)
+	Debris:AddItem(att, 0.34)
+	M.rollFx(char)
+	ctx.Cam.punch(6, 0.25)
+end
+
+local function inReach()
+	if not M.Weak then return false end
+	local _, _, root = me()
+	return root ~= nil and (S.flat(root.Position) - S.flat(M.Weak)).Magnitude <= attr("PunchRange", 30)
+end
+
+local function punch()
+	if not active or not shared:GetAttribute("BossDazed") then return end
+	local char, _, root = me()
+	if not char then return end
+	if not inReach() then
+		ctx.Warn.pop("GET TO HIS HEAD!", Color3.fromRGB(255, 220, 120), false, Vector2.new(0.5, 0.74))
+		return
+	end
+	local now = os.clock()
+	if now - lastPunch < attr("PunchCooldown", 0.4) then return end
+	lastPunch = now
+	side = -side
+	root.CFrame = CFrame.lookAt(root.Position, Vector3.new(M.Weak.X, root.Position.Y, M.Weak.Z))
+	net.Action:FireServer("punch")
+	M.punchFx(char, M.Weak + Vector3.new(0, 4, 0), side < 0)
+	M.LastMine = os.clock()
+	ctx.Cam.shake(0.8, 0.15)
+	ctx.Cam.punch(-4, 0.15)
+end
+
+--------------------------------------------------------------------------
+-- setup
+--------------------------------------------------------------------------
+function M.init(c)
+	ctx = c
+	K, S, Fx, CharAnim, Aura = c.K, c.S, c.Fx, c.CharAnim, c.Aura
+	net = c.Net
+	shared = ReplicatedStorage:WaitForChild("AntiSpiralFight")
+	ContextActionService:BindAction("BF_Roll", function(_, state)
+		if state == Enum.UserInputState.Begin then roll() end
+		return Enum.ContextActionResult.Pass
+	end, true, Enum.KeyCode.LeftControl, Enum.KeyCode.RightControl, Enum.KeyCode.ButtonB)
+	pcall(function()
+		ContextActionService:SetTitle("BF_Roll", "ROLL")
+		ContextActionService:SetPosition("BF_Roll", UDim2.new(1, -175, 1, -135))
+	end)
+	-- the punch: a click (anywhere) / R2 while he's dazed; a button on touch
+	UIS.InputBegan:Connect(function(input, processed)
+		if processed then return end
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.KeyCode == Enum.KeyCode.ButtonR2 then
+			punch()
+		end
+	end)
+	local punchBound = false
+	RunService.Heartbeat:Connect(function()
+		local want = active and UIS.TouchEnabled and shared:GetAttribute("BossDazed") == true
+		if want and not punchBound then
+			punchBound = true
+			ContextActionService:BindAction("BF_Punch", function(_, state)
+				if state == Enum.UserInputState.Begin then punch() end
+				return Enum.ContextActionResult.Sink
+			end, true)
+			pcall(function()
+				ContextActionService:SetTitle("BF_Punch", "PUNCH")
+				ContextActionService:SetPosition("BF_Punch", UDim2.new(1, -100, 1, -205))
+			end)
+		elseif not want and punchBound then
+			punchBound = false
+			ContextActionService:UnbindAction("BF_Punch")
+		end
+	end)
+end
+
+function M.setActive(on) active = on end
+function M.inReach() return inReach() end
+
+return M
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX16"><Properties><string name="Name">Music</string><ProtectedString name="Source"><![CDATA[--==================================================
+-- BOSS MUSIC (client)
+-- The fight's soundtrack, from the licensed tracks the cutscene
+-- already uses (Kit.S): one theme per phase, a swell for his
+-- set pieces, and a quiet after he falls. Tracks crossfade; the
+-- whole mix can duck (under his lines, or while he's dazed).
+-- Swap the IDs in TRACKS to change the music.
+--==================================================
+local M = {}
+
+local K
+local current, currentName
+local level, duckTo = 1, 1
+local BASE = 0.55
+
+local TRACKS -- (filled from Kit.S in init)
+
+function M.init(kit)
+	K = kit
+	TRACKS = {
+		Intro = { Id = K.S.M_Determined, Vol = 0.45, Speed = 1 },
+		Phase1 = { Id = K.S.M_EpicAnime, Vol = 0.6, Speed = 1 },
+		Phase2 = { Id = K.S.M_Trailer, Vol = 0.62, Speed = 1.03 },
+		SetPiece = { Id = K.S.M_Overture, Vol = 0.68, Speed = 1 },
+		Victory = { Id = K.S.M_Wonder, Vol = 0.5, Speed = 1 },
+	}
+	game:GetService("RunService").Heartbeat:Connect(function(dt)
+		level += (duckTo - level) * math.min(1, dt * 3)
+		if current and current.Parent then
+			current.Volume = (current:GetAttribute("TargetVolume") or BASE) * level
+		end
+	end)
+end
+
+-- crossfade to a track by name (Intro / Phase1 / Phase2 / SetPiece / Victory)
+function M.play(name, fade)
+	if name == currentName then return end
+	local tr = TRACKS[name]
+	if not tr then return end
+	fade = fade or 1.5
+	if current then
+		local old = current
+		old:SetAttribute("TargetVolume", 0)
+		K.fadeSound(old, 0, fade, true)
+	end
+	currentName = name
+	current = K.sfx(tr.Id, 0, tr.Speed, { Looped = true })
+	current:SetAttribute("Dry", true)
+	current:SetAttribute("TargetVolume", 0)
+	local s = current
+	-- (a hand-rolled fade in, so the ducking still applies over it)
+	task.spawn(function()
+		local t0 = os.clock()
+		while s.Parent and s == current do
+			local u = math.min((os.clock() - t0) / fade, 1)
+			s:SetAttribute("TargetVolume", tr.Vol * u)
+			if u >= 1 then break end
+			task.wait()
+		end
+	end)
+end
+
+-- duck the music to `to` (0..1) - 1 lets it back up
+function M.duck(to, _time)
+	duckTo = to
+end
+
+function M.stop(fade)
+	if current then K.fadeSound(current, 0, fade or 2, true) end
+	current, currentName = nil, nil
+end
+
+return M
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX17"><Properties><string name="Name">Qte</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- QTE: THE PARRY PROMPTS (client)
--- Every hit you're standing in gets a prompt, in the dodge
--- prompt's style (a key in a disc, a ring closing on it):
---   single   - one key as it lands
---   chord    - several keys, all down inside the window
---   ultimate - a sequence of steps (some of them chords), each on
---              a knife-edge; the whole track shows along the top
+-- Only his biggest wind-ups have one (everything else, you just
+-- get out of the way). In the dodge prompt's style - a key in a
+-- disc, a ring closing on it - one key after another:
+--   sequence - a few keys in turn, the last as it lands
+--   ultimate - Big Bang's five, on tighter windows
+-- (single and chord still work, if an attack asks for them)
 -- Complete every step and the hit is claimed (the server has the
 -- last word). Early, late or wrong keys lose it.
 -- Keys: CLICK (mouse / tap / R2), SPACE (A), Q (X), E (Y), F (B).
@@ -3136,10 +3673,10 @@ local function buildUI(h)
 	ui.Row = row
 	-- its name (chords and the ultimate say what's coming)
 	if h.Qte.Kind ~= "single" then
-		ui.Title = label(holder, { Text = ult and "!! BIG BANG !! - PERFECT TIMING" or "PARRY - ALL AT ONCE", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 0, -6), Size = UDim2.fromScale(1.2, 0.34), TextColor3 = ult and GOLD or PINK, ZIndex = 63 }, 3)
+		ui.Title = label(holder, { Text = ult and "!! BIG BANG !! - HIT EVERY KEY" or "FIGHT BACK - HIT EACH KEY", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 0, -6), Size = UDim2.fromScale(1.2, 0.34), TextColor3 = ult and GOLD or PINK, ZIndex = 63 }, 3)
 	end
-	-- the ultimate's track: every step as a pip
-	if ult then
+	-- the sequence's track: every step as a pip, lit as you land them
+	if #h.Steps > 1 then
 		local track = frame(root, { Name = "QTETrack", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.52), Size = UDim2.fromScale(0.42, 0.05), BackgroundTransparency = 1, ZIndex = 61 })
 		local tl = Instance.new("UIListLayout")
 		tl.FillDirection = Enum.FillDirection.Horizontal
@@ -3155,7 +3692,7 @@ local function buildUI(h)
 			corner(pip, UDim.new(0.3, 0))
 			stroke(pip, Color3.new(0, 0, 0), 3)
 			ui.PipGrad = ui.PipGrad or {}
-			ui.PipGrad[i] = grad(pip, Color3.fromRGB(90, 20, 20), EMBER)
+			ui.PipGrad[i] = ult and grad(pip, Color3.fromRGB(90, 20, 20), EMBER) or grad(pip, VIOLET, PURPLE)
 			label(pip, { Text = table.concat(names, "+"), Size = UDim2.fromScale(0.9, 0.8), Position = UDim2.fromScale(0.05, 0.1), ZIndex = 63 }, 2)
 			ui.Pips[i] = pip
 		end
@@ -3283,7 +3820,6 @@ pressKey = function(key)
 			end
 		end
 	end
-	K.sfx(K.S.Ring, 0.2, 2)
 	if not best then
 		-- (on the ultimate, a stray key inside its window costs you)
 		if anyUlt and math.abs(now - anyUlt.T) <= 0.3 then fail(anyUlt.H, "wrong") end
@@ -3298,6 +3834,7 @@ pressKey = function(key)
 		fail(best, "late")
 		return
 	end
+	K.sfx(K.S.Ring, 0.25, 2)
 	bestStep.Done[key] = math.abs(err)
 	-- (the disc lights up)
 	for _, d in ipairs(best.UI.Discs) do
@@ -3380,7 +3917,7 @@ function Q.update(now)
 		elseif pos and not h.Failed and not h.Claimed then
 			local si, st = currentStep(h)
 			local stepT = st and (T + st.At)
-			local lead = h.Qte.Kind == "ultimate" and 1.0 or S.PROMPT_LEAD
+			local lead = (#h.Steps > 1) and 1.0 or S.PROMPT_LEAD
 			local want = st and inPath(h, pos, T) and now >= (T + h.Steps[1].At) - lead
 			if st and now > stepT + h.Qte.Late then
 				if h.UI or inPath(h, pos, T) then fail(h, "late") end
@@ -3419,7 +3956,7 @@ function Q.track(id, worldPosFn)
 end
 
 return Q
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX15"><Properties><string name="Name">Rig</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX18"><Properties><string name="Name">Rig</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- THE ANTI-SPIRAL, ANIMATED (client)
 -- The server never moves him: it publishes a walk plan (the
 -- "Motion" attribute) and every client places his root from it
@@ -3785,7 +4322,101 @@ function Rig:update(t)
 end
 
 return Rig
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX16"><Properties><string name="Name">Warn</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX19"><Properties><string name="Name">Tutorial</string><ProtectedString name="Source"><![CDATA[--==================================================
+-- HOW TO FIGHT HIM (client)
+-- The cards between the cutscene and his first attack, in the
+-- dodge intro's style (a purple gradient card, chunky black
+-- outline, Inconsolata, a row of keycaps). The keys shown match
+-- the device: keyboard, gamepad or touch.
+--==================================================
+local UIS = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+local T = {}
+
+local FONT = Font.new("rbxasset://fonts/families/Inconsolata.json", Enum.FontWeight.Bold)
+
+local function touch() return UIS.TouchEnabled and not UIS.KeyboardEnabled end
+local function pad() return UIS.GamepadEnabled and not UIS.KeyboardEnabled end
+
+local function tween(o, t, props, style, dir)
+	TweenService:Create(o, TweenInfo.new(t, style or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out), props):Play()
+end
+local function frame(parent, props)
+	local f = Instance.new("Frame")
+	f.BorderSizePixel = 0
+	for k, v in pairs(props) do f[k] = v end
+	f.Parent = parent
+	return f
+end
+local function label(parent, props, th)
+	local t = Instance.new("TextLabel")
+	t.BackgroundTransparency = 1
+	t.FontFace = FONT
+	t.TextScaled = true
+	t.TextColor3 = Color3.new(1, 1, 1)
+	for k, v in pairs(props) do t[k] = v end
+	t.Parent = parent
+	if (th or 3) > 0 then local s = Instance.new("UIStroke") s.Thickness = th or 3 s.Parent = t end
+	return t
+end
+local function style(p, a, b, r)
+	local c = Instance.new("UICorner") c.CornerRadius = r or UDim.new(0.18, 0) c.Parent = p
+	local s = Instance.new("UIStroke") s.Thickness = 5 s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border s.Parent = p
+	local g = Instance.new("UIGradient") g.Color = ColorSequence.new(a, b) g.Rotation = -90 g.Parent = p
+end
+
+local function cards()
+	local click = touch() and "TAP" or pad() and "R2" or "CLICK"
+	local rollKey = touch() and "ROLL" or pad() and "B" or "CTRL"
+	return {
+		{ Title = "SURVIVE HIM", Keys = { "!" }, Text = "WHEN THE RED ! FLASHES, SOMETHING IS ABOUT TO LAND ON YOU - GET OUT OF THE RED", Color = Color3.fromRGB(255, 60, 80) },
+		{ Title = "ROLL", Keys = { rollKey }, Text = "ROLL THROUGH ANYTHING - YOU CAN'T BE HIT MID-ROLL. JUMP HIS SHOCKWAVES", Color = Color3.fromRGB(120, 200, 255) },
+		{ Title = "STRIKE HIM WHEN HE FALLS", Keys = { click }, Text = "AFTER A FEW ATTACKS HE COLLAPSES OVER THE EDGE - RUN TO HIS HEAD AND " .. click .. " TO PUNCH", Color = Color3.fromRGB(90, 255, 140) },
+		{ Title = "HIS ULTIMATE", Keys = { click, pad() and "X" or "Q", pad() and "Y" or "E" }, Text = "WHEN HE WINDS UP SOMETHING HUGE, HIT EACH KEY AS IT APPEARS - OR BE ERASED", Color = Color3.fromRGB(255, 200, 80) },
+	}
+end
+
+-- dur: seconds to fill (the server holds his first attack for it)
+function T.play(K, gui, dur)
+	local list = cards()
+	local each = math.max((dur - 0.6) / #list, 1.6)
+	task.spawn(function()
+		for i, c in ipairs(list) do
+			local card = frame(gui, {
+				Name = "HowTo", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.34), Size = UDim2.fromScale(0.42, 0.22),
+				BackgroundColor3 = Color3.new(1, 1, 1), ZIndex = 70,
+			})
+			style(card, Color3.fromRGB(70, 25, 140), Color3.fromRGB(150, 70, 255))
+			local sc = Instance.new("UIScale") sc.Scale = 0 sc.Parent = card
+			label(card, { Text = c.Title, Size = UDim2.fromScale(0.9, 0.24), Position = UDim2.fromScale(0.05, 0.05), ZIndex = 71, TextColor3 = c.Color }, 4)
+			local row = frame(card, { BackgroundTransparency = 1, Size = UDim2.fromScale(0.9, 0.3), Position = UDim2.fromScale(0.05, 0.32), ZIndex = 71 })
+			local ll = Instance.new("UIListLayout")
+			ll.FillDirection = Enum.FillDirection.Horizontal
+			ll.HorizontalAlignment = Enum.HorizontalAlignment.Center
+			ll.VerticalAlignment = Enum.VerticalAlignment.Center
+			ll.Padding = UDim.new(0.03, 0)
+			ll.Parent = row
+			for _, k in ipairs(c.Keys) do
+				local cap = frame(row, { Size = UDim2.fromScale(#k > 2 and 0.24 or 0.14, 1), BackgroundColor3 = Color3.new(1, 1, 1), ZIndex = 72 })
+				style(cap, Color3.fromRGB(215, 205, 235), Color3.new(1, 1, 1), UDim.new(0.25, 0))
+				label(cap, { Text = k, Size = UDim2.fromScale(0.8, 0.7), Position = UDim2.fromScale(0.1, 0.15), TextColor3 = k == "!" and Color3.fromRGB(200, 20, 40) or Color3.fromRGB(60, 20, 120), ZIndex = 73 }, 0)
+			end
+			label(card, { Text = c.Text, Size = UDim2.fromScale(0.92, 0.26), Position = UDim2.fromScale(0.04, 0.68), ZIndex = 71, TextColor3 = Color3.fromRGB(235, 220, 255) }, 2)
+			-- a step counter
+			label(card, { Text = i .. " / " .. #list, AnchorPoint = Vector2.new(1, 0), Size = UDim2.fromScale(0.12, 0.12), Position = UDim2.fromScale(0.97, 0.04), ZIndex = 71, TextColor3 = Color3.fromRGB(200, 180, 255) }, 2)
+			tween(sc, 0.4, { Scale = 1 }, Enum.EasingStyle.Back)
+			K.sfx(K.S.CutIn, 0.45, 1.1 + i * 0.05)
+			task.wait(each - 0.35)
+			tween(sc, 0.3, { Scale = 0 }, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+			task.delay(0.35, function() card:Destroy() end)
+			task.wait(0.35)
+		end
+	end)
+end
+
+return T
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX20"><Properties><string name="Name">Warn</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- BOSS FIGHT: WARNINGS + PARRY (client)
 -- Every hit the server schedules is registered here. For the
 -- ones aimed at you it draws the cutscene's lock-on: red target
@@ -3877,6 +4508,23 @@ function W.pop(text, color, big, pos)
 		if s then tween(s, 0.3, { Transparency = 1 }) end
 		task.delay(0.35, function() t:Destroy() end)
 	end)
+end
+
+--------------------------------------------------------------------------
+-- the danger icon: a red warning that pulses in the middle of the screen
+-- while something is about to land where you stand (MOVE! / JUMP! / ROLL!)
+--------------------------------------------------------------------------
+local danger
+local function buildDanger()
+	local f = frame(root, { Name = "Danger", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.34), Size = UDim2.fromScale(0.09, 0.09), BackgroundColor3 = Color3.new(1, 1, 1), Rotation = 45, Visible = false, ZIndex = 55 })
+	local ar = Instance.new("UIAspectRatioConstraint") ar.AspectRatio = 1 ar.DominantAxis = Enum.DominantAxis.Height ar.Parent = f
+	local c = Instance.new("UICorner") c.CornerRadius = UDim.new(0.18, 0) c.Parent = f
+	stroke(f, Color3.new(0, 0, 0), 5)
+	grad(f, Color3.fromRGB(140, 0, 20), RED)
+	local bang = label(f, { Text = "!", Rotation = -45, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.8, 0.8), ZIndex = 56, StrokeTh = 4 })
+	local word = label(root, { Name = "DangerWord", Text = "MOVE!", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0.4), Size = UDim2.fromScale(0.18, 0.05), TextColor3 = Color3.fromRGB(255, 90, 100), Visible = false, ZIndex = 56, StrokeTh = 4 })
+	local sc = Instance.new("UIScale") sc.Parent = f
+	return { F = f, Bang = bang, Word = word, Scale = sc }
 end
 
 --------------------------------------------------------------------------
@@ -4061,6 +4709,7 @@ function W.update(now)
 	local pos = me()
 	local soonest, soonestT
 	local myId = player.UserId
+	local dangerT, dangerWord
 	for i = #order, 1, -1 do
 		local id = order[i]
 		local h = hits[id]
@@ -4071,8 +4720,15 @@ function W.update(now)
 			hits[id] = nil
 			table.remove(order, i)
 		else
-			-- the lock-on: things aimed at me
-			if (h.Target == myId or h.Target == "all") and pos then
+			-- the red icon: anything about to land where I stand (the QTE ones prompt instead)
+			if pos and not h.Result and not h.Qte and inPath(h, pos, T) and T - now <= 1.3 and T - now >= -0.05 then
+				if not dangerT or T < dangerT then
+					dangerT = T
+					dangerWord = h.Shape.Kind == "ring" and "JUMP!" or h.Shape.Kind == "sweep" and "ROLL!" or "MOVE!"
+				end
+			end
+			-- the lock-on: the big ones, aimed at me
+			if h.Big and (h.Target == myId or h.Target == "all") and pos then
 				if not h.Lock and not h.Result and now >= T - S.WARN_LOCK and now < T then
 					h.Lock = makeLock(h.Name or "INCOMING")
 					h.LockT = now
@@ -4090,6 +4746,21 @@ function W.update(now)
 			end
 		end
 	end
+	danger = danger or buildDanger()
+	local on = dangerT ~= nil
+	danger.F.Visible = on
+	danger.Word.Visible = on
+	if on then
+		local rem = math.max(dangerT - now, 0)
+		local beat = 0.5 + 0.5 * math.sin(os.clock() * (10 + 20 * (1 - rem / 1.3)))
+		danger.Scale.Scale = 1 + 0.18 * beat
+		danger.Word.Text = dangerWord
+		danger.Word.TextColor3 = Color3.fromRGB(255, 90, 100):Lerp(Color3.new(1, 1, 1), beat * 0.5)
+		if os.clock() - lastBeep >= 0.12 + 0.3 * (rem / 1.3) then
+			lastBeep = os.clock()
+			K.sfx(BEEP, 0.3, 1.9)
+		end
+	end
 	-- the beep: faster and higher as the nearest lock closes
 	if soonest then
 		local rem = math.max(soonestT - now, 0)
@@ -4103,7 +4774,7 @@ function W.update(now)
 end
 
 return W
-]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX18"><Properties><string name="Name">Shared</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX22"><Properties><string name="Name">Shared</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- BOSS FIGHT: SHARED
 -- Everything the server and every client must agree on:
 -- the arena, the Anti-Spiral's walk around it (a plan both

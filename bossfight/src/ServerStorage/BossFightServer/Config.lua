@@ -9,13 +9,28 @@ return {
 
 	-- his health: MaxHealth for one player, plus this share of it per extra player
 	-- (2 players = 1.7x, 4 players = 3.1x ...)
-	MaxHealth = 4000,
+	MaxHealth = 5000,
 	HealthPerExtraPlayer = 0.7,
 
 	WalkSpeed = 70,          -- studs/s round the ring at full stride
 	WalkArc = { 35, 80 },    -- degrees he walks between attacks (random in range)
 
-	-- a parried hit's damage to him, if the attack doesn't set its own Counter
+	-- the how-to-play cards after the cutscene, before his first attack (seconds)
+	IntroTime = 11,
+
+	-- HOW YOU HURT HIM: after this many attacks he's dazed - slumped over the rim,
+	-- head down on the arena - and for DazeTime seconds you can run up and punch him
+	AttacksBeforeDaze = 3,
+	DazeTime = 8,
+	PunchDamage = 55,
+	PunchRange = 30,      -- studs from his head (the glowing weak point)
+	PunchCooldown = 0.4,
+
+	-- the roll (CTRL / the ROLL button): brief invulnerability
+	RollCooldown = 1.1,
+	RollIFrames = 0.4,
+
+	-- a QTE he's hit back with (the big wind-ups only), if the attack doesn't set its own
 	ParryDamage = 40,
 
 	-- set pieces: each comes out once, next, as his health crosses At

@@ -59,15 +59,7 @@ function A.start(ctx, d)
 			return true
 		end,
 	})
-	Warn.callout("CONSTELLATION LANCES")
 	ctx.Fx.say("EVERY CONSTELLATION\nIS MY WEAPON.", 1.2)
-	-- the cut-in: flat on your back in the middle of the arena, looking up at the stars joining
-	ctx.Cam.cut(function(now)
-		local u = K.remap(now, d.T0, first - 0.3)
-		local from = S.CENTER + Vector3.new(0, 6, 0)
-		local toBoss = S.flat(ctx.chest() - S.CENTER).Unit
-		return CFrame.lookAt(from, S.CENTER + UP * HIGH + toBoss * (60 - 40 * u)), 85 - 10 * u
-	end, d.T0 + 0.25, first - 0.25, 0.3)
 	K.sfx(K.S.Choir, 0.5, 1.1)
 	K.sfx(K.S.Sting, 0.5, 1.2)
 	local conn

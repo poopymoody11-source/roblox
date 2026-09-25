@@ -254,7 +254,7 @@ function A.finale(ctx, d)
 	local shape = { Kind = "circle", P = d.P, R = d.R }
 	local zone = Fx.zone(shape, d.T0, d.T)
 	Warn.add({ Id = d.Id, T = d.T, Shape = shape, Name = "EVERY GALAXY", Target = d.User, Rad = d.R, Pos = function() return d.P + UP * 4 end })
-	if d.User == ctx.player.UserId then Warn.callout("EVERY GALAXY - PARRY IT") end
+	if d.User == ctx.player.UserId then Warn.callout("EVERY GALAXY - MOVE!") end
 	local host = K.part({ Name = "FinaleHost", Size = Vector3.one, Transparency = 1, CFrame = CFrame.new(d.P) }, Fx.Folder)
 	local rays = {}
 	for i, g in ipairs(C and C.G or {}) do

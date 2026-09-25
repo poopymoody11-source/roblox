@@ -27,8 +27,9 @@ function A.Run(F, P, token)
 		Name = "SPIRAL COLLAPSE",
 		Knock = 90,
 		Target = "all",
-		Qte = F.qte.randomChord(3),
-		Counter = 110, CounterPerfect = 170,
+		Big = true,
+		Qte = F.qte.sequence({ "Q", "E", "CLICK" }, 0.45),
+		Counter = 70, CounterPerfect = 110,
 	})
 	F.fx("SpiralCollapse", { T0 = t0, OpenT = openT, BlastT = blastT, Id = hit.Id, R = P.R, Strength = P.Strength, Centre = S.CENTER })
 	F.waitUntil(blastT + 0.8)

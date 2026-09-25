@@ -443,6 +443,35 @@ function Fx.blast(pos, radius, color, opts)
 		K.tween(col, 0.45, { Size = Vector3.new(160, radius * 0.05, radius * 0.05), Transparency = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 		Debris:AddItem(col, 0.5)
 	end
+	-- rubble thrown out of it, and a scorch left behind
+	if radius >= 10 and opts.Debris ~= false then
+		for _ = 1, math.clamp(math.floor(radius / 3), 3, 14) do
+			local sz = math.random(10, 26) / 10 * math.clamp(radius / 14, 0.6, 2.2)
+			local c = K.part({ Name = "Rubble", Size = Vector3.new(sz, sz * 0.8, sz * 1.1), Material = Enum.Material.Slate,
+				Color = Color3.fromRGB(math.random(40, 70), math.random(25, 45), math.random(70, 110)), CFrame = CFrame.new(p) }, folder)
+			local dir = Vector3.new(math.random() - 0.5, 0, math.random() - 0.5).Unit
+			local out = dir * radius * (0.6 + math.random() * 0.8)
+			local up = radius * (0.5 + math.random() * 0.8)
+			local spin = Vector3.new(math.random(), math.random(), math.random()) * 12
+			local r0 = os.clock()
+			task.spawn(function()
+				local life = 0.9 + math.random() * 0.4
+				while c.Parent do
+					local u = (os.clock() - r0) / life
+					if u >= 1 then break end
+					local pos = p + out * u + Vector3.new(0, up * 4 * u * (1 - u), 0)
+					c.CFrame = CFrame.new(pos) * CFrame.Angles(spin.X * u, spin.Y * u, spin.Z * u)
+					c.Transparency = math.max(0, (u - 0.7) / 0.3)
+					task.wait()
+				end
+				c:Destroy()
+			end)
+		end
+		local scorch = K.part({ Name = "Scorch", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.12, radius * 1.3, radius * 1.3), Material = Enum.Material.Neon,
+			Color = color:Lerp(Color3.new(0, 0, 0), 0.55), Transparency = 0.25, CFrame = CFrame.new(p + UP * 0.05) * CFrame.Angles(0, 0, math.pi / 2) }, folder)
+		K.tween(scorch, 3, { Transparency = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+		Debris:AddItem(scorch, 3.1)
+	end
 	-- (the VFX pack's explosion and cracks, for the heavier ones)
 	if opts.Pack ~= false and radius >= 12 then
 		Fx.vfx("Explosion-01", p + UP * 2, radius / 18, math.floor(8 + radius * 0.3), 4)

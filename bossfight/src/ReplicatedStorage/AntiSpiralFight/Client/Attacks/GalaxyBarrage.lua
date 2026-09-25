@@ -9,7 +9,6 @@ local RunService = game:GetService("RunService")
 local Debris = game:GetService("Debris")
 
 local A = {}
-local Warn
 
 local RAISED = {
 	Waist = { 10, 0, 0 }, RightShoulder = { 165, 0, 28 }, LeftShoulder = { 165, 0, -28 },
@@ -32,17 +31,9 @@ function A.start(ctx, d)
 	local gals = {}
 	for i, p in ipairs(d.Portals) do gals[i] = { G = Fx.galaxy(host), P = p } end
 	ctx.Barrage = { Id = d.Id, Pulse = 0, Gals = gals }
-	Warn = ctx.Warn
-	Warn.callout("GALAXY BARRAGE")
 	ctx.Fx.say("THE STARS THEMSELVES\nREJECT YOU.", 1.2)
-	-- the cut-in: from the arena, up past him to the sky tearing open
 	local mid = d.Portals[1]:Lerp(d.Portals[#d.Portals], 0.5)
 	ctx.Barrage.Mid = mid
-	ctx.Cam.cut(function(now)
-		local u = K.remap(now, d.T0, d.OpenT + 0.4)
-		local from = S.CENTER + (S.flat(mid - S.CENTER).Unit * -60) + Vector3.new(0, 12 + 20 * u, 0)
-		return CFrame.lookAt(from, mid:Lerp(ctx.chest(), 0.35 - 0.2 * u)), 62 - 8 * u
-	end, d.T0 + 0.2, d.OpenT + 0.5, 0.3)
 	task.delay(math.max(d.OpenT - S.now(), 0), function()
 		for _, p in ipairs(d.Portals) do
 			ctx.Fx.vfx("Portal-01", p, 7, nil, 3)

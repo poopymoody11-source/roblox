@@ -26,36 +26,36 @@ Add a Boolean attribute **`BF_TestFight`** = true on **Workspace**, then press *
 
 ## How the fight plays
 
-- **You fight in spiral power.** Every player wears the cutscene's green spiral aura (veins, glowing eyes, glow, whirling rings). There are no weapons: all damage to him comes from **parrying**.
-- **Dodge** by getting out of the red. **Parry** with the QTE prompts that appear when a hit is about to land on you:
-  - **Single:** one key, as the ring closes on it.
-  - **Chord:** several keys at once (the bigger attacks), all inside the window.
-  - **Ultimate:** Big Bang's five-step sequence with tight timing (±0.09 s, perfect ±0.045 s). Land it and a cutscene counter plays: GIGA DRILL BREAK.
-  - Keys: **CLICK**, **SPACE**, **Q**, **E**, **F** (gamepad R2 / A / X / Y / B; on touch, tap the prompt discs).
-- A successful parry plays a move on your character that everyone sees (a palm deflect, a spinning backhand on a perfect, or a cross-arm guard that bursts open on a chord), then fires a counter-bolt into him. Getting hit knocks you reeling.
-- **Camera:** it frames you with him and follows him around. Right-drag or the right stick looks around, and **C** toggles it. Big attacks cut in to a cinematic shot.
-- **He talks:** his lines appear at the bottom of the screen in the cutscene's font and animation.
-- **Impact frames** hit on the big moments.
+- **Before his first attack,** how-to-play cards show after the cutscene. The server holds his first attack until they finish.
+- **Boss music:** a theme per phase, a swell for his set pieces, and a quiet one when he falls. Change the tracks in `ReplicatedStorage.AntiSpiralFight.Client.Music` (TRACKS).
+- **You fight in spiral power:** the cutscene's green aura is on every player.
+- **Dodging:** when the red **!** flashes, something is about to land where you stand. MOVE, JUMP or ROLL, and it tells you which.
+- **Roll:** **CTRL** (gamepad B, or the ROLL button on mobile). A quick roll you can't be hit during.
+- **Hurting him:** after a few attacks he's **dazed**. He collapses over the rim with his head down on the arena, marked by a green target. Run to it and **CLICK** (R2, or the PUNCH button on mobile) to throw spiral punches. A bar shows how long he's down, and then he comes round with a roar and a shockwave you have to jump.
+- **QTEs, only for his three biggest wind-ups** (Hammer of Despair, Spiral Collapse, Big Bang): keys appear one after another, and you hit each as its ring closes. Land them all and you knock it back and hurt him. Big Bang's counter is a cutscene (GIGA DRILL BREAK).
+- **Getting hit:** knockback, blood, a shockwave, a stumble (or a full knockdown for the big ones) and a camera jolt.
+- **Camera:** it follows you and him. Right-drag looks around, and **C** toggles it. The big wind-ups cut in to a cinematic shot and get a title and a lock-on warning.
 
 ## Attacks
 
-1. **Galaxy Barrage.** Purple galaxies tear open and fire planets and stars at you. Finale: **The Last World** (a chord QTE).
-2. **Fist Slam.** Red zones fill, then violet fists crash down. Finale: **Hammer of Despair** (a chord).
-3. **Stomp Quake.** He stomps the rim. Jump the shockwaves: SPACE on the beat parries them.
-4. **Constellation Lances.** Constellations form overhead, then come down as blades of light.
-5. **Annihilation Beam.** A palm-charged beam sweeps the arena. It's too tall to jump: parry it with the chord.
-6. **Spiral Collapse.** A black hole drags you in, then collapses. Escape the red, or parry it with the chord.
-7. **Galaxy Corruption** (set piece, at 58% health: the end of phase 1). Every galaxy turns violet and bombards the arena. It ends with every galaxy converging on each player (a chord).
-8. **Big Bang** (his ultimate, at 72% and 30% health). It covers the whole arena, so the five-step QTE is the only way through.
+1. **Galaxy Barrage.** Galaxies tear open and fire planets and stars. Finale: **The Last World**.
+2. **Fist Slam.** Red zones fill, then violet fists crash down. Finale: **Hammer of Despair** (QTE).
+3. **Stomp Quake.** Shockwaves roll across the arena: jump them.
+4. **Constellation Lances.** Constellations form overhead and come down as blades of light.
+5. **Annihilation Beam.** A sweeping beam that's too tall to jump: roll through it.
+6. **Spiral Collapse.** A black hole pulls you in, then collapses (QTE).
+7. **Galaxy Corruption** (at 58% health, the end of phase 1). Every galaxy bombards the arena.
+8. **Big Bang** (his ultimate, at 72% and 30%). It covers the whole arena: hit the five keys (or roll at the perfect moment).
 
 ## Tuning
 
 Everything is in `ServerStorage.BossFightServer.Config`:
 - `MaxHealth` is for one player; each extra player adds `HealthPerExtraPlayer` of it (70%).
+- `AttacksBeforeDaze`, `DazeTime`, `PunchDamage`, `PunchRange`, `PunchCooldown`, `RollCooldown`, `RollIFrames` and `IntroTime` control the daze, punches, roll and the intro.
 - `SetPieces` sets when Galaxy Corruption and Big Bang happen.
 - `Phases` sets the attacks and their weights. Phase 2 still reuses these attacks at a harder setting, as a placeholder.
 
-Each attack module (`ServerStorage.BossFightServer.Attacks`) sets its own counter damage (`Counter` / `CounterPerfect`) and QTE (`Qte`).
+An attack gets a QTE only if its module sets `Qte` on a hit (see `F.qte.sequence`). `Big = true` gives a hit the lock-on warning.
 
 ## If something doesn't work
 

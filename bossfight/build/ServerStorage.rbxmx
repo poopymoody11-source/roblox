@@ -1,4 +1,4 @@
-<roblox version="4"><Item class="Folder" referent="RBX32"><Properties><string name="Name">BossFightServer</string></Properties><Item class="Folder" referent="RBX29"><Properties><string name="Name">Attacks</string></Properties><Item class="ModuleScript" referent="RBX21"><Properties><string name="Name">AnnihilationBeam</string><ProtectedString name="Source"><![CDATA[--==================================================
+<roblox version="4"><Item class="Folder" referent="RBX36"><Properties><string name="Name">BossFightServer</string></Properties><Item class="Folder" referent="RBX33"><Properties><string name="Name">Attacks</string></Properties><Item class="ModuleScript" referent="RBX25"><Properties><string name="Name">AnnihilationBeam</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- ATTACK 5: ANNIHILATION BEAM
 -- He thrusts out a palm; violet light gathers in it... then a
 -- beam tears out of it and sweeps across the arena. It's too
@@ -34,8 +34,8 @@ function A.Run(F, P, token)
 			Kind = "sweep", O = origin, A0 = centreA - half * d, A1 = centreA + half * d,
 			T0 = t, T1 = t + P.Sweep, W = P.W, L = 2 * S.ARENA_R + 20,
 		}
-		local hit = { Id = F.newId("AB"), Shape = shape, Damage = P.Damage, Name = "ANNIHILATION BEAM", Knock = 50,
-			Qte = F.qte.randomChord(2), Counter = 70, CounterPerfect = 110 }
+		-- (too tall to jump: roll through it)
+		local hit = { Id = F.newId("AB"), Shape = shape, Damage = P.Damage, Name = "ANNIHILATION BEAM", Knock = 50 }
 		table.insert(sweeps, hit)
 		t = shape.T1 + 0.35
 	end
@@ -50,7 +50,7 @@ function A.Run(F, P, token)
 end
 
 return A
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX22"><Properties><string name="Name">BigBang</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX26"><Properties><string name="Name">BigBang</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- ULTIMATE: BIG BANG
 -- He rises out of the galaxy floor, draws every star in the
 -- realm into a universe between his hands, and hurls it at
@@ -80,14 +80,13 @@ function A.Run(F, P, token)
 		Name = "BIG BANG",
 		Target = "all",
 		Knock = 140,
-		-- every step on a knife-edge (see QTE.ultimate: +/-0.09 s, perfect +/-0.045 s)
-		Qte = F.qte.ultimate({
-			{ At = -1.5, Keys = { "CLICK" } },
-			{ At = -1.1, Keys = { "Q" } },
-			{ At = -0.72, Keys = { "CLICK", "SPACE" } },
-			{ At = -0.36, Keys = { "E" } },
-			{ At = 0, Keys = { "CLICK", "Q", "E" } },
-		}),
+		Big = true,
+		-- five keys, one after another (the tightest windows in the fight)
+		Qte = (function()
+			local q = F.qte.sequence({ "CLICK", "Q", "E", "F", "CLICK" }, 0.42, "ultimate")
+			q.Early, q.Late, q.Perfect = 0.24, 0.15, 0.07
+			return q
+		end)(),
 		Counter = math.floor(max * 0.08),
 		CounterPerfect = math.floor(max * 0.12),
 	})
@@ -96,7 +95,7 @@ function A.Run(F, P, token)
 end
 
 return A
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX23"><Properties><string name="Name">ConstellationLances</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX27"><Properties><string name="Name">ConstellationLances</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- ATTACK 4: CONSTELLATION LANCES
 -- He points to the sky: stars ignite over the arena and join
 -- into constellations, their lines burning red on the floor
@@ -154,7 +153,6 @@ function A.Run(F, P, token)
 			Name = "LANCE",
 			Target = l.Target,
 			Knock = 45,
-			Counter = 25, CounterPerfect = 40,
 		})
 		table.insert(list, { Id = hit.Id, A = l.A, B = l.B, W = P.W, T = hit.T, Target = l.Target })
 	end
@@ -164,7 +162,7 @@ function A.Run(F, P, token)
 end
 
 return A
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX24"><Properties><string name="Name">FistSlam</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX28"><Properties><string name="Name">FistSlam</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- ATTACK 2: FIST SLAM
 -- He rears back and brings his fists down: red zones open on
 -- the arena (one under every player, plus a few more), fill up,
@@ -232,7 +230,6 @@ function A.Run(F, P, token)
 				Name = "FIST",
 				Target = z.Target,
 				Knock = 70,
-				Counter = 25, CounterPerfect = 40,
 			})
 			table.insert(list, { Id = hit.Id, P = z.P, R = P.ZoneR, T = hit.T, Target = z.Target })
 		end
@@ -256,8 +253,10 @@ function A.Run(F, P, token)
 			Name = "HAMMER OF DESPAIR",
 			Target = "all",
 			Knock = 110,
-			Qte = F.qte.randomChord(3),
-			Counter = 100, CounterPerfect = 160,
+			Big = true,
+			-- (a wind-up this big can be fought: three keys, one after another)
+			Qte = F.qte.sequence({ "CLICK", "Q", "E" }, 0.45),
+			Counter = 60, CounterPerfect = 100,
 		})
 		F.fx("FistHammer", { T0 = waveT, T = hit.T, Id = hit.Id, P = p, R = P.HammerR })
 		waveT = hit.T + 0.6
@@ -266,7 +265,7 @@ function A.Run(F, P, token)
 end
 
 return A
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX25"><Properties><string name="Name">GalaxyBarrage</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX29"><Properties><string name="Name">GalaxyBarrage</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- ATTACK 1: GALAXY BARRAGE
 -- He raises his arms and tears violet galaxies open in the sky
 -- over the arena; planets, moons and stars pour out of them at
@@ -350,7 +349,6 @@ function A.Run(F, P, token)
 			Name = k.Name,
 			Target = tgt.Player.UserId,
 			Knock = 40,
-			Counter = 18, CounterPerfect = 30,
 		})
 		F.fx("Shot", {
 			Attack = id, Id = hit.Id, Kind = k.Kind, Model = k.Model, Name = k.Name, Size = k.Size, R = k.R,
@@ -375,8 +373,7 @@ function A.Run(F, P, token)
 				Name = "JUPITER",
 				Target = "all",
 				Knock = 100,
-				Qte = F.qte.randomChord(3),
-				Counter = 90, CounterPerfect = 150,
+				Big = true,
 			})
 			F.fx("Shot", {
 				Attack = id, Id = hit.Id, Kind = "giant", Model = "jupiter", Name = "JUPITER", Size = 64, R = 32,
@@ -389,7 +386,7 @@ function A.Run(F, P, token)
 end
 
 return A
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX26"><Properties><string name="Name">GalaxyCorruption</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX30"><Properties><string name="Name">GalaxyCorruption</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- SET PIECE: GALAXY CORRUPTION (the end of phase 1)
 -- He reaches out to the sky and every galaxy in the realm turns
 -- to his violet. Then they open fire: a storm of rapid strikes
@@ -410,8 +407,6 @@ A.Defaults = {
 	FinaleR = 16,
 	FinaleDamage = 45,
 }
-
-local KEYS = { "CLICK", "CLICK", "Q", "E", "F" }
 
 function A.Run(F, P, token)
 	local S = F.S
@@ -440,8 +435,6 @@ function A.Run(F, P, token)
 			T = t + P.BoltWarn,
 			Shape = { Kind = "circle", P = land, R = P.BoltR },
 			Damage = P.Damage, Name = "CORRUPTED STAR", Target = tg.Player.UserId, Knock = 30,
-			Qte = F.qte.single(KEYS[rng:NextInteger(1, #KEYS)]),
-			Counter = 12, CounterPerfect = 20,
 		})
 		F.fx("CorruptBolt", { Id = hit.Id, From = rng:NextInteger(1, P.Galaxies), To = land, R = P.BoltR, T0 = t, T = hit.T })
 		-- now and then a lance of light across the arena, through someone
@@ -460,7 +453,6 @@ function A.Run(F, P, token)
 					T = t + 1.2,
 					Shape = { Kind = "line", A = S.surface(A0.X, A0.Z), B = S.surface(B0.X, B0.Z), W = 12 },
 					Damage = P.Damage + 8, Name = "GALACTIC LANCE", Target = tg.Player.UserId, Knock = 45,
-					Qte = F.qte.randomChord(2), Counter = 35, CounterPerfect = 55,
 				})
 				F.fx("CorruptLance", { Id = lh.Id, From = rng:NextInteger(1, P.Galaxies), A = lh.Shape.A, B = lh.Shape.B, W = 12, T0 = t, T = lh.T })
 			end
@@ -477,7 +469,7 @@ function A.Run(F, P, token)
 			T = finT,
 			Shape = { Kind = "circle", P = S.surface(p.X, p.Z), R = P.FinaleR },
 			Damage = P.FinaleDamage, Name = "EVERY GALAXY", Target = tg.Player.UserId, Knock = 90,
-			Qte = F.qte.randomChord(3), Counter = 80, CounterPerfect = 130,
+			Big = true,
 		})
 		F.fx("CorruptFinale", { Id = hit.Id, P = hit.Shape.P, R = P.FinaleR, T0 = endT, T = finT, User = tg.Player.UserId })
 	end
@@ -485,7 +477,7 @@ function A.Run(F, P, token)
 end
 
 return A
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX27"><Properties><string name="Name">SpiralCollapse</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX31"><Properties><string name="Name">SpiralCollapse</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- ATTACK 6: SPIRAL COLLAPSE
 -- He claps his hands together over his head and a black hole
 -- opens above the arena, dragging everyone toward it (the pull
@@ -514,8 +506,9 @@ function A.Run(F, P, token)
 		Name = "SPIRAL COLLAPSE",
 		Knock = 90,
 		Target = "all",
-		Qte = F.qte.randomChord(3),
-		Counter = 110, CounterPerfect = 170,
+		Big = true,
+		Qte = F.qte.sequence({ "Q", "E", "CLICK" }, 0.45),
+		Counter = 70, CounterPerfect = 110,
 	})
 	F.fx("SpiralCollapse", { T0 = t0, OpenT = openT, BlastT = blastT, Id = hit.Id, R = P.R, Strength = P.Strength, Centre = S.CENTER })
 	F.waitUntil(blastT + 0.8)
@@ -523,7 +516,7 @@ function A.Run(F, P, token)
 end
 
 return A
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX28"><Properties><string name="Name">StompQuake</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX32"><Properties><string name="Name">StompQuake</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- ATTACK 3: STOMP QUAKE
 -- He lifts a foot high over the galaxy floor and brings it down
 -- at the rim: shockwave rings roll out across the whole arena.
@@ -558,8 +551,8 @@ function A.Run(F, P, token)
 	end
 	local list = {}
 	for _, r in ipairs(rings) do
-		-- (SPACE: jump it, and a jump on the beat parries it)
-		local hit = { Id = F.newId("SQ"), Shape = r.Shape, Damage = P.Damage, Name = "SHOCKWAVE", Knock = 30, Qte = F.qte.single("SPACE"), Counter = 20, CounterPerfect = 32 }
+		-- (jump it)
+		local hit = { Id = F.newId("SQ"), Shape = r.Shape, Damage = P.Damage, Name = "SHOCKWAVE", Knock = 30 }
 		r.Hit = hit
 		table.insert(list, { Id = hit.Id, Shape = r.Shape })
 	end
@@ -572,7 +565,7 @@ function A.Run(F, P, token)
 end
 
 return A
-]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX30"><Properties><string name="Name">Config</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item></Item><Item class="ModuleScript" referent="RBX34"><Properties><string name="Name">Config</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- BOSS FIGHT: CONFIG
 -- Tune the fight here. Attack modules live in ./Attacks and
 -- are listed per phase by name; Params override each
@@ -583,13 +576,28 @@ return {
 
 	-- his health: MaxHealth for one player, plus this share of it per extra player
 	-- (2 players = 1.7x, 4 players = 3.1x ...)
-	MaxHealth = 4000,
+	MaxHealth = 5000,
 	HealthPerExtraPlayer = 0.7,
 
 	WalkSpeed = 70,          -- studs/s round the ring at full stride
 	WalkArc = { 35, 80 },    -- degrees he walks between attacks (random in range)
 
-	-- a parried hit's damage to him, if the attack doesn't set its own Counter
+	-- the how-to-play cards after the cutscene, before his first attack (seconds)
+	IntroTime = 11,
+
+	-- HOW YOU HURT HIM: after this many attacks he's dazed - slumped over the rim,
+	-- head down on the arena - and for DazeTime seconds you can run up and punch him
+	AttacksBeforeDaze = 3,
+	DazeTime = 8,
+	PunchDamage = 55,
+	PunchRange = 30,      -- studs from his head (the glowing weak point)
+	PunchCooldown = 0.4,
+
+	-- the roll (CTRL / the ROLL button): brief invulnerability
+	RollCooldown = 1.1,
+	RollIFrames = 0.4,
+
+	-- a QTE he's hit back with (the big wind-ups only), if the attack doesn't set its own
 	ParryDamage = 40,
 
 	-- set pieces: each comes out once, next, as his health crosses At
@@ -633,7 +641,7 @@ return {
 		},
 	},
 }
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX31"><Properties><string name="Name">Fight</string><ProtectedString name="Source"><![CDATA[--==================================================
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX35"><Properties><string name="Name">Fight</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- BOSS FIGHT: SERVER CORE
 -- The Anti-Spiral's state (health, phase, where he's walking),
 -- the remotes, and every hit: attacks schedule hits with an
@@ -680,6 +688,7 @@ local function remote(name)
 end
 F.FxRemote = remote("Fx")        -- server -> clients: attack visuals, hits, results
 F.QteRemote = remote("Qte")      -- client -> server: "I completed this hit's QTE" (id, time, grade)
+F.ActionRemote = remote("Action") -- client -> server: "roll", "punch"
 
 function F.fx(kind, data)
 	F.FxRemote:FireAllClients(kind, data)
@@ -707,6 +716,7 @@ end
 --------------------------------------------------------------------------
 local model, humanoid, root
 F.Token = 0 -- bumped on phase change / death: running attacks bail out
+F.Dazed = false
 F.SetPiecesUsed = {}
 F.Forced = {} -- set pieces waiting to go next
 F.Alive = true
@@ -813,7 +823,8 @@ local function setPhase(index)
 		hold()
 		F.fx("Phase", { Index = index, T0 = S.now(), Dur = ph.TransitionTime or 3 })
 		task.wait(ph.TransitionTime or 3)
-		if F.Alive then F.setInvulnerable(false) end
+		-- (back to normal: only hurt while dazed)
+		if F.Alive then F.setInvulnerable(not F.Dazed) end
 	end
 	transitioning = false
 end
@@ -829,8 +840,11 @@ local function onDeath()
 end
 
 -- returns true if it landed
+-- (a QTE counter lands whether he's dazed or not; everything else only while he's open)
 function F.damageBoss(amount, player, source)
-	if not F.Alive or model:GetAttribute("Invulnerable") then return false end
+	if not F.Alive or transitioning then return false end
+	local counter = source == "parry" or source == "ultimate"
+	if model:GetAttribute("Invulnerable") and not counter then return false end
 	humanoid.Health = math.max(humanoid.Health - amount, 0)
 	F.fx("BossHurt", { Amount = amount, Source = source, User = player and player.UserId or 0 })
 	if humanoid.Health <= 0 then
@@ -890,7 +904,15 @@ function QTE.randomChord(n)
 	return QTE.chord(keys)
 end
 function QTE.ultimate(steps)
-	return { Kind = "ultimate", Steps = steps, Early = 0.09, Late = 0.09, Perfect = 0.045 }
+	return { Kind = "ultimate", Steps = steps, Early = 0.24, Late = 0.18, Perfect = 0.08 }
+end
+-- keys one after another, `gap` apart, the last on the impact
+function QTE.sequence(keys, gap, kind)
+	local steps = {}
+	for i, k in ipairs(keys) do
+		table.insert(steps, { At = -(#keys - i) * (gap or 0.45), Keys = { k } })
+	end
+	return { Kind = kind or "sequence", Steps = steps, Early = 0.3, Late = 0.18, Perfect = 0.09 }
 end
 
 function F.isLive(id) return live[id] ~= nil end
@@ -920,6 +942,8 @@ local function resolve(hit, t, T)
 		else
 			F.damageBoss(dmg, player, "parry")
 		end
+	elseif (player:GetAttribute("IFrameUntil") or 0) >= T - 0.05 then
+		result = "evade"
 	else
 		result = "hit"
 		local mult = F.phase().DamageMultiplier or 1
@@ -930,14 +954,16 @@ local function resolve(hit, t, T)
 			t.Root.AssemblyLinearVelocity = away * hit.Knock + Vector3.new(0, hit.Knock * 0.5, 0)
 		end
 	end
-	F.fx("Resolve", { Id = hit.Id, User = player.UserId, Result = result, Pos = t.Root.Position, Kind = q and q.Kind or "none" })
+	F.fx("Resolve", { Id = hit.Id, User = player.UserId, Result = result, Pos = t.Root.Position, Kind = q and q.Kind or "none",
+		Knock = hit.Knock or 0, From = S.shapeCentre(hit.Shape, T) })
 end
 
 -- every hit is announced (its QTE, shape and timing) so each client can prompt it
+-- (QTEs are only for the big wind-ups: a hit has one only if its attack gives it one.
+-- Big = true marks those: they get the lock-on; everything else just gets the red icon)
 local function announce(hit)
-	if hit.Qte == nil then hit.Qte = QTE.single("CLICK") end
 	if hit.Qte == false then hit.Qte = nil end
-	F.fx("Hit", { Id = hit.Id, T = hit.T, Shape = hit.Shape, Name = hit.Name, Target = hit.Target, Qte = hit.Qte })
+	F.fx("Hit", { Id = hit.Id, T = hit.T, Shape = hit.Shape, Name = hit.Name, Target = hit.Target, Qte = hit.Qte, Big = hit.Big })
 end
 
 -- a timed hit: { Id, T, Shape, Damage, Name, Target (userId | "all"), Qte (spec | false), Counter, CounterPerfect, Knock }
@@ -1036,6 +1062,11 @@ function F.init(bossModel)
 			if not attacks[e.Module] then warn(("[BossFight] phase %d lists %s, but Attacks has no such module"):format(i, e.Module)) end
 		end
 	end
+	-- (the clients read these for their moves)
+	for _, k in ipairs({ "RollCooldown", "RollIFrames", "PunchRange", "PunchCooldown" }) do
+		shared:SetAttribute(k, Config[k])
+	end
+	shared:SetAttribute("BossDazed", false)
 	humanoid.Died:Connect(onDeath)
 	humanoid.HealthChanged:Connect(publish)
 	model.AttributeChanged:Connect(publish)
@@ -1064,6 +1095,69 @@ local function scaledHealth(n)
 	return math.floor(Config.MaxHealth * (1 + (Config.HealthPerExtraPlayer or 0.7) * math.max(n - 1, 0)))
 end
 
+--------------------------------------------------------------------------
+-- THE DAZE: after a few attacks he's spent - he slumps over the rim, his head
+-- down on the arena, and for a few seconds he can be punched
+--------------------------------------------------------------------------
+local dazeEnds = 0
+function F.weakPoint(t)
+	local p = F.rootAt(t).Position
+	local toBoss = S.flat(p - S.CENTER).Unit
+	return S.CENTER + toBoss * (S.ARENA_R - 10) + Vector3.new(0, 5, 0)
+end
+
+local function daze()
+	local t0 = S.now()
+	local dur = Config.DazeTime or 8
+	local weak = F.weakPoint(t0)
+	F.Dazed = true
+	dazeEnds = t0 + dur
+	model:SetAttribute("Dazed", true)
+	shared:SetAttribute("BossDazed", true)
+	F.setInvulnerable(false)
+	F.fx("Daze", { T0 = t0, T1 = t0 + dur, Weak = weak })
+	print("[BossFight] dazed")
+	while S.now() < dazeEnds and F.Alive and not transitioning do task.wait(0.1) end
+	F.Dazed = false
+	model:SetAttribute("Dazed", false)
+	shared:SetAttribute("BossDazed", false)
+	F.setInvulnerable(true)
+	if not F.Alive then return end
+	-- he comes round with a roar that throws everyone off him
+	local rt = S.now() + 0.9
+	local ring = { Kind = "ring", O = weak, R0 = 0, Speed = 95, W = 8, H = 5, T0 = rt }
+	local hit = { Id = F.newId("DZ"), Shape = ring, Damage = 20, Name = "ROAR", Knock = 60, Qte = false }
+	F.fx("DazeEnd", { T0 = S.now(), RingT = rt, Weak = weak, Id = hit.Id, Shape = ring })
+	F.continuousHit(hit, rt + (2 * S.ARENA_R + 20) / ring.Speed)
+	task.wait(1.6)
+end
+
+-- the players' own moves: a roll (i-frames) and, while he's dazed, the punch
+local lastAct = {}
+F.ActionRemote.OnServerEvent:Connect(function(player, action)
+	local c = player.Character
+	local hum = c and c:FindFirstChildOfClass("Humanoid")
+	local root = c and c:FindFirstChild("HumanoidRootPart")
+	if not (hum and root and hum.Health > 0) then return end
+	local now = S.now()
+	lastAct[player] = lastAct[player] or { roll = 0, punch = 0 }
+	local L = lastAct[player]
+	if action == "roll" then
+		if now - L.roll < (Config.RollCooldown or 1.1) * 0.85 then return end
+		L.roll = now
+		player:SetAttribute("IFrameUntil", now + (Config.RollIFrames or 0.4))
+		F.fx("Roll", { User = player.UserId })
+	elseif action == "punch" then
+		if not F.Dazed or now - L.punch < (Config.PunchCooldown or 0.4) * 0.8 then return end
+		local weak = F.weakPoint(now)
+		if (S.flat(root.Position) - S.flat(weak)).Magnitude > (Config.PunchRange or 30) + 6 then return end
+		L.punch = now
+		F.damageBoss(Config.PunchDamage or 55, player, "punch")
+		F.fx("Punch", { User = player.UserId, At = weak })
+	end
+end)
+Players.PlayerRemoving:Connect(function(p) lastAct[p] = nil end)
+
 function F.run()
 	local n = math.max(#Players:GetPlayers(), 1)
 	humanoid.MaxHealth = scaledHealth(n)
@@ -1077,10 +1171,16 @@ function F.run()
 		humanoid.Health += add
 	end)
 	setPhase(1)
-	F.setInvulnerable(false)
+	-- (only ever hurt while he's dazed)
+	F.setInvulnerable(true)
+	-- the how-to-play cards first, then he comes for you
+	local intro = Config.IntroTime or 10
+	F.fx("Intro", { T0 = S.now(), Dur = intro })
+	task.wait(intro)
 	F.fx("Start", { T0 = S.now() })
 	print("[BossFight] fight started")
 	task.wait(1.5)
+	local sinceDaze = 0
 	local last
 	local dir = F.rng:NextNumber() < 0.5 and 1 or -1
 	while F.Alive do
@@ -1108,6 +1208,12 @@ function F.run()
 			local ok, err = pcall(mod.Run, F, params, token)
 			if not ok then warn("[BossFight] " .. entry.Module .. " failed: " .. tostring(err)) end
 			task.wait(phase.AttackDelay or 1)
+			-- (after a run of attacks - or a set piece - he's spent)
+			sinceDaze += 1
+			if F.Alive and not transitioning and (sinceDaze >= (Config.AttacksBeforeDaze or 3) or forced) then
+				sinceDaze = 0
+				daze()
+			end
 		else
 			task.wait(0.5)
 		end

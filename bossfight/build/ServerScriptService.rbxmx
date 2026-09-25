@@ -1,4 +1,4 @@
-<roblox version="4"><Item class="Script" referent="RBX20"><Properties><string name="Name">BossFight</string><ProtectedString name="Source"><![CDATA[--==================================================
+<roblox version="4"><Item class="Script" referent="RBX24"><Properties><string name="Name">BossFight</string><ProtectedString name="Source"><![CDATA[--==================================================
 -- BOSS FIGHT (server entry)
 -- Runs the reworked Anti-Spiral fight once the final cutscene
 -- hands over (workspace attribute FC_State = "Fight").

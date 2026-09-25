@@ -82,7 +82,6 @@ function A.Run(F, P, token)
 			Name = k.Name,
 			Target = tgt.Player.UserId,
 			Knock = 40,
-			Counter = 18, CounterPerfect = 30,
 		})
 		F.fx("Shot", {
 			Attack = id, Id = hit.Id, Kind = k.Kind, Model = k.Model, Name = k.Name, Size = k.Size, R = k.R,
@@ -107,8 +106,7 @@ function A.Run(F, P, token)
 				Name = "JUPITER",
 				Target = "all",
 				Knock = 100,
-				Qte = F.qte.randomChord(3),
-				Counter = 90, CounterPerfect = 150,
+				Big = true,
 			})
 			F.fx("Shot", {
 				Attack = id, Id = hit.Id, Kind = "giant", Model = "jupiter", Name = "JUPITER", Size = 64, R = 32,
