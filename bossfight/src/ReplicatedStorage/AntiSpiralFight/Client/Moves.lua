@@ -49,12 +49,65 @@ end
 --------------------------------------------------------------------------
 -- effects (for anyone's)
 --------------------------------------------------------------------------
+-- my own roll: white speed lines streak in from the edges of the screen
+local linesGui
+function M.speedLines()
+	if not linesGui or not linesGui.Parent then
+		linesGui = Instance.new("ScreenGui")
+		linesGui.Name = "BF_SpeedLines"
+		linesGui.IgnoreGuiInset = true
+		linesGui.ResetOnSpawn = false
+		linesGui.DisplayOrder = 5
+		linesGui.Parent = player:WaitForChild("PlayerGui")
+	end
+	for _ = 1, 18 do
+		local a = math.random() * 2 * math.pi
+		local line = Instance.new("Frame")
+		line.BorderSizePixel = 0
+		line.BackgroundColor3 = math.random() < 0.3 and GREEN or Color3.new(1, 1, 1)
+		line.BackgroundTransparency = 0.35
+		line.AnchorPoint = Vector2.new(0.5, 0.5)
+		line.Rotation = math.deg(a)
+		local r0 = 0.62 + math.random() * 0.15
+		line.Position = UDim2.fromScale(0.5 + math.cos(a) * r0 * 0.6, 0.5 + math.sin(a) * r0)
+		line.Size = UDim2.new(0, 60 + math.random() * 120, 0, 2 + math.random() * 2)
+		line.Parent = linesGui
+		local r1 = r0 + 0.25
+		K.tween(line, 0.22 + math.random() * 0.1, {
+			Position = UDim2.fromScale(0.5 + math.cos(a) * r1 * 0.6, 0.5 + math.sin(a) * r1), BackgroundTransparency = 1,
+		})
+		Debris:AddItem(line, 0.4)
+	end
+end
+
 -- mine: the local player's own roll (its sound already played, 2D, on the press)
 function M.rollFx(char, mine)
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	if not root then return end
 	CharAnim.play(char, CharAnim.Roll, 0.03)
+	Aura.flare(char, 0.7)
+	local dir = root.CFrame.LookVector
 	local p = root.Position - Vector3.new(0, 2.5, 0)
+	-- a sonic ring as you break away: two thin halos across your path, bursting open
+	local ringHost = K.part({ Name = "RollRing", Size = Vector3.one, Transparency = 1, CFrame = CFrame.new(root.Position) }, Fx.Folder)
+	for i, col in ipairs({ Color3.new(1, 1, 1), GREEN }) do
+		local ring = K.softRing(ringHost, 24, 1, 1.6, { Brightness = 4, Alpha = 0 })
+		for _, q in ipairs(ring.Q) do q.Color = ColorSequence.new(col) end
+		local at = root.Position + dir * (1 + i)
+		local t0 = os.clock() + (i - 1) * 0.05
+		local c
+		c = RunService.RenderStepped:Connect(function()
+			local k = (os.clock() - t0) / 0.32
+			if k < 0 then ring.setEnabled(false) return end
+			if k >= 1 or not ringHost.Parent then c:Disconnect() ring.setEnabled(false) return end
+			ring.setEnabled(true)
+			local e = 1 - (1 - k) ^ 3
+			local r = 1.5 + 8 * e
+			ring.update(CFrame.lookAt(at - dir * 3 * e, at - dir * 3 * e + dir), r, r + 1.4 * (1 - k) + 0.2, 0)
+			ring.setTransparency(0.1 + 0.9 * k)
+		end)
+	end
+	Debris:AddItem(ringHost, 0.6)
 	-- a kick of dust off the floor, and a flat shockwave where you pushed off
 	Fx.emitAt(p, {
 		Texture = "10180479311", Color = ColorSequence.new(Color3.fromRGB(210, 200, 230)), Size = K.ns(0, 2, 1, 7),
@@ -85,6 +138,43 @@ function M.rollFx(char, mine)
 	tr.Parent = torso
 	task.delay(ROLL_TIME, function() tr.Enabled = false end)
 	Debris:AddItem(tr, ROLL_TIME + 0.3)
+	-- a ribbon of light along the floor where you rolled
+	local f0 = Instance.new("Attachment")
+	f0.Position = Vector3.new(-1.1, -2.9, 0)
+	f0.Parent = root
+	local f1 = Instance.new("Attachment")
+	f1.Position = Vector3.new(1.1, -2.9, 0)
+	f1.Parent = root
+	local rib = Instance.new("Trail")
+	rib.Attachment0, rib.Attachment1 = f0, f1
+	rib.Lifetime = 0.45
+	rib.LightEmission = 1
+	rib.Brightness = 2
+	rib.Color = ColorSequence.new(LIME, GREEN)
+	rib.Transparency = K.ns(0, 0.35, 1, 1)
+	rib.Texture = "rbxassetid://14582794847"
+	rib.Parent = root
+	task.delay(ROLL_TIME, function() rib.Enabled = false end)
+	Debris:AddItem(rib, ROLL_TIME + 0.5)
+	Debris:AddItem(f0, ROLL_TIME + 0.5)
+	Debris:AddItem(f1, ROLL_TIME + 0.5)
+	-- green sparks and spiral wisps shed off you mid-roll
+	local sparks = K.emitter(torso, {
+		Texture = "1851669703", Color = ColorSequence.new(Color3.new(1, 1, 1), GREEN), Size = K.ns(0, 0.9, 1, 0),
+		Lifetime = NumberRange.new(0.25, 0.5), Speed = NumberRange.new(4, 12), SpreadAngle = Vector2.new(180, 180),
+		Rate = 90, Brightness = 5, LightEmission = 1, Drag = 4,
+	})
+	local wisps = K.emitter(torso, {
+		Texture = "14426232568", Color = ColorSequence.new(LIME, GREEN), Size = K.ns(0, 1.5, 1, 4),
+		Transparency = K.ns(0, 0.3, 1, 1), Lifetime = NumberRange.new(0.25, 0.4), Speed = NumberRange.new(0, 2),
+		Rotation = NumberRange.new(0, 360), RotSpeed = NumberRange.new(-600, 600), Rate = 40, LightEmission = 1,
+	})
+	task.delay(ROLL_TIME, function()
+		sparks.Enabled = false
+		wisps.Enabled = false
+	end)
+	Debris:AddItem(sparks, ROLL_TIME + 0.6)
+	Debris:AddItem(wisps, ROLL_TIME + 0.6)
 	Debris:AddItem(a0, ROLL_TIME + 0.3)
 	Debris:AddItem(a1, ROLL_TIME + 0.3)
 	-- afterimages strung out behind you
@@ -101,8 +191,16 @@ function M.rollFx(char, mine)
 	end
 	-- (a scuff as you come out of it)
 	task.delay(ROLL_TIME - 0.05, function()
-		if root.Parent then Fx.sound(K.S.StepL, root.Position, 0.6, 1.2, 120) end
+		if not root.Parent then return end
+		Fx.sound(K.S.StepL, root.Position, 0.6, 1.2, 120)
+		-- a puff of dust as you land out of it
+		Fx.emitAt(root.Position - Vector3.new(0, 2.6, 0), {
+			Texture = "10180479311", Color = ColorSequence.new(Color3.fromRGB(215, 205, 235)), Size = K.ns(0, 1.5, 1, 5),
+			Transparency = K.ns(0, 0.45, 1, 1), Lifetime = NumberRange.new(0.35, 0.6), Speed = NumberRange.new(5, 11),
+			SpreadAngle = Vector2.new(90, 5), Rotation = NumberRange.new(0, 360), LightEmission = 0.2,
+		}, 8, 1)
 	end)
+	if mine then M.speedLines() end
 	if not mine then Fx.sound(K.S.Whoosh, root.Position, 0.7, 1.4, 150) end
 end
 

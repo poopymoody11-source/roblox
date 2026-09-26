@@ -33,12 +33,14 @@ local function motors(char)
 	return out
 end
 
--- keys: { { t, pose }, ... } (t in seconds from the start); fade: blend in/out time
+-- keys: { { t, pose }, ... } (t in seconds from the start), or a
+-- procedural move { Dur = seconds, Fn = function(t) return pose end };
+-- fade: blend in/out time
 function CA.play(char, keys, fade)
 	if not char then return end
 	local ms = motors(char)
 	if not ms.Root then return end
-	playing[char] = { Keys = keys, T0 = os.clock(), Dur = keys[#keys][1], Motors = ms, Fade = fade or 0.08 }
+	playing[char] = { Keys = keys, Fn = keys.Fn, T0 = os.clock(), Dur = keys.Dur or keys[#keys][1], Motors = ms, Fade = fade or 0.08 }
 end
 
 local IDENT = CFrame.new()
@@ -65,7 +67,13 @@ function CA.init(kit)
 				playing[char] = nil
 			else
 				local w = math.min(1, t / P.Fade, (P.Dur - t) / P.Fade)
-				local a, b, u = sample(P.Keys, t)
+				local a, b, u
+				if P.Fn then
+					a = P.Fn(t)
+					b, u = a, 0
+				else
+					a, b, u = sample(P.Keys, t)
+				end
 				for key, m in pairs(P.Motors) do
 					local ra, rb = a[key] or IDENT, b[key] or IDENT
 					local rot = ra:Lerp(rb, u)
@@ -118,14 +126,32 @@ CA.Reel = {
 	{ 0.6, {} },
 }
 
--- the roll: tucked up, heels over head (a quarter turn per key, so it turns all the way round)
+-- the roll: a dive into a tight tuck, one continuous flip (fast off the
+-- mark and easing out, like the burst that carries you), then a low
+-- crouched landing. Worked out every frame, so it never stutters on
+-- keys. (Root may carry a translation: the body drops into the tuck.)
+local ROLL_DUR, ROLL_SPIN = 0.52, 0.4
+local function bump(t, t0, t1)
+	if t <= t0 or t >= t1 then return 0 end
+	return math.sin(math.pi * (t - t0) / (t1 - t0))
+end
 CA.Roll = {
-	{ 0, { Root = A(0, 0, 0), RS = A(60, 0, 20), LS = A(60, 0, -20), RH = A(40, 0, 0), LH = A(40, 0, 0) } },
-	{ 0.09, { Root = A(-90, 0, 0), Neck = A(-30, 0, 0), RS = A(120, 0, 10), LS = A(120, 0, -10), RH = A(95, 0, 0), LH = A(95, 0, 0) } },
-	{ 0.18, { Root = A(-180, 0, 0), Neck = A(-30, 0, 0), RS = A(120, 0, 10), LS = A(120, 0, -10), RH = A(100, 0, 0), LH = A(100, 0, 0) } },
-	{ 0.27, { Root = A(-270, 0, 0), Neck = A(-30, 0, 0), RS = A(120, 0, 10), LS = A(120, 0, -10), RH = A(95, 0, 0), LH = A(95, 0, 0) } },
-	{ 0.36, { Root = A(-355, 0, 0), RS = A(70, 0, 20), LS = A(70, 0, -20), RH = A(40, 0, 0), LH = A(20, 0, 0) } },
-	{ 0.48, {} },
+	Dur = ROLL_DUR,
+	Fn = function(t)
+		local s = math.clamp(t / ROLL_SPIN, 0, 1)
+		-- half ease-out, half ease-in-out: quick to start, soft to finish
+		local spin = 0.5 * (1 - (1 - s) ^ 2) + 0.5 * (1 - math.cos(math.pi * s)) / 2
+		local tuck = bump(t, -0.04, 0.42) ^ 0.7
+		local land = bump(t, 0.28, ROLL_DUR)
+		return {
+			Root = CFrame.new(0, -1.5 * tuck - 0.9 * land, 0) * A(-360 * spin - 14 * land, 0, 0),
+			Neck = A(-38 * tuck + 6 * land, 0, 0),
+			RS = A(115 * tuck + 35 * land, 0, 12 * tuck + 40 * land),
+			LS = A(115 * tuck + 35 * land, 0, -12 * tuck - 40 * land),
+			RH = A(100 * tuck + 50 * land, 0, 4 * land),
+			LH = A(92 * tuck - 20 * land, 0, -4 * land),
+		}
+	end,
 }
 
 -- the spiral punch: a wind-up, then a lunging straight right that twists through
