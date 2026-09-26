@@ -47,7 +47,7 @@ local function cards()
 	local rollKey = touch() and "ROLL" or pad() and "B" or "CTRL"
 	return {
 		{ Title = "SURVIVE HIM", Keys = { "!" }, Text = "WHEN THE RED ! FLASHES, SOMETHING IS ABOUT TO LAND ON YOU - GET OUT OF THE RED", Color = Color3.fromRGB(255, 60, 80) },
-		{ Title = "ROLL", Keys = { rollKey }, Text = "ROLL THROUGH ANYTHING - YOU CAN'T BE HIT MID-ROLL. JUMP HIS SHOCKWAVES", Color = Color3.fromRGB(120, 200, 255) },
+		{ Title = "ROLL", Keys = { rollKey }, Text = "ROLL THROUGH BEAMS AND BLADES. FISTS AND PLANETS MUST BE OUTRUN - AND NOTHING ROLLS THROUGH A SHOCKWAVE: JUMP IT", Color = Color3.fromRGB(120, 200, 255) },
 		{ Title = "STRIKE HIM WHEN HE FALLS", Keys = { click }, Text = "AFTER A FEW ATTACKS HE COLLAPSES OVER THE EDGE - RUN TO HIS HEAD AND " .. click .. " TO PUNCH", Color = Color3.fromRGB(90, 255, 140) },
 		{ Title = "THE BLACK HOLE", Keys = { pad() and "X" or "Q", pad() and "Y" or "E", click }, Text = "CAUGHT IN HIS BLACK HOLE? CIRCLES APPEAR ONE BY ONE - PRESS EACH KEY AS ITS RING CLOSES", Color = Color3.fromRGB(255, 200, 80) },
 	}

@@ -29,8 +29,9 @@ Add a Boolean attribute **`BF_TestFight`** = true on **Workspace**, then press *
 - **Before his first attack,** how-to-play cards show after the cutscene. The server holds his first attack until they finish.
 - **Boss music:** a theme per phase, a swell for his set pieces, and a quiet one when he falls. Change the tracks in `ReplicatedStorage.AntiSpiralFight.Client.Music` (TRACKS).
 - **You fight in spiral power:** the cutscene's green aura is on every player.
-- **Dodging:** when the red **!** flashes, something is about to land where you stand. MOVE, JUMP or ROLL, and it tells you which.
-- **Roll:** **CTRL** (gamepad B, or the ROLL button on mobile). A fast dash-roll that eases out, with a green streak and afterimages. You flash green while you can't be hit. The whoosh is preloaded and plays the instant you press.
+- **Dodging:** when the red **!** flashes, something is about to land where you stand. MOVE, JUMP or ROLL, and it tells you which. Red zones have a dark base, a red fill that grows to the edge as the hit comes, and a flashing red fence round the rim.
+- **What a roll can dodge:** only beams and lance blades. Fists, planets and blasts must be outrun, and shockwaves must be jumped (rolling into them still hurts).
+- **Roll:** **CTRL** (gamepad B, or the ROLL button on mobile). A fast dash-roll (a full tucked flip) that eases out, with a green streak and afterimages. You flash green while you can't be hit. The whoosh is preloaded and plays the instant you press.
 - **Hurting him:** after every 2 attacks (and after each set piece) he's **dazed** for 14 seconds (a little less for each extra player). He collapses over the rim with his head down on the arena, marked by a green target. Run to it and **CLICK** (R2, or the PUNCH button on mobile) to throw spiral punches. A bar shows how long he's down, and then he comes round with a roar and a shockwave you have to jump.
 - **One QTE, the black hole (Spiral Collapse):** if you're caught in it, circles pop up around the screen one after another, just like the cutscene's dodge. Press each key as its ring closes on it. Land all five and you tear free and hurt him.
 - **Getting hit:** knockback, blood, a shockwave, a stumble (or a full knockdown for the big ones) and a camera jolt.

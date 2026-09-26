@@ -31,7 +31,7 @@ return {
 
 	-- the roll (CTRL / the ROLL button): brief invulnerability
 	RollCooldown = 1.1,
-	RollIFrames = 0.4,
+	RollIFrames = 0.35,
 
 	-- a QTE he's hit back with (the big wind-ups only), if the attack doesn't set its own
 	ParryDamage = 40,

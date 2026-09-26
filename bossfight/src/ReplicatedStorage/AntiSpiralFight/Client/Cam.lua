@@ -111,18 +111,55 @@ local function shakeOffset()
 	return off
 end
 
+-- where your own camera should be when it gets you back: behind you, level,
+-- facing the way you were last looking (not wherever a cut-in left it)
+local homeLook = Vector3.new(0, 0, -1)
+local HOME_BACK, HOME_UP = 15, 5
+local function homeCF(root)
+	local head = root.Position + Vector3.new(0, 2, 0)
+	return CFrame.lookAt(head - homeLook * HOME_BACK + Vector3.new(0, HOME_UP, 0), head)
+end
+local function setHomeLook(v)
+	local flat = Vector3.new(v.X, 0, v.Z)
+	if flat.Magnitude > 0.05 then homeLook = flat.Unit end
+end
+
+-- the handback: a short blend from the last scripted shot to homeCF, then your camera
+local HANDBACK = 0.35
+local handFrom, handT0
+
+local function giveBack(cam, hum, root)
+	if root then cam.CFrame = homeCF(root) end
+	cam.CameraType = Enum.CameraType.Custom
+	if hum then cam.CameraSubject = hum end
+	cam.FieldOfView = 70
+	handFrom, handT0 = nil, nil
+end
+
 local function step(dt)
 	local cam = workspace.CurrentCamera
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	local ours = cam.CameraType == Enum.CameraType.Scriptable
+	-- (while it's yours, remember where you're looking)
+	if not ours then setHomeLook(cam.CFrame.LookVector) end
 	local cut, cb, cnow = activeCut()
 	if cut and enabled then
 		-- (a cut-in plays whatever the player's own camera setting)
 		cam.CameraType = Enum.CameraType.Scriptable
+		handFrom, handT0 = nil, nil
 		local ok, cf, fov = pcall(cut.Fn, cnow)
 		if ok and cf then
-			local base = camPos and CFrame.lookAt(camPos, camPos + (aimDir or cf.LookVector)) or cam.CFrame
+			-- (blend from, and back to, the follow shot, or where your own camera belongs)
+			local base
+			if following() and camPos then
+				base = CFrame.lookAt(camPos, camPos + (aimDir or cf.LookVector))
+			elseif root then
+				base = homeCF(root)
+			else
+				base = cam.CFrame
+			end
 			local mixed = base:Lerp(cf, cb)
 			cam.CFrame = mixed * CFrame.new(shakeOffset())
 			cam.FieldOfView = FOV + ((fov or FOV) - FOV) * cb + punchOffset()
@@ -130,13 +167,29 @@ local function step(dt)
 		end
 	end
 	if not (enabled and following() and root and hum and hum.Health > 0 and focusFn) then
-		if cam.CameraType == Enum.CameraType.Scriptable and enabled then
-			cam.CameraType = Enum.CameraType.Custom
-			if hum then cam.CameraSubject = hum end
+		if ours and enabled then
+			if not root then
+				giveBack(cam, hum, nil)
+			else
+				-- ease from the scripted shot to behind you, then let go
+				if not handT0 then
+					handFrom, handT0 = cam.CFrame, os.clock()
+					setHomeLook(cam.CFrame.LookVector)
+				end
+				local k = (os.clock() - handT0) / HANDBACK
+				if k >= 1 then
+					giveBack(cam, hum, root)
+				else
+					local e = k * k * (3 - 2 * k)
+					cam.CFrame = handFrom:Lerp(homeCF(root), e)
+					cam.FieldOfView = cam.FieldOfView + (70 - cam.FieldOfView) * e
+				end
+			end
 		end
 		camPos = nil
 		return
 	end
+	handFrom, handT0 = nil, nil
 	cam.CameraType = Enum.CameraType.Scriptable
 	local me = root.Position + Vector3.new(0, 1.5, 0)
 	local boss = focusFn()
@@ -168,13 +221,8 @@ function C.start(fn, now)
 	RunService:BindToRenderStep("BossFightCamera", Enum.RenderPriority.Camera.Value + 2, step)
 	ContextActionService:BindAction("BossFightCamToggle", function(_, state)
 		if state == Enum.UserInputState.Begin then
+			-- (turning it off hands the camera back smoothly, in step)
 			wanted = not wanted
-			local cam = workspace.CurrentCamera
-			if not wanted then
-				cam.CameraType = Enum.CameraType.Custom
-				local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-				if hum then cam.CameraSubject = hum end
-			end
 		end
 		return Enum.ContextActionResult.Pass
 	end, false, Enum.KeyCode.C, Enum.KeyCode.ButtonR3)
@@ -186,9 +234,10 @@ function C.stop()
 	RunService:UnbindFromRenderStep("BossFightCamera")
 	ContextActionService:UnbindAction("BossFightCamToggle")
 	local cam = workspace.CurrentCamera
-	cam.CameraType = Enum.CameraType.Custom
-	local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-	if hum then cam.CameraSubject = hum end
+	if cam.CameraType == Enum.CameraType.Scriptable then
+		local char = player.Character
+		giveBack(cam, char and char:FindFirstChildOfClass("Humanoid"), char and char:FindFirstChild("HumanoidRootPart"))
+	end
 end
 
 function C.active() return enabled and following() end

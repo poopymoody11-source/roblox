@@ -35,7 +35,7 @@ function A.Run(F, P, token)
 			T0 = t, T1 = t + P.Sweep, W = P.W, L = 2 * S.ARENA_R + 20,
 		}
 		-- (too tall to jump: roll through it)
-		local hit = { Id = F.newId("AB"), Shape = shape, Damage = P.Damage, Name = "ANNIHILATION BEAM", Knock = 50 }
+		local hit = { Id = F.newId("AB"), Shape = shape, Damage = P.Damage, Name = "ANNIHILATION BEAM", Knock = 50, Rollable = true }
 		table.insert(sweeps, hit)
 		t = shape.T1 + 0.35
 	end
@@ -146,6 +146,7 @@ function A.Run(F, P, token)
 			Name = "LANCE",
 			Target = l.Target,
 			Knock = 45,
+			Rollable = true, -- (a blade: roll through it, or get out of its line)
 		})
 		table.insert(list, { Id = hit.Id, A = l.A, B = l.B, W = P.W, T = hit.T, Target = l.Target })
 	end
@@ -449,7 +450,7 @@ function A.Run(F, P, token)
 				local lh = F.hit({
 					T = t + 1.2,
 					Shape = { Kind = "line", A = S.surface(A0.X, A0.Z), B = S.surface(B0.X, B0.Z), W = 12 },
-					Damage = P.Damage + 8, Name = "GALACTIC LANCE", Target = tg.Player.UserId, Knock = 45,
+					Damage = P.Damage + 8, Name = "GALACTIC LANCE", Target = tg.Player.UserId, Knock = 45, Rollable = true,
 				})
 				F.fx("CorruptLance", { Id = lh.Id, From = rng:NextInteger(1, P.Galaxies), A = lh.Shape.A, B = lh.Shape.B, W = 12, T0 = t, T = lh.T })
 			end
@@ -600,7 +601,7 @@ return {
 
 	-- the roll (CTRL / the ROLL button): brief invulnerability
 	RollCooldown = 1.1,
-	RollIFrames = 0.4,
+	RollIFrames = 0.35,
 
 	-- a QTE he's hit back with (the big wind-ups only), if the attack doesn't set its own
 	ParryDamage = 40,
@@ -947,7 +948,9 @@ local function resolve(hit, t, T)
 		else
 			F.damageBoss(dmg, player, "parry")
 		end
-	elseif (player:GetAttribute("IFrameUntil") or 0) >= T - 0.05 then
+	elseif hit.Rollable and (player:GetAttribute("IFrameUntil") or 0) >= T - 0.05 then
+		-- (only some hits can be rolled through: beams and blades. Fists, planets
+		-- and blasts have to be outrun, and shockwaves jumped)
 		result = "evade"
 	else
 		result = "hit"
@@ -968,10 +971,10 @@ end
 -- Big = true marks those: they get the lock-on; everything else just gets the red icon)
 local function announce(hit)
 	if hit.Qte == false then hit.Qte = nil end
-	F.fx("Hit", { Id = hit.Id, T = hit.T, Shape = hit.Shape, Name = hit.Name, Target = hit.Target, Qte = hit.Qte, Big = hit.Big })
+	F.fx("Hit", { Id = hit.Id, T = hit.T, Shape = hit.Shape, Name = hit.Name, Target = hit.Target, Qte = hit.Qte, Big = hit.Big, Rollable = hit.Rollable })
 end
 
--- a timed hit: { Id, T, Shape, Damage, Name, Target (userId | "all"), Qte (spec | false), Counter, CounterPerfect, Knock }
+-- a timed hit: { Id, T, Shape, Damage, Name, Target (userId | "all"), Qte (spec | false), Counter, CounterPerfect, Knock, Rollable }
 function F.hit(hit)
 	hit.Id = hit.Id or F.newId("H")
 	live[hit.Id] = hit

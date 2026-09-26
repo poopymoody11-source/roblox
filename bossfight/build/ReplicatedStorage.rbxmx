@@ -2439,18 +2439,55 @@ local function shakeOffset()
 	return off
 end
 
+-- where your own camera should be when it gets you back: behind you, level,
+-- facing the way you were last looking (not wherever a cut-in left it)
+local homeLook = Vector3.new(0, 0, -1)
+local HOME_BACK, HOME_UP = 15, 5
+local function homeCF(root)
+	local head = root.Position + Vector3.new(0, 2, 0)
+	return CFrame.lookAt(head - homeLook * HOME_BACK + Vector3.new(0, HOME_UP, 0), head)
+end
+local function setHomeLook(v)
+	local flat = Vector3.new(v.X, 0, v.Z)
+	if flat.Magnitude > 0.05 then homeLook = flat.Unit end
+end
+
+-- the handback: a short blend from the last scripted shot to homeCF, then your camera
+local HANDBACK = 0.35
+local handFrom, handT0
+
+local function giveBack(cam, hum, root)
+	if root then cam.CFrame = homeCF(root) end
+	cam.CameraType = Enum.CameraType.Custom
+	if hum then cam.CameraSubject = hum end
+	cam.FieldOfView = 70
+	handFrom, handT0 = nil, nil
+end
+
 local function step(dt)
 	local cam = workspace.CurrentCamera
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	local ours = cam.CameraType == Enum.CameraType.Scriptable
+	-- (while it's yours, remember where you're looking)
+	if not ours then setHomeLook(cam.CFrame.LookVector) end
 	local cut, cb, cnow = activeCut()
 	if cut and enabled then
 		-- (a cut-in plays whatever the player's own camera setting)
 		cam.CameraType = Enum.CameraType.Scriptable
+		handFrom, handT0 = nil, nil
 		local ok, cf, fov = pcall(cut.Fn, cnow)
 		if ok and cf then
-			local base = camPos and CFrame.lookAt(camPos, camPos + (aimDir or cf.LookVector)) or cam.CFrame
+			-- (blend from, and back to, the follow shot, or where your own camera belongs)
+			local base
+			if following() and camPos then
+				base = CFrame.lookAt(camPos, camPos + (aimDir or cf.LookVector))
+			elseif root then
+				base = homeCF(root)
+			else
+				base = cam.CFrame
+			end
 			local mixed = base:Lerp(cf, cb)
 			cam.CFrame = mixed * CFrame.new(shakeOffset())
 			cam.FieldOfView = FOV + ((fov or FOV) - FOV) * cb + punchOffset()
@@ -2458,13 +2495,29 @@ local function step(dt)
 		end
 	end
 	if not (enabled and following() and root and hum and hum.Health > 0 and focusFn) then
-		if cam.CameraType == Enum.CameraType.Scriptable and enabled then
-			cam.CameraType = Enum.CameraType.Custom
-			if hum then cam.CameraSubject = hum end
+		if ours and enabled then
+			if not root then
+				giveBack(cam, hum, nil)
+			else
+				-- ease from the scripted shot to behind you, then let go
+				if not handT0 then
+					handFrom, handT0 = cam.CFrame, os.clock()
+					setHomeLook(cam.CFrame.LookVector)
+				end
+				local k = (os.clock() - handT0) / HANDBACK
+				if k >= 1 then
+					giveBack(cam, hum, root)
+				else
+					local e = k * k * (3 - 2 * k)
+					cam.CFrame = handFrom:Lerp(homeCF(root), e)
+					cam.FieldOfView = cam.FieldOfView + (70 - cam.FieldOfView) * e
+				end
+			end
 		end
 		camPos = nil
 		return
 	end
+	handFrom, handT0 = nil, nil
 	cam.CameraType = Enum.CameraType.Scriptable
 	local me = root.Position + Vector3.new(0, 1.5, 0)
 	local boss = focusFn()
@@ -2496,13 +2549,8 @@ function C.start(fn, now)
 	RunService:BindToRenderStep("BossFightCamera", Enum.RenderPriority.Camera.Value + 2, step)
 	ContextActionService:BindAction("BossFightCamToggle", function(_, state)
 		if state == Enum.UserInputState.Begin then
+			-- (turning it off hands the camera back smoothly, in step)
 			wanted = not wanted
-			local cam = workspace.CurrentCamera
-			if not wanted then
-				cam.CameraType = Enum.CameraType.Custom
-				local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-				if hum then cam.CameraSubject = hum end
-			end
 		end
 		return Enum.ContextActionResult.Pass
 	end, false, Enum.KeyCode.C, Enum.KeyCode.ButtonR3)
@@ -2514,9 +2562,10 @@ function C.stop()
 	RunService:UnbindFromRenderStep("BossFightCamera")
 	ContextActionService:UnbindAction("BossFightCamToggle")
 	local cam = workspace.CurrentCamera
-	cam.CameraType = Enum.CameraType.Custom
-	local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-	if hum then cam.CameraSubject = hum end
+	if cam.CameraType == Enum.CameraType.Scriptable then
+		local char = player.Character
+		giveBack(cam, char and char:FindFirstChildOfClass("Humanoid"), char and char:FindFirstChild("HumanoidRootPart"))
+	end
 end
 
 function C.active() return enabled and following() end
@@ -3210,49 +3259,76 @@ function Fx.shockRing(host, segs, H, W, warn)
 	return w
 end
 
--- shape: circle / line (see Shared); t0 = when it appears; T = impact
+-- shape: circle / line (see Shared); t0 = when it appears; T = impact.
+-- Built to read on the bright gold floor under all the bloom: a DARK
+-- blood-red base (not neon: it shows up as a hole in the glow), a solid
+-- neon red fill that grows to the edge as the hit comes (the timer), and a
+-- short neon fence round the rim that you can see from a low camera, which
+-- flashes faster and brighter as the hit gets close.
+local ZONE_DARK = Color3.fromRGB(70, 0, 12)
+local ZONE_RED = Color3.fromRGB(255, 20, 40)
+local ZONE_HOT = Color3.fromRGB(255, 150, 150)
+local function fencePart(cf, len, h)
+	return K.part({ Name = "ZoneFence", Size = Vector3.new(len, h, 0.5), Material = Enum.Material.Neon, Color = ZONE_RED, Transparency = 0.5, CFrame = cf }, folder)
+end
 function Fx.zone(shape, t0, T)
-	local Z = { Parts = {} }
+	local Z = { Parts = {}, Hot = false }
 	local y = S.CENTER.Y + 0.12
+	local fence, rim = {}, {}
+	local FENCE_H = 2.2
+	local fill
+	local function add(p) table.insert(Z.Parts, p) return p end
 	if shape.Kind == "circle" then
 		local p = Vector3.new(shape.P.X, y, shape.P.Z)
-		local base = flatDisc("ZoneBase", p, shape.R, RED, 0.78)
-		local fill = flatDisc("ZoneFill", p + UP * 0.03, 0.1, Color3.fromRGB(255, 70, 70), 0.45)
-		local host = K.part({ Name = "ZoneHost", Size = Vector3.one, Transparency = 1, CFrame = CFrame.new(p) }, folder)
-		local rim = K.softRing(host, 32, shape.R - 1.2, shape.R + 0.6, { Brightness = 3, Alpha = 0 })
-		for _, q in ipairs(rim.Q) do q.Color = ColorSequence.new(Color3.fromRGB(255, 120, 120), RED) end
-		table.insert(Z.Parts, base)
-		table.insert(Z.Parts, fill)
-		table.insert(Z.Parts, host)
+		add(K.part({ Name = "ZoneBase", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.2, 2 * shape.R, 2 * shape.R), Material = Enum.Material.SmoothPlastic,
+			Color = ZONE_DARK, Transparency = 0.3, CFrame = CFrame.new(p) * CFrame.Angles(0, 0, math.pi / 2) }, folder))
+		fill = add(flatDisc("ZoneFill", p + UP * 0.04, 0.1, ZONE_RED, 0.15))
+		-- the rim: a bright band on the floor and a fence standing on it
+		local n = math.clamp(math.floor(shape.R * 1.1), 16, 48)
+		local da = 2 * math.pi / n
+		for i = 1, n do
+			local a0, a1 = (i - 1) * da, i * da
+			local p0 = p + Vector3.new(math.cos(a0), 0, math.sin(a0)) * shape.R
+			local p1 = p + Vector3.new(math.cos(a1), 0, math.sin(a1)) * shape.R
+			local along = p1 - p0
+			local cf = CFrame.fromMatrix((p0 + p1) / 2, along.Unit, UP)
+			table.insert(rim, add(K.part({ Name = "ZoneRim", Size = Vector3.new(along.Magnitude * 1.05, 0.26, 1.4), Material = Enum.Material.Neon, Color = ZONE_HOT, Transparency = 0.1, CFrame = cf + UP * 0.06 }, folder)))
+			table.insert(fence, add(fencePart(cf + UP * (FENCE_H / 2), along.Magnitude * 1.05, FENCE_H)))
+		end
 		function Z.update(now)
 			local u = K.remap(now, t0, T)
-			local r = math.max(shape.R * K.E.inQuad(u), 0.1)
+			local r = math.max(shape.R * K.E.outQuad(u), 0.1)
 			fill.Size = Vector3.new(0.2, 2 * r, 2 * r)
-			local pulse = 0.5 + 0.5 * math.sin(now * (8 + 16 * u))
-			base.Transparency = 0.82 - 0.14 * pulse * u
-			rim.update(CFrame.lookAt(p + UP * 0.25, p + UP * 1), shape.R - 1.2, shape.R + 0.6, now)
-			rim.setTransparency(0.35 - 0.3 * pulse * u)
 		end
 	else
 		local a = Vector3.new(shape.A.X, y, shape.A.Z)
 		local b = Vector3.new(shape.B.X, y, shape.B.Z)
 		local mid, len = a:Lerp(b, 0.5), (b - a).Magnitude
 		local cf = CFrame.lookAt(mid, mid + (b - a))
-		local base = K.part({ Name = "ZoneBase", Size = Vector3.new(shape.W, 0.2, len), Material = Enum.Material.Neon, Color = RED, Transparency = 0.8, CFrame = cf }, folder)
-		local fill = K.part({ Name = "ZoneFill", Size = Vector3.new(0.1, 0.22, len), Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 70, 70), Transparency = 0.45, CFrame = cf + UP * 0.03 }, folder)
-		local edges = {}
-		for s = -1, 1, 2 do
-			table.insert(edges, K.part({ Name = "ZoneEdge", Size = Vector3.new(0.45, 0.24, len), Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 140, 140), Transparency = 0.2, CFrame = cf * CFrame.new(s * shape.W / 2, 0.05, 0) }, folder))
+		add(K.part({ Name = "ZoneBase", Size = Vector3.new(shape.W, 0.2, len), Material = Enum.Material.SmoothPlastic, Color = ZONE_DARK, Transparency = 0.3, CFrame = cf }, folder))
+		fill = add(K.part({ Name = "ZoneFill", Size = Vector3.new(0.1, 0.22, len), Material = Enum.Material.Neon, Color = ZONE_RED, Transparency = 0.15, CFrame = cf + UP * 0.04 }, folder))
+		for sd = -1, 1, 2 do
+			local ecf = cf * CFrame.new(sd * shape.W / 2, 0, 0)
+			table.insert(rim, add(K.part({ Name = "ZoneRim", Size = Vector3.new(1.4, 0.26, len), Material = Enum.Material.Neon, Color = ZONE_HOT, Transparency = 0.1, CFrame = ecf + UP * 0.06 }, folder)))
+			table.insert(fence, add(K.part({ Name = "ZoneFence", Size = Vector3.new(0.5, FENCE_H, len), Material = Enum.Material.Neon, Color = ZONE_RED, Transparency = 0.5, CFrame = ecf + UP * (FENCE_H / 2) }, folder)))
 		end
-		table.insert(Z.Parts, base)
-		table.insert(Z.Parts, fill)
-		for _, e in ipairs(edges) do table.insert(Z.Parts, e) end
 		function Z.update(now)
 			local u = K.remap(now, t0, T)
-			fill.Size = Vector3.new(math.max(shape.W * K.E.inQuad(u), 0.1), 0.22, len)
-			local pulse = 0.5 + 0.5 * math.sin(now * (8 + 16 * u))
-			base.Transparency = 0.84 - 0.14 * pulse * u
-			for _, e in ipairs(edges) do e.Transparency = 0.45 - 0.35 * pulse * u end
+			fill.Size = Vector3.new(math.max(shape.W * K.E.outQuad(u), 0.1), 0.22, len)
+		end
+	end
+	-- (the flashing, shared by both)
+	local grow = Z.update
+	function Z.update(now)
+		grow(now)
+		local u = K.remap(now, t0, T)
+		local pulse = 0.5 + 0.5 * math.sin(now * (10 + 30 * u))
+		local ft = 0.55 - 0.45 * u * (0.4 + 0.6 * pulse)
+		for _, f in ipairs(fence) do f.Transparency = ft end
+		local hot = u > 0.8 and pulse > 0.5
+		if hot ~= Z.Hot then
+			Z.Hot = hot
+			for _, r in ipairs(rim) do r.Color = hot and Color3.new(1, 1, 1) or ZONE_HOT end
 		end
 	end
 	function Z.destroy()
@@ -4692,7 +4768,7 @@ local function cards()
 	local rollKey = touch() and "ROLL" or pad() and "B" or "CTRL"
 	return {
 		{ Title = "SURVIVE HIM", Keys = { "!" }, Text = "WHEN THE RED ! FLASHES, SOMETHING IS ABOUT TO LAND ON YOU - GET OUT OF THE RED", Color = Color3.fromRGB(255, 60, 80) },
-		{ Title = "ROLL", Keys = { rollKey }, Text = "ROLL THROUGH ANYTHING - YOU CAN'T BE HIT MID-ROLL. JUMP HIS SHOCKWAVES", Color = Color3.fromRGB(120, 200, 255) },
+		{ Title = "ROLL", Keys = { rollKey }, Text = "ROLL THROUGH BEAMS AND BLADES. FISTS AND PLANETS MUST BE OUTRUN - AND NOTHING ROLLS THROUGH A SHOCKWAVE: JUMP IT", Color = Color3.fromRGB(120, 200, 255) },
 		{ Title = "STRIKE HIM WHEN HE FALLS", Keys = { click }, Text = "AFTER A FEW ATTACKS HE COLLAPSES OVER THE EDGE - RUN TO HIS HEAD AND " .. click .. " TO PUNCH", Color = Color3.fromRGB(90, 255, 140) },
 		{ Title = "THE BLACK HOLE", Keys = { pad() and "X" or "Q", pad() and "Y" or "E", click }, Text = "CAUGHT IN HIS BLACK HOLE? CIRCLES APPEAR ONE BY ONE - PRESS EACH KEY AS ITS RING CLOSES", Color = Color3.fromRGB(255, 200, 80) },
 	}
@@ -4991,6 +5067,7 @@ function W.add(h)
 		-- (the attack's visuals add where its threat is drawn)
 		old.Pos = old.Pos or h.Pos
 		old.Rad = old.Rad or h.Rad
+		old.Rollable = old.Rollable or h.Rollable
 		return
 	end
 	hits[h.Id] = h
@@ -5045,7 +5122,8 @@ function W.update(now)
 			if pos and not h.Result and not h.Qte and inPath(h, pos, T) and T - now <= 1.3 and T - now >= -0.05 then
 				if not dangerT or T < dangerT then
 					dangerT = T
-					dangerWord = h.Shape.Kind == "ring" and "JUMP!" or h.Shape.Kind == "sweep" and "ROLL!" or "MOVE!"
+					-- (only beams and blades can be rolled through; shockwaves must be jumped)
+					dangerWord = h.Shape.Kind == "ring" and "JUMP!" or h.Rollable and "ROLL!" or "MOVE!"
 				end
 			end
 			-- the lock-on: the big ones, aimed at me

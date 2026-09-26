@@ -57,6 +57,7 @@ function A.Run(F, P, token)
 			Name = "LANCE",
 			Target = l.Target,
 			Knock = 45,
+			Rollable = true, -- (a blade: roll through it, or get out of its line)
 		})
 		table.insert(list, { Id = hit.Id, A = l.A, B = l.B, W = P.W, T = hit.T, Target = l.Target })
 	end

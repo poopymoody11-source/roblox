@@ -299,7 +299,9 @@ local function resolve(hit, t, T)
 		else
 			F.damageBoss(dmg, player, "parry")
 		end
-	elseif (player:GetAttribute("IFrameUntil") or 0) >= T - 0.05 then
+	elseif hit.Rollable and (player:GetAttribute("IFrameUntil") or 0) >= T - 0.05 then
+		-- (only some hits can be rolled through: beams and blades. Fists, planets
+		-- and blasts have to be outrun, and shockwaves jumped)
 		result = "evade"
 	else
 		result = "hit"
@@ -320,10 +322,10 @@ end
 -- Big = true marks those: they get the lock-on; everything else just gets the red icon)
 local function announce(hit)
 	if hit.Qte == false then hit.Qte = nil end
-	F.fx("Hit", { Id = hit.Id, T = hit.T, Shape = hit.Shape, Name = hit.Name, Target = hit.Target, Qte = hit.Qte, Big = hit.Big })
+	F.fx("Hit", { Id = hit.Id, T = hit.T, Shape = hit.Shape, Name = hit.Name, Target = hit.Target, Qte = hit.Qte, Big = hit.Big, Rollable = hit.Rollable })
 end
 
--- a timed hit: { Id, T, Shape, Damage, Name, Target (userId | "all"), Qte (spec | false), Counter, CounterPerfect, Knock }
+-- a timed hit: { Id, T, Shape, Damage, Name, Target (userId | "all"), Qte (spec | false), Counter, CounterPerfect, Knock, Rollable }
 function F.hit(hit)
 	hit.Id = hit.Id or F.newId("H")
 	live[hit.Id] = hit

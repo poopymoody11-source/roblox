@@ -252,6 +252,7 @@ function W.add(h)
 		-- (the attack's visuals add where its threat is drawn)
 		old.Pos = old.Pos or h.Pos
 		old.Rad = old.Rad or h.Rad
+		old.Rollable = old.Rollable or h.Rollable
 		return
 	end
 	hits[h.Id] = h
@@ -306,7 +307,8 @@ function W.update(now)
 			if pos and not h.Result and not h.Qte and inPath(h, pos, T) and T - now <= 1.3 and T - now >= -0.05 then
 				if not dangerT or T < dangerT then
 					dangerT = T
-					dangerWord = h.Shape.Kind == "ring" and "JUMP!" or h.Shape.Kind == "sweep" and "ROLL!" or "MOVE!"
+					-- (only beams and blades can be rolled through; shockwaves must be jumped)
+					dangerWord = h.Shape.Kind == "ring" and "JUMP!" or h.Rollable and "ROLL!" or "MOVE!"
 				end
 			end
 			-- the lock-on: the big ones, aimed at me

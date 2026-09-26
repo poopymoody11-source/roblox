@@ -462,49 +462,76 @@ function Fx.shockRing(host, segs, H, W, warn)
 	return w
 end
 
--- shape: circle / line (see Shared); t0 = when it appears; T = impact
+-- shape: circle / line (see Shared); t0 = when it appears; T = impact.
+-- Built to read on the bright gold floor under all the bloom: a DARK
+-- blood-red base (not neon: it shows up as a hole in the glow), a solid
+-- neon red fill that grows to the edge as the hit comes (the timer), and a
+-- short neon fence round the rim that you can see from a low camera, which
+-- flashes faster and brighter as the hit gets close.
+local ZONE_DARK = Color3.fromRGB(70, 0, 12)
+local ZONE_RED = Color3.fromRGB(255, 20, 40)
+local ZONE_HOT = Color3.fromRGB(255, 150, 150)
+local function fencePart(cf, len, h)
+	return K.part({ Name = "ZoneFence", Size = Vector3.new(len, h, 0.5), Material = Enum.Material.Neon, Color = ZONE_RED, Transparency = 0.5, CFrame = cf }, folder)
+end
 function Fx.zone(shape, t0, T)
-	local Z = { Parts = {} }
+	local Z = { Parts = {}, Hot = false }
 	local y = S.CENTER.Y + 0.12
+	local fence, rim = {}, {}
+	local FENCE_H = 2.2
+	local fill
+	local function add(p) table.insert(Z.Parts, p) return p end
 	if shape.Kind == "circle" then
 		local p = Vector3.new(shape.P.X, y, shape.P.Z)
-		local base = flatDisc("ZoneBase", p, shape.R, RED, 0.78)
-		local fill = flatDisc("ZoneFill", p + UP * 0.03, 0.1, Color3.fromRGB(255, 70, 70), 0.45)
-		local host = K.part({ Name = "ZoneHost", Size = Vector3.one, Transparency = 1, CFrame = CFrame.new(p) }, folder)
-		local rim = K.softRing(host, 32, shape.R - 1.2, shape.R + 0.6, { Brightness = 3, Alpha = 0 })
-		for _, q in ipairs(rim.Q) do q.Color = ColorSequence.new(Color3.fromRGB(255, 120, 120), RED) end
-		table.insert(Z.Parts, base)
-		table.insert(Z.Parts, fill)
-		table.insert(Z.Parts, host)
+		add(K.part({ Name = "ZoneBase", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.2, 2 * shape.R, 2 * shape.R), Material = Enum.Material.SmoothPlastic,
+			Color = ZONE_DARK, Transparency = 0.3, CFrame = CFrame.new(p) * CFrame.Angles(0, 0, math.pi / 2) }, folder))
+		fill = add(flatDisc("ZoneFill", p + UP * 0.04, 0.1, ZONE_RED, 0.15))
+		-- the rim: a bright band on the floor and a fence standing on it
+		local n = math.clamp(math.floor(shape.R * 1.1), 16, 48)
+		local da = 2 * math.pi / n
+		for i = 1, n do
+			local a0, a1 = (i - 1) * da, i * da
+			local p0 = p + Vector3.new(math.cos(a0), 0, math.sin(a0)) * shape.R
+			local p1 = p + Vector3.new(math.cos(a1), 0, math.sin(a1)) * shape.R
+			local along = p1 - p0
+			local cf = CFrame.fromMatrix((p0 + p1) / 2, along.Unit, UP)
+			table.insert(rim, add(K.part({ Name = "ZoneRim", Size = Vector3.new(along.Magnitude * 1.05, 0.26, 1.4), Material = Enum.Material.Neon, Color = ZONE_HOT, Transparency = 0.1, CFrame = cf + UP * 0.06 }, folder)))
+			table.insert(fence, add(fencePart(cf + UP * (FENCE_H / 2), along.Magnitude * 1.05, FENCE_H)))
+		end
 		function Z.update(now)
 			local u = K.remap(now, t0, T)
-			local r = math.max(shape.R * K.E.inQuad(u), 0.1)
+			local r = math.max(shape.R * K.E.outQuad(u), 0.1)
 			fill.Size = Vector3.new(0.2, 2 * r, 2 * r)
-			local pulse = 0.5 + 0.5 * math.sin(now * (8 + 16 * u))
-			base.Transparency = 0.82 - 0.14 * pulse * u
-			rim.update(CFrame.lookAt(p + UP * 0.25, p + UP * 1), shape.R - 1.2, shape.R + 0.6, now)
-			rim.setTransparency(0.35 - 0.3 * pulse * u)
 		end
 	else
 		local a = Vector3.new(shape.A.X, y, shape.A.Z)
 		local b = Vector3.new(shape.B.X, y, shape.B.Z)
 		local mid, len = a:Lerp(b, 0.5), (b - a).Magnitude
 		local cf = CFrame.lookAt(mid, mid + (b - a))
-		local base = K.part({ Name = "ZoneBase", Size = Vector3.new(shape.W, 0.2, len), Material = Enum.Material.Neon, Color = RED, Transparency = 0.8, CFrame = cf }, folder)
-		local fill = K.part({ Name = "ZoneFill", Size = Vector3.new(0.1, 0.22, len), Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 70, 70), Transparency = 0.45, CFrame = cf + UP * 0.03 }, folder)
-		local edges = {}
-		for s = -1, 1, 2 do
-			table.insert(edges, K.part({ Name = "ZoneEdge", Size = Vector3.new(0.45, 0.24, len), Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 140, 140), Transparency = 0.2, CFrame = cf * CFrame.new(s * shape.W / 2, 0.05, 0) }, folder))
+		add(K.part({ Name = "ZoneBase", Size = Vector3.new(shape.W, 0.2, len), Material = Enum.Material.SmoothPlastic, Color = ZONE_DARK, Transparency = 0.3, CFrame = cf }, folder))
+		fill = add(K.part({ Name = "ZoneFill", Size = Vector3.new(0.1, 0.22, len), Material = Enum.Material.Neon, Color = ZONE_RED, Transparency = 0.15, CFrame = cf + UP * 0.04 }, folder))
+		for sd = -1, 1, 2 do
+			local ecf = cf * CFrame.new(sd * shape.W / 2, 0, 0)
+			table.insert(rim, add(K.part({ Name = "ZoneRim", Size = Vector3.new(1.4, 0.26, len), Material = Enum.Material.Neon, Color = ZONE_HOT, Transparency = 0.1, CFrame = ecf + UP * 0.06 }, folder)))
+			table.insert(fence, add(K.part({ Name = "ZoneFence", Size = Vector3.new(0.5, FENCE_H, len), Material = Enum.Material.Neon, Color = ZONE_RED, Transparency = 0.5, CFrame = ecf + UP * (FENCE_H / 2) }, folder)))
 		end
-		table.insert(Z.Parts, base)
-		table.insert(Z.Parts, fill)
-		for _, e in ipairs(edges) do table.insert(Z.Parts, e) end
 		function Z.update(now)
 			local u = K.remap(now, t0, T)
-			fill.Size = Vector3.new(math.max(shape.W * K.E.inQuad(u), 0.1), 0.22, len)
-			local pulse = 0.5 + 0.5 * math.sin(now * (8 + 16 * u))
-			base.Transparency = 0.84 - 0.14 * pulse * u
-			for _, e in ipairs(edges) do e.Transparency = 0.45 - 0.35 * pulse * u end
+			fill.Size = Vector3.new(math.max(shape.W * K.E.outQuad(u), 0.1), 0.22, len)
+		end
+	end
+	-- (the flashing, shared by both)
+	local grow = Z.update
+	function Z.update(now)
+		grow(now)
+		local u = K.remap(now, t0, T)
+		local pulse = 0.5 + 0.5 * math.sin(now * (10 + 30 * u))
+		local ft = 0.55 - 0.45 * u * (0.4 + 0.6 * pulse)
+		for _, f in ipairs(fence) do f.Transparency = ft end
+		local hot = u > 0.8 and pulse > 0.5
+		if hot ~= Z.Hot then
+			Z.Hot = hot
+			for _, r in ipairs(rim) do r.Color = hot and Color3.new(1, 1, 1) or ZONE_HOT end
 		end
 	end
 	function Z.destroy()

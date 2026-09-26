@@ -351,7 +351,7 @@ handlers.CorruptFinale = function(d) attacks.GalaxyCorruption.finale(ctx, d) end
 -- every hit: its prompts, and its lock-on
 handlers.Hit = function(d)
 	Qte.add(d)
-	Warn.add({ Id = d.Id, T = d.T, Shape = d.Shape, Name = d.Name, Target = d.Target, Big = d.Big, Qte = d.Qte })
+	Warn.add({ Id = d.Id, T = d.T, Shape = d.Shape, Name = d.Name, Target = d.Target, Big = d.Big, Qte = d.Qte, Rollable = d.Rollable })
 end
 
 -- a parry, on whoever made it: the move, the burst, the counter-bolt into him

@@ -35,7 +35,7 @@ function A.Run(F, P, token)
 			T0 = t, T1 = t + P.Sweep, W = P.W, L = 2 * S.ARENA_R + 20,
 		}
 		-- (too tall to jump: roll through it)
-		local hit = { Id = F.newId("AB"), Shape = shape, Damage = P.Damage, Name = "ANNIHILATION BEAM", Knock = 50 }
+		local hit = { Id = F.newId("AB"), Shape = shape, Damage = P.Damage, Name = "ANNIHILATION BEAM", Knock = 50, Rollable = true }
 		table.insert(sweeps, hit)
 		t = shape.T1 + 0.35
 	end

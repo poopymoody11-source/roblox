@@ -67,7 +67,7 @@ function A.Run(F, P, token)
 				local lh = F.hit({
 					T = t + 1.2,
 					Shape = { Kind = "line", A = S.surface(A0.X, A0.Z), B = S.surface(B0.X, B0.Z), W = 12 },
-					Damage = P.Damage + 8, Name = "GALACTIC LANCE", Target = tg.Player.UserId, Knock = 45,
+					Damage = P.Damage + 8, Name = "GALACTIC LANCE", Target = tg.Player.UserId, Knock = 45, Rollable = true,
 				})
 				F.fx("CorruptLance", { Id = lh.Id, From = rng:NextInteger(1, P.Galaxies), A = lh.Shape.A, B = lh.Shape.B, W = 12, T0 = t, T = lh.T })
 			end
