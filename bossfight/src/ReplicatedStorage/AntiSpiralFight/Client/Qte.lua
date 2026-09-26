@@ -243,9 +243,10 @@ function Q.init(kit, shared, warn, qteRemote)
 		[Enum.KeyCode.ButtonR2] = "CLICK", [Enum.KeyCode.ButtonA] = "SPACE", [Enum.KeyCode.ButtonX] = "Q",
 		[Enum.KeyCode.ButtonY] = "E", [Enum.KeyCode.ButtonB] = "F",
 	}
-	UIS.InputBegan:Connect(function(input, processed)
+	UIS.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			if not processed then pressKey("CLICK") end
+			-- (a click lands on the circles themselves, which marks it "processed": count it anyway)
+			if not UIS:GetFocusedTextBox() then pressKey("CLICK") end
 		elseif MAP[input.KeyCode] and not UIS:GetFocusedTextBox() then
 			pressKey(MAP[input.KeyCode])
 		end
@@ -290,8 +291,12 @@ function Q.update(now)
 			table.remove(order, i)
 		elseif pos and not h.Failed and not h.Claimed then
 			-- (in it: the circles come; out of it before they start: nothing to do)
-			if not h.Shown and inPath(h, pos) and now >= h.T + h.Steps[1].At - LEAD then
+			if not h.Shown and inPath(h, pos) and now >= h.T + h.Steps[1].At - LEAD and now < h.T then
 				h.Shown = true
+				-- (pulled in late: the circles already gone by don't count against you)
+				for _, st in ipairs(h.Steps) do
+					if h.T + st.At - 0.25 < now and st ~= h.Steps[#h.Steps] then st.Complete = true st.Err = 0 end
+				end
 				Warn.pop("ESCAPE IT!", PINK, true, Vector2.new(0.5, 0.26))
 			end
 			if h.Shown then

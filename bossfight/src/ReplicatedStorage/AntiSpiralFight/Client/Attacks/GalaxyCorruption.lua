@@ -57,6 +57,7 @@ function A.start(ctx, d)
 	local G = galaxies(S, d.Galaxies)
 	ctx.Corruption = { G = G, Pulse = {} }
 	Warn.callout("GALAXY CORRUPTION")
+	ctx.Cam.follow(d.EndT + 3)
 	Fx.say("EVERY GALAXY IN THIS REALM\nBELONGS TO ME.", 1.5, true)
 	task.delay(math.max(d.StormT - S.now() - 0.2, 0), function()
 		if ctx.epoch() == epoch then Fx.say("FALL, SPIRAL APES.", 1.1, true) end

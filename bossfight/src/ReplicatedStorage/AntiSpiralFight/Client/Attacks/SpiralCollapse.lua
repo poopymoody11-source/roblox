@@ -59,6 +59,7 @@ function A.start(ctx, d)
 	local hole = c + UP * HOLE_H
 	local clapT = d.OpenT - 0.15
 	Warn.callout("SPIRAL COLLAPSE")
+	ctx.Cam.follow(d.BlastT + 1)
 	ctx.Fx.say("ALL SPIRALS END\nIN THE VOID.", 1.2)
 	-- the cut-in: the hole tearing open over the arena
 	ctx.Cam.cut(function(now)

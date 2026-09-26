@@ -32,6 +32,7 @@ function A.Run(F, P, token)
 	local rng = F.rng
 	local t0 = F.now() + 0.15
 	local strikeT = t0 + P.Windup
+	P.Lines += 2 * ((P.Players or 1) - 1)
 	local lines = {}
 	local function add(p, dir, target)
 		local a, b = chord(S, p, dir)

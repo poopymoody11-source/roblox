@@ -30,17 +30,17 @@ Add a Boolean attribute **`BF_TestFight`** = true on **Workspace**, then press *
 - **Boss music:** a theme per phase, a swell for his set pieces, and a quiet one when he falls. Change the tracks in `ReplicatedStorage.AntiSpiralFight.Client.Music` (TRACKS).
 - **You fight in spiral power:** the cutscene's green aura is on every player.
 - **Dodging:** when the red **!** flashes, something is about to land where you stand. MOVE, JUMP or ROLL, and it tells you which.
-- **Roll:** **CTRL** (gamepad B, or the ROLL button on mobile). A quick roll you can't be hit during.
-- **Hurting him:** after every 2 attacks (and after each set piece) he's **dazed** for 14 seconds. He collapses over the rim with his head down on the arena, marked by a green target. Run to it and **CLICK** (R2, or the PUNCH button on mobile) to throw spiral punches. A bar shows how long he's down, and then he comes round with a roar and a shockwave you have to jump.
+- **Roll:** **CTRL** (gamepad B, or the ROLL button on mobile). A fast dash-roll that eases out, with a green streak and afterimages. You flash green while you can't be hit. The whoosh is preloaded and plays the instant you press.
+- **Hurting him:** after every 2 attacks (and after each set piece) he's **dazed** for 14 seconds (a little less for each extra player). He collapses over the rim with his head down on the arena, marked by a green target. Run to it and **CLICK** (R2, or the PUNCH button on mobile) to throw spiral punches. A bar shows how long he's down, and then he comes round with a roar and a shockwave you have to jump.
 - **One QTE, the black hole (Spiral Collapse):** if you're caught in it, circles pop up around the screen one after another, just like the cutscene's dodge. Press each key as its ring closes on it. Land all five and you tear free and hurt him.
 - **Getting hit:** knockback, blood, a shockwave, a stumble (or a full knockdown for the big ones) and a camera jolt.
-- **Camera:** it follows you and him. Right-drag looks around, and **C** toggles it. The big wind-ups cut in to a cinematic shot and get a title and a lock-on warning.
+- **Camera:** your normal camera most of the time. Now and then (when he walks, changes phase or winds up something big) it pulls back to follow him for a few seconds, and **C** toggles that follow mode yourself. The big wind-ups cut in to a cinematic shot and get a title. For Big Bang it cuts to an overhead view so you can see the green safe ring.
 
 ## Attacks
 
 1. **Galaxy Barrage.** Galaxies tear open and fire planets and stars. Finale: **The Last World**.
 2. **Fist Slam.** Red zones fill, then violet fists crash down. Finale: **Hammer of Despair**.
-3. **Stomp Quake.** Shockwave walls roll across the arena, with a red line racing ahead of each one: jump them.
+3. **Stomp Quake.** Solid violet shockwave walls (white crest, dark base) roll across the arena, with a red line racing ahead of each one: jump them.
 4. **Constellation Lances.** Constellations form overhead and come down as blades of light.
 5. **Annihilation Beam.** A sweeping beam that's too tall to jump: roll through it.
 6. **Spiral Collapse.** A black hole pulls you in, then collapses (QTE).
@@ -50,12 +50,12 @@ Add a Boolean attribute **`BF_TestFight`** = true on **Workspace**, then press *
 ## Tuning
 
 Everything is in `ServerStorage.BossFightServer.Config`:
-- `MaxHealth` is for one player; each extra player adds `HealthPerExtraPlayer` of it (70%).
+- `MaxHealth` (2500) is for one player; each extra player adds `HealthPerExtraPlayer` of it (85%). Barrage, Lances and Corruption also fire more with more players, and each extra player shortens the daze by `DazeShortenPerPlayer` seconds.
 - `AttacksBeforeDaze`, `DazeTime`, `PunchDamage`, `PunchRange`, `PunchCooldown`, `RollCooldown`, `RollIFrames` and `IntroTime` control the daze, punches, roll and the intro.
 - `SetPieces` sets when Galaxy Corruption and Big Bang happen.
 - `Phases` sets the attacks and their weights. Phase 2 still reuses these attacks at a harder setting, as a placeholder.
 
-An attack gets a QTE only if its module sets `Qte` on a hit (see `F.qte.sequence`). `Big = true` gives a hit the lock-on warning.
+An attack gets a QTE only if its module sets `Qte` on a hit (see `F.qte.sequence`). Only Spiral Collapse does.
 
 ## If something doesn't work
 

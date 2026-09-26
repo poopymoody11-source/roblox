@@ -28,6 +28,7 @@ function A.start(ctx, d)
 	local B = { Green = false, Gone = false, Frozen = nil }
 	ctx.BigBang = B
 	Warn.callout("!! BIG BANG !!")
+	ctx.Cam.follow(d.ThrowT - 0.8)
 	Fx.say("I WILL SHOW YOU\nTHE BIRTH OF A UNIVERSE...", 2, true)
 	task.delay(math.max(d.ThrowT - S.now() - 0.4, 0), function()
 		if ctx.epoch() == epoch then Fx.say("...AND ITS DEATH.", 1.1, true) end
@@ -114,7 +115,17 @@ function A.start(ctx, d)
 		local side = toArena:Cross(UP)
 		local from = orb + toArena * (s * 2.4 + 60) + side * (s * 0.9) - UP * 30
 		return CFrame.lookAt(from, orb:Lerp(head and head.Position or orb, 0.35)), 62
-	end, d.ThrowT - 1.6, d.ThrowT + 0.2, 0.3)
+	end, d.ThrowT - 2.0, d.ThrowT - 0.7, 0.3)
+	-- as it falls: high over you, looking down - the red zone and the green way out, in plain view
+	ctx.Cam.cut(function(now)
+		local c = ctx.player.Character
+		local r = c and c:FindFirstChild("HumanoidRootPart")
+		local me = r and r.Position or S.CENTER
+		local out = S.flat(me - S.CENTER)
+		out = out.Magnitude > 1 and out.Unit or Vector3.xAxis
+		local from = me + out * 45 + UP * 125
+		return CFrame.lookAt(from, me:Lerp(S.CENTER, 0.25)), 70
+	end, d.ThrowT - 0.6, d.T + 0.5, 0.35)
 
 	-- the universe
 	local host = K.part({ Name = "BigBangHost", Size = Vector3.one, Transparency = 1, CFrame = CFrame.new(S.CENTER) }, Fx.Folder)

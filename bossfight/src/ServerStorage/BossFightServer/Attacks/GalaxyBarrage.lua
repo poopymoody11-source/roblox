@@ -52,6 +52,10 @@ function A.Run(F, P, token)
 		local pos = S.CENTER + toBoss * 150 + side * k * 150 + S.UP * (175 + rng:NextNumber(-15, 25))
 		table.insert(portals, pos)
 	end
+	-- (more of you, more of them: +40% shots per extra player, fired faster)
+	local extra = (P.Players or 1) - 1
+	P.Shots = math.floor(P.Shots * (1 + 0.4 * extra))
+	P.Interval = P.Interval / (1 + 0.25 * extra)
 	local openT = t0 + P.Windup
 	local lastT = openT + (P.Shots - 1) * P.Interval
 	local id = F.newId("GB")

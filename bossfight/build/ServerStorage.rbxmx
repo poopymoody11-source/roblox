@@ -121,6 +121,7 @@ function A.Run(F, P, token)
 	local rng = F.rng
 	local t0 = F.now() + 0.15
 	local strikeT = t0 + P.Windup
+	P.Lines += 2 * ((P.Players or 1) - 1)
 	local lines = {}
 	local function add(p, dir, target)
 		local a, b = chord(S, p, dir)
@@ -308,6 +309,10 @@ function A.Run(F, P, token)
 		local pos = S.CENTER + toBoss * 150 + side * k * 150 + S.UP * (175 + rng:NextNumber(-15, 25))
 		table.insert(portals, pos)
 	end
+	-- (more of you, more of them: +40% shots per extra player, fired faster)
+	local extra = (P.Players or 1) - 1
+	P.Shots = math.floor(P.Shots * (1 + 0.4 * extra))
+	P.Interval = P.Interval / (1 + 0.25 * extra)
 	local openT = t0 + P.Windup
 	local lastT = openT + (P.Shots - 1) * P.Interval
 	local id = F.newId("GB")
@@ -401,6 +406,9 @@ function A.Run(F, P, token)
 	local S = F.S
 	local rng = F.rng
 	local t0 = F.now() + 0.2
+	-- (more of you, a thicker storm)
+	local k = 1 / (1 + 0.3 * ((P.Players or 1) - 1))
+	P.BoltGap = { P.BoltGap[1] * k, P.BoltGap[2] * k }
 	local stormT = t0 + P.Corrupt
 	local endT = stormT + P.Storm
 	F.fx("GalaxyCorruption", { T0 = t0, StormT = stormT, EndT = endT, Galaxies = P.Galaxies })
@@ -498,7 +506,7 @@ function A.Run(F, P, token)
 		Big = true,
 		-- (the one QTE in the fight: five circles, one after another, the last on the collapse)
 		Qte = (function()
-			local q = F.qte.sequence({ "Q", "E", "CLICK", "F", "SPACE" }, 0.55)
+			local q = F.qte.sequence({ "Q", "E", "CLICK", "F", "CLICK" }, 0.55)
 			q.Early, q.Late, q.Perfect = 0.28, 0.18, 0.09
 			return q
 		end)(),
@@ -569,9 +577,11 @@ return {
 	DisplayName = "Anti-Spiral",
 
 	-- his health: MaxHealth for one player, plus this share of it per extra player
-	-- (2 players = 1.7x, 4 players = 3.1x ...)
-	MaxHealth = 5000,
-	HealthPerExtraPlayer = 0.7,
+	-- (2 players = 1.85x, 4 players = 3.55x ...)
+	MaxHealth = 2500,
+	HealthPerExtraPlayer = 0.85,
+	-- (and with more of you, he fights harder: more shots / zones per attack, a shorter daze)
+	DazeShortenPerPlayer = 1.2, -- seconds off the daze per extra player (never below 8)
 
 	WalkSpeed = 115,         -- studs/s round the ring at full stride
 	WalkArc = { 18, 42 },    -- degrees he walks between attacks (random in range)
@@ -1103,7 +1113,8 @@ end
 
 local function daze()
 	local t0 = S.now()
-	local dur = Config.DazeTime or 8
+	local extra = math.max(#Players:GetPlayers() - 1, 0)
+	local dur = math.max((Config.DazeTime or 8) - extra * (Config.DazeShortenPerPlayer or 0), 8)
 	local weak = F.weakPoint(t0)
 	F.Dazed = true
 	dazeEnds = t0 + dur
@@ -1200,6 +1211,7 @@ function F.run()
 			local mod = attacks[entry.Module]
 			local params = table.clone(mod.Defaults or {})
 			for k, v in pairs(entry.Params or {}) do params[k] = v end
+			params.Players = math.max(#F.targets(), 1)
 			local token = F.Token
 			print("[BossFight] attack: " .. entry.Module)
 			local ok, err = pcall(mod.Run, F, params, token)

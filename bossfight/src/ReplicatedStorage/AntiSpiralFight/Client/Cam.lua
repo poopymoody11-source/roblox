@@ -20,7 +20,15 @@ local HEIGHT = 22
 local FOV = 80
 
 local enabled = false
-local wanted = true
+local nowFn = os.clock
+local function nowFnRef() return nowFn() end
+-- (your own camera most of the time: the follow shot only for his big moments,
+-- or always if you press C)
+local wanted = false
+local followUntil = 0
+local function following()
+	return wanted or nowFnRef() < followUntil
+end
 local focusFn -- () -> Vector3: the point on him to frame
 local camPos, aimDir
 local yawOff, pitchOff = 0, 0
@@ -35,7 +43,6 @@ end
 -- whipping in and back out over `blend` seconds. The big attacks use these to show
 -- the whole of what's coming.
 local cuts = {}
-local nowFn = os.clock
 function C.cut(fn, t0, t1, blend)
 	table.insert(cuts, { Fn = fn, T0 = t0, T1 = t1, B = blend or 0.25 })
 end
@@ -122,7 +129,7 @@ local function step(dt)
 			return
 		end
 	end
-	if not (enabled and wanted and root and hum and hum.Health > 0 and focusFn) then
+	if not (enabled and following() and root and hum and hum.Health > 0 and focusFn) then
 		if cam.CameraType == Enum.CameraType.Scriptable and enabled then
 			cam.CameraType = Enum.CameraType.Custom
 			if hum then cam.CameraSubject = hum end
@@ -184,7 +191,12 @@ function C.stop()
 	if hum then cam.CameraSubject = hum end
 end
 
-function C.active() return enabled and wanted end
+function C.active() return enabled and following() end
+
+-- the follow shot until `untilT` (server time): pulled back, framing him and you
+function C.follow(untilT)
+	followUntil = math.max(followUntil, untilT)
+end
 
 -- swinging it round
 UIS.InputBegan:Connect(function(input, processed)
@@ -201,7 +213,7 @@ UIS.InputEnded:Connect(function(input)
 	end
 end)
 UIS.InputChanged:Connect(function(input, processed)
-	if not (enabled and wanted) then return end
+	if not (enabled and following()) then return end
 	if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
 		yawOff = math.clamp(yawOff - input.Delta.X * 0.006, -1.3, 1.3)
 		pitchOff = math.clamp(pitchOff - input.Delta.Y * 0.05, -6, 14)

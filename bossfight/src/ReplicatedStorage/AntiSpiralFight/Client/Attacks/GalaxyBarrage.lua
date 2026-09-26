@@ -102,6 +102,19 @@ function A.shot(ctx, d)
 	local body
 	if (d.Kind == "planet" or giant) and d.Model then
 		body = K.planet(d.Model, d.Size, CFrame.new(d.From), Fx.Folder)
+		if body then
+			-- (a planet's extra parts - rings, atmospheres - are separate: weld them on so
+			-- they fly with it, instead of hanging where it was made)
+			for _, p in ipairs(body:GetDescendants()) do
+				if p:IsA("BasePart") then
+					p.Anchored = false
+					p.CanCollide, p.CanQuery, p.CanTouch = false, false, false
+					local w = Instance.new("WeldConstraint")
+					w.Part0, w.Part1 = body, p
+					w.Parent = p
+				end
+			end
+		end
 	end
 	local glow
 	if not body then
@@ -131,6 +144,7 @@ function A.shot(ctx, d)
 		local w = Instance.new("WeldConstraint") w.Part0, w.Part1 = body, shell w.Parent = shell
 		shell.Anchored = false
 		Warn.callout("THE LAST WORLD")
+		ctx.Cam.follow(d.T + 0.5)
 		K.sfx(K.S.Rumble, 1, 0.6)
 		K.sfx(K.S.Riser, 0.9, 0.7)
 	end

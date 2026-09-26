@@ -310,7 +310,7 @@ function W.update(now)
 				end
 			end
 			-- the lock-on: the big ones, aimed at me
-			if h.Big and (h.Target == myId or h.Target == "all") and pos then
+			if false and h.Big and (h.Target == myId or h.Target == "all") and pos then -- (the lock-on is retired)
 				if not h.Lock and not h.Result and now >= T - S.WARN_LOCK and now < T then
 					h.Lock = makeLock(h.Name or "INCOMING")
 					h.LockT = now

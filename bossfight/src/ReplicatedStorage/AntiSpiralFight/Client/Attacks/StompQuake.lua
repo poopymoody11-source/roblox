@@ -68,33 +68,14 @@ function A.start(ctx, d)
 	end)
 	K.sfx(K.S.Rumble, 0.7, 0.8)
 	ctx.Fx.say("THE UNIVERSE TREMBLES\nAT MY STEP.", 1.2)
-	-- the rings: a wall of light (quads round the circle) + a glow on the floor
+	-- the rings: a wall of light (Fx.shockRing) + a glow on the floor
 	local host = K.part({ Name = "QuakeHost", Size = Vector3.one, Transparency = 1, CFrame = CFrame.new(d.Origin) }, Fx.Folder)
 	local rings = {}
 	for _, r in ipairs(d.Rings) do
-		local walls = {}
-		for i = 1, SEGS do
-			local q = K.quad(host, host.CFrame, 1, r.Shape.H, "10365550877", { Color = Fx.VIOLET_HOT, Brightness = 3.5, Transparency = K.ns(0, 0.05, 0.7, 0.3, 1, 1) })
-			q.Enabled = false
-			walls[i] = q
-		end
-		-- a white-hot core low on the wall, and a tall violet glow behind it
-		local cores, glows = {}, {}
-		for i = 1, SEGS do
-			local c = K.quad(host, host.CFrame, 1, r.Shape.H * 0.5, nil, { Color = Color3.new(1, 1, 1), Brightness = 5, Transparency = 0.1 })
-			c.Enabled = false
-			cores[i] = c
-			local g = K.quad(host, host.CFrame, 1, r.Shape.H * 2.6, "10180479311", { Color = Fx.VIOLET, Brightness = 2, Transparency = K.ns(0, 0.35, 0.5, 0.6, 1, 1) })
-			g.Enabled = false
-			glows[i] = g
-		end
+		local wall = Fx.shockRing(host, SEGS, r.Shape.H, r.Shape.W, true)
 		local floor = K.softRing(host, SEGS, 1, 2, { Brightness = 3, Alpha = 0 })
 		for _, q in ipairs(floor.Q) do q.Color = ColorSequence.new(Fx.MAGENTA, Fx.VIOLET) end
 		floor.setEnabled(false)
-		-- the red line racing ahead of it: where it'll be in a moment
-		local ahead = K.softRing(host, SEGS, 1, 2, { Brightness = 3, Alpha = 0 })
-		for _, q in ipairs(ahead.Q) do q.Color = ColorSequence.new(Fx.RED) end
-		ahead.setEnabled(false)
 		-- dust and rubble thrown up along its front
 		local dust = {}
 		for i = 1, 12 do
@@ -111,7 +92,7 @@ function A.start(ctx, d)
 			})
 			dust[i] = { H = hp, D = e, C = chips }
 		end
-		table.insert(rings, { R = r, Walls = walls, Cores = cores, Glows = glows, Floor = floor, Ahead = ahead, Dust = dust })
+		table.insert(rings, { R = r, Wall = wall, Floor = floor, Dust = dust })
 		Warn.add({ Id = r.Id, Shape = r.Shape, Name = "SHOCKWAVE" })
 	end
 	local stomped = false
@@ -140,38 +121,8 @@ function A.start(ctx, d)
 			local on = now >= sh.T0 and r < 2 * S.ARENA_R + 20
 			if on then any = true end
 			local da = 2 * math.pi / SEGS
-			for i, q in ipairs(ring.Walls) do
-				local a0, a1 = (i - 1) * da, i * da
-				local p0 = o + Vector3.new(math.cos(a0) * r, 0, math.sin(a0) * r)
-				local p1 = o + Vector3.new(math.cos(a1) * r, 0, math.sin(a1) * r)
-				local mid = (p0 + p1) / 2
-				local show = on and S.onArena(mid, -2)
-				q.Enabled = show
-				ring.Cores[i].Enabled = show
-				ring.Glows[i].Enabled = show
-				if show then
-					local along = (p1 - p0)
-					local len = along.Magnitude
-					local cf = CFrame.fromMatrix(mid + UP * sh.H / 2, along.Unit, UP)
-					K.moveQuad(q, cf)
-					K.setQuadSize(q, len * 1.02, sh.H)
-					K.moveQuad(ring.Cores[i], CFrame.fromMatrix(mid + UP * sh.H * 0.25, along.Unit, UP))
-					K.setQuadSize(ring.Cores[i], len * 1.02, sh.H * 0.5)
-					K.moveQuad(ring.Glows[i], CFrame.fromMatrix(mid + UP * sh.H * 1.3, along.Unit, UP))
-					K.setQuadSize(ring.Glows[i], len * 1.02, sh.H * 2.6)
-				end
-			end
-			-- the warning line ahead of it, and its dust
-			ring.Ahead.setEnabled(on)
-			if on then
-				local ra = r + 16 + 6 * math.sin(now * 20)
-				ring.Ahead.update(CFrame.lookAt(o + UP * 0.25, o + UP * 2), ra, ra + 1.4, 0)
-				ring.Ahead.setTransparency(0.25)
-				for i, q in ipairs(ring.Ahead.Q) do
-					local a = (i - 1) * da
-					q.Enabled = S.onArena(o + Vector3.new(math.cos(a) * ra, 0, math.sin(a) * ra), -2)
-				end
-			end
+			ring.Wall.update(o, r, on, now)
+			-- its dust
 			local inward = math.atan2(S.CENTER.Z - o.Z, S.CENTER.X - o.X)
 			for i, dd in ipairs(ring.Dust) do
 				local a = inward + ((i - 0.5) / #ring.Dust - 0.5) * math.rad(170)

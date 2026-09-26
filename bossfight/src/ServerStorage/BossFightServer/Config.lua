@@ -8,9 +8,11 @@ return {
 	DisplayName = "Anti-Spiral",
 
 	-- his health: MaxHealth for one player, plus this share of it per extra player
-	-- (2 players = 1.7x, 4 players = 3.1x ...)
-	MaxHealth = 5000,
-	HealthPerExtraPlayer = 0.7,
+	-- (2 players = 1.85x, 4 players = 3.55x ...)
+	MaxHealth = 2500,
+	HealthPerExtraPlayer = 0.85,
+	-- (and with more of you, he fights harder: more shots / zones per attack, a shorter daze)
+	DazeShortenPerPlayer = 1.2, -- seconds off the daze per extra player (never below 8)
 
 	WalkSpeed = 115,         -- studs/s round the ring at full stride
 	WalkArc = { 18, 42 },    -- degrees he walks between attacks (random in range)

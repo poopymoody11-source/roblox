@@ -264,6 +264,7 @@ function A.start(ctx, d)
 	local B = { Green = false, Gone = false, Frozen = nil }
 	ctx.BigBang = B
 	Warn.callout("!! BIG BANG !!")
+	ctx.Cam.follow(d.ThrowT - 0.8)
 	Fx.say("I WILL SHOW YOU\nTHE BIRTH OF A UNIVERSE...", 2, true)
 	task.delay(math.max(d.ThrowT - S.now() - 0.4, 0), function()
 		if ctx.epoch() == epoch then Fx.say("...AND ITS DEATH.", 1.1, true) end
@@ -350,7 +351,17 @@ function A.start(ctx, d)
 		local side = toArena:Cross(UP)
 		local from = orb + toArena * (s * 2.4 + 60) + side * (s * 0.9) - UP * 30
 		return CFrame.lookAt(from, orb:Lerp(head and head.Position or orb, 0.35)), 62
-	end, d.ThrowT - 1.6, d.ThrowT + 0.2, 0.3)
+	end, d.ThrowT - 2.0, d.ThrowT - 0.7, 0.3)
+	-- as it falls: high over you, looking down - the red zone and the green way out, in plain view
+	ctx.Cam.cut(function(now)
+		local c = ctx.player.Character
+		local r = c and c:FindFirstChild("HumanoidRootPart")
+		local me = r and r.Position or S.CENTER
+		local out = S.flat(me - S.CENTER)
+		out = out.Magnitude > 1 and out.Unit or Vector3.xAxis
+		local from = me + out * 45 + UP * 125
+		return CFrame.lookAt(from, me:Lerp(S.CENTER, 0.25)), 70
+	end, d.ThrowT - 0.6, d.T + 0.5, 0.35)
 
 	-- the universe
 	local host = K.part({ Name = "BigBangHost", Size = Vector3.one, Transparency = 1, CFrame = CFrame.new(S.CENTER) }, Fx.Folder)
@@ -985,12 +996,7 @@ function A.finish(ctx, d)
 	local sh = d.Shape
 	local host = K.part({ Name = "RoarHost", Size = Vector3.one, Transparency = 1, CFrame = CFrame.new(d.Weak) }, Fx.Folder)
 	local SEG = 48
-	local walls = {}
-	for i = 1, SEG do
-		local q = K.quad(host, host.CFrame, 1, sh.H, "10365550877", { Color = Fx.VIOLET_HOT, Brightness = 3.5, Transparency = K.ns(0, 0.05, 0.7, 0.3, 1, 1) })
-		q.Enabled = false
-		walls[i] = q
-	end
+	local wall = Fx.shockRing(host, SEG, sh.H, sh.W or 6, true)
 	ctx.Warn.add({ Id = d.Id, Shape = sh, Name = "ROAR" })
 	task.delay(math.max(d.RingT - S.now(), 0), function()
 		if ctx.epoch() == epoch then Fx.blast(d.Weak, 25, Fx.VIOLET, { Shake = 2.5, Column = false, Sound = K.S.Boom }) end
@@ -1004,21 +1010,7 @@ function A.finish(ctx, d)
 			host:Destroy()
 			return
 		end
-		local o = Vector3.new(d.Weak.X, S.CENTER.Y, d.Weak.Z)
-		local da = 2 * math.pi / SEG
-		for i, q in ipairs(walls) do
-			local a0, a1 = (i - 1) * da, i * da
-			local p0 = o + Vector3.new(math.cos(a0) * r, 0, math.sin(a0) * r)
-			local p1 = o + Vector3.new(math.cos(a1) * r, 0, math.sin(a1) * r)
-			local mid = (p0 + p1) / 2
-			local show = now >= sh.T0 and S.onArena(mid, -2)
-			q.Enabled = show
-			if show then
-				local along = p1 - p0
-				K.moveQuad(q, CFrame.fromMatrix(mid + UP * sh.H / 2, along.Unit, UP))
-				K.setQuadSize(q, along.Magnitude * 1.02, sh.H)
-			end
-		end
+		wall.update(d.Weak, r, now >= sh.T0, now)
 	end)
 end
 
@@ -1206,6 +1198,7 @@ function A.hammer(ctx, d)
 	local zone = Fx.zone(shape, d.T0, d.T)
 	Warn.add({ Id = d.Id, T = d.T, Shape = shape, Name = "HAMMER OF DESPAIR", Target = "all", Rad = d.R, Pos = function() return d.P + Vector3.new(0, 6, 0) end })
 	Warn.callout("HAMMER OF DESPAIR")
+	ctx.Cam.follow(d.T + 0.6)
 	ctx.Fx.say("BE CRUSHED BENEATH\nTHE WEIGHT OF DESPAIR.", 1.3, true)
 	-- the cut-in: low on the arena, up at him with both fists raised to the sky
 	ctx.Cam.cut(function(now)
@@ -1407,6 +1400,19 @@ function A.shot(ctx, d)
 	local body
 	if (d.Kind == "planet" or giant) and d.Model then
 		body = K.planet(d.Model, d.Size, CFrame.new(d.From), Fx.Folder)
+		if body then
+			-- (a planet's extra parts - rings, atmospheres - are separate: weld them on so
+			-- they fly with it, instead of hanging where it was made)
+			for _, p in ipairs(body:GetDescendants()) do
+				if p:IsA("BasePart") then
+					p.Anchored = false
+					p.CanCollide, p.CanQuery, p.CanTouch = false, false, false
+					local w = Instance.new("WeldConstraint")
+					w.Part0, w.Part1 = body, p
+					w.Parent = p
+				end
+			end
+		end
 	end
 	local glow
 	if not body then
@@ -1436,6 +1442,7 @@ function A.shot(ctx, d)
 		local w = Instance.new("WeldConstraint") w.Part0, w.Part1 = body, shell w.Parent = shell
 		shell.Anchored = false
 		Warn.callout("THE LAST WORLD")
+		ctx.Cam.follow(d.T + 0.5)
 		K.sfx(K.S.Rumble, 1, 0.6)
 		K.sfx(K.S.Riser, 0.9, 0.7)
 	end
@@ -1575,6 +1582,7 @@ function A.start(ctx, d)
 	local G = galaxies(S, d.Galaxies)
 	ctx.Corruption = { G = G, Pulse = {} }
 	Warn.callout("GALAXY CORRUPTION")
+	ctx.Cam.follow(d.EndT + 3)
 	Fx.say("EVERY GALAXY IN THIS REALM\nBELONGS TO ME.", 1.5, true)
 	task.delay(math.max(d.StormT - S.now() - 0.2, 0), function()
 		if ctx.epoch() == epoch then Fx.say("FALL, SPIRAL APES.", 1.1, true) end
@@ -1877,6 +1885,7 @@ function A.start(ctx, d)
 	local hole = c + UP * HOLE_H
 	local clapT = d.OpenT - 0.15
 	Warn.callout("SPIRAL COLLAPSE")
+	ctx.Cam.follow(d.BlastT + 1)
 	ctx.Fx.say("ALL SPIRALS END\nIN THE VOID.", 1.2)
 	-- the cut-in: the hole tearing open over the arena
 	ctx.Cam.cut(function(now)
@@ -2119,33 +2128,14 @@ function A.start(ctx, d)
 	end)
 	K.sfx(K.S.Rumble, 0.7, 0.8)
 	ctx.Fx.say("THE UNIVERSE TREMBLES\nAT MY STEP.", 1.2)
-	-- the rings: a wall of light (quads round the circle) + a glow on the floor
+	-- the rings: a wall of light (Fx.shockRing) + a glow on the floor
 	local host = K.part({ Name = "QuakeHost", Size = Vector3.one, Transparency = 1, CFrame = CFrame.new(d.Origin) }, Fx.Folder)
 	local rings = {}
 	for _, r in ipairs(d.Rings) do
-		local walls = {}
-		for i = 1, SEGS do
-			local q = K.quad(host, host.CFrame, 1, r.Shape.H, "10365550877", { Color = Fx.VIOLET_HOT, Brightness = 3.5, Transparency = K.ns(0, 0.05, 0.7, 0.3, 1, 1) })
-			q.Enabled = false
-			walls[i] = q
-		end
-		-- a white-hot core low on the wall, and a tall violet glow behind it
-		local cores, glows = {}, {}
-		for i = 1, SEGS do
-			local c = K.quad(host, host.CFrame, 1, r.Shape.H * 0.5, nil, { Color = Color3.new(1, 1, 1), Brightness = 5, Transparency = 0.1 })
-			c.Enabled = false
-			cores[i] = c
-			local g = K.quad(host, host.CFrame, 1, r.Shape.H * 2.6, "10180479311", { Color = Fx.VIOLET, Brightness = 2, Transparency = K.ns(0, 0.35, 0.5, 0.6, 1, 1) })
-			g.Enabled = false
-			glows[i] = g
-		end
+		local wall = Fx.shockRing(host, SEGS, r.Shape.H, r.Shape.W, true)
 		local floor = K.softRing(host, SEGS, 1, 2, { Brightness = 3, Alpha = 0 })
 		for _, q in ipairs(floor.Q) do q.Color = ColorSequence.new(Fx.MAGENTA, Fx.VIOLET) end
 		floor.setEnabled(false)
-		-- the red line racing ahead of it: where it'll be in a moment
-		local ahead = K.softRing(host, SEGS, 1, 2, { Brightness = 3, Alpha = 0 })
-		for _, q in ipairs(ahead.Q) do q.Color = ColorSequence.new(Fx.RED) end
-		ahead.setEnabled(false)
 		-- dust and rubble thrown up along its front
 		local dust = {}
 		for i = 1, 12 do
@@ -2162,7 +2152,7 @@ function A.start(ctx, d)
 			})
 			dust[i] = { H = hp, D = e, C = chips }
 		end
-		table.insert(rings, { R = r, Walls = walls, Cores = cores, Glows = glows, Floor = floor, Ahead = ahead, Dust = dust })
+		table.insert(rings, { R = r, Wall = wall, Floor = floor, Dust = dust })
 		Warn.add({ Id = r.Id, Shape = r.Shape, Name = "SHOCKWAVE" })
 	end
 	local stomped = false
@@ -2191,38 +2181,8 @@ function A.start(ctx, d)
 			local on = now >= sh.T0 and r < 2 * S.ARENA_R + 20
 			if on then any = true end
 			local da = 2 * math.pi / SEGS
-			for i, q in ipairs(ring.Walls) do
-				local a0, a1 = (i - 1) * da, i * da
-				local p0 = o + Vector3.new(math.cos(a0) * r, 0, math.sin(a0) * r)
-				local p1 = o + Vector3.new(math.cos(a1) * r, 0, math.sin(a1) * r)
-				local mid = (p0 + p1) / 2
-				local show = on and S.onArena(mid, -2)
-				q.Enabled = show
-				ring.Cores[i].Enabled = show
-				ring.Glows[i].Enabled = show
-				if show then
-					local along = (p1 - p0)
-					local len = along.Magnitude
-					local cf = CFrame.fromMatrix(mid + UP * sh.H / 2, along.Unit, UP)
-					K.moveQuad(q, cf)
-					K.setQuadSize(q, len * 1.02, sh.H)
-					K.moveQuad(ring.Cores[i], CFrame.fromMatrix(mid + UP * sh.H * 0.25, along.Unit, UP))
-					K.setQuadSize(ring.Cores[i], len * 1.02, sh.H * 0.5)
-					K.moveQuad(ring.Glows[i], CFrame.fromMatrix(mid + UP * sh.H * 1.3, along.Unit, UP))
-					K.setQuadSize(ring.Glows[i], len * 1.02, sh.H * 2.6)
-				end
-			end
-			-- the warning line ahead of it, and its dust
-			ring.Ahead.setEnabled(on)
-			if on then
-				local ra = r + 16 + 6 * math.sin(now * 20)
-				ring.Ahead.update(CFrame.lookAt(o + UP * 0.25, o + UP * 2), ra, ra + 1.4, 0)
-				ring.Ahead.setTransparency(0.25)
-				for i, q in ipairs(ring.Ahead.Q) do
-					local a = (i - 1) * da
-					q.Enabled = S.onArena(o + Vector3.new(math.cos(a) * ra, 0, math.sin(a) * ra), -2)
-				end
-			end
+			ring.Wall.update(o, r, on, now)
+			-- its dust
 			local inward = math.atan2(S.CENTER.Z - o.Z, S.CENTER.X - o.X)
 			for i, dd in ipairs(ring.Dust) do
 				local a = inward + ((i - 0.5) / #ring.Dust - 0.5) * math.rad(170)
@@ -2388,7 +2348,15 @@ local HEIGHT = 22
 local FOV = 80
 
 local enabled = false
-local wanted = true
+local nowFn = os.clock
+local function nowFnRef() return nowFn() end
+-- (your own camera most of the time: the follow shot only for his big moments,
+-- or always if you press C)
+local wanted = false
+local followUntil = 0
+local function following()
+	return wanted or nowFnRef() < followUntil
+end
 local focusFn -- () -> Vector3: the point on him to frame
 local camPos, aimDir
 local yawOff, pitchOff = 0, 0
@@ -2403,7 +2371,6 @@ end
 -- whipping in and back out over `blend` seconds. The big attacks use these to show
 -- the whole of what's coming.
 local cuts = {}
-local nowFn = os.clock
 function C.cut(fn, t0, t1, blend)
 	table.insert(cuts, { Fn = fn, T0 = t0, T1 = t1, B = blend or 0.25 })
 end
@@ -2490,7 +2457,7 @@ local function step(dt)
 			return
 		end
 	end
-	if not (enabled and wanted and root and hum and hum.Health > 0 and focusFn) then
+	if not (enabled and following() and root and hum and hum.Health > 0 and focusFn) then
 		if cam.CameraType == Enum.CameraType.Scriptable and enabled then
 			cam.CameraType = Enum.CameraType.Custom
 			if hum then cam.CameraSubject = hum end
@@ -2552,7 +2519,12 @@ function C.stop()
 	if hum then cam.CameraSubject = hum end
 end
 
-function C.active() return enabled and wanted end
+function C.active() return enabled and following() end
+
+-- the follow shot until `untilT` (server time): pulled back, framing him and you
+function C.follow(untilT)
+	followUntil = math.max(followUntil, untilT)
+end
 
 -- swinging it round
 UIS.InputBegan:Connect(function(input, processed)
@@ -2569,7 +2541,7 @@ UIS.InputEnded:Connect(function(input)
 	end
 end)
 UIS.InputChanged:Connect(function(input, processed)
-	if not (enabled and wanted) then return end
+	if not (enabled and following()) then return end
 	if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
 		yawOff = math.clamp(yawOff - input.Delta.X * 0.006, -1.3, 1.3)
 		pitchOff = math.clamp(pitchOff - input.Delta.Y * 0.05, -6, 14)
@@ -3130,6 +3102,88 @@ local function flatDisc(name, pos, r, color, tr)
 		Color = color, Transparency = tr, CFrame = CFrame.new(pos) * CFrame.Angles(0, 0, math.pi / 2) }, folder)
 end
 
+-- A shockwave wall rolling out over the floor: solid neon segments (a
+-- violet wall, a white crest, a dark base so it reads on the gold) with
+-- a violet glow behind, and, when warn is set, a red line racing ahead of
+-- it. Additive light alone washes out to white on the gold floor.
+--   local w = Fx.shockRing(host, segs, H, W, warn)
+--   w.update(origin, radius, on, now)   -- each frame (clips to the arena)
+function Fx.shockRing(host, segs, H, W, warn)
+	local PARK = CFrame.new(S.CENTER.X, S.CENTER.Y - 450, S.CENTER.Z) -- (out of sight, above the fallen-parts height)
+	local function seg(color, material, transparency)
+		return K.part({ Name = "ShockSeg", Size = Vector3.one, Color = color, Material = material, Transparency = transparency, CFrame = PARK }, host)
+	end
+	local walls, crests, bases, aheads, glows = {}, {}, {}, {}, {}
+	for i = 1, segs do
+		walls[i] = seg(VIOLET, Enum.Material.Neon, 0.05)
+		crests[i] = seg(Color3.new(1, 1, 1), Enum.Material.Neon, 0)
+		bases[i] = seg(VIOLET_DEEP, Enum.Material.SmoothPlastic, 0)
+		if warn then aheads[i] = seg(RED, Enum.Material.Neon, 0.1) end
+		local g = K.quad(host, host.CFrame, 1, H * 2.6, SMOKE, { Color = VIOLET, Brightness = 2, Transparency = K.ns(0, 0.35, 0.5, 0.6, 1, 1) })
+		g.Enabled = false
+		glows[i] = g
+	end
+	local parts, cfs = {}, {}
+	local function put(p, cf, size)
+		if p.Size ~= size then p.Size = size end
+		parts[#parts + 1] = p
+		cfs[#cfs + 1] = cf
+	end
+	local function park(p)
+		if p.CFrame ~= PARK then
+			parts[#parts + 1] = p
+			cfs[#cfs + 1] = PARK
+		end
+	end
+	local w = {}
+	function w.update(o, r, on, now)
+		o = Vector3.new(o.X, S.CENTER.Y, o.Z)
+		local da = 2 * math.pi / segs
+		local ra = r + 14 + 4 * math.sin(now * 20)
+		for i = 1, segs do
+			local c0, s0 = math.cos((i - 1) * da), math.sin((i - 1) * da)
+			local c1, s1 = math.cos(i * da), math.sin(i * da)
+			local p0 = o + Vector3.new(c0 * r, 0, s0 * r)
+			local p1 = o + Vector3.new(c1 * r, 0, s1 * r)
+			local mid = (p0 + p1) / 2
+			local show = on and r > 0.5 and S.onArena(mid, -2)
+			glows[i].Enabled = show
+			if show then
+				local along = p1 - p0
+				local len = along.Magnitude * 1.04
+				local base = CFrame.fromMatrix(mid, along.Unit, UP)
+				put(walls[i], base * CFrame.new(0, H / 2, 0), Vector3.new(len, H, 1.2))
+				put(crests[i], base * CFrame.new(0, H + 0.3, 0), Vector3.new(len, 0.6, 1.6))
+				put(bases[i], base * CFrame.new(0, 0.8, 0), Vector3.new(len, 1.6, W))
+				K.moveQuad(glows[i], base * CFrame.new(0, H * 1.3, 0))
+				K.setQuadSize(glows[i], len, H * 2.6)
+			else
+				park(walls[i])
+				park(crests[i])
+				park(bases[i])
+			end
+			if warn then
+				-- where it'll be in a moment
+				local q0 = o + Vector3.new(c0 * ra, 0, s0 * ra)
+				local q1 = o + Vector3.new(c1 * ra, 0, s1 * ra)
+				local qm = (q0 + q1) / 2
+				if on and S.onArena(qm, -2) then
+					local along = q1 - q0
+					put(aheads[i], CFrame.fromMatrix(qm + UP * 0.15, along.Unit, UP), Vector3.new(along.Magnitude * 1.04, 0.3, 1.8))
+				else
+					park(aheads[i])
+				end
+			end
+		end
+		if #parts > 0 then
+			workspace:BulkMoveTo(parts, cfs, Enum.BulkMoveMode.FireCFrameChanged)
+			table.clear(parts)
+			table.clear(cfs)
+		end
+	end
+	return w
+end
+
 -- shape: circle / line (see Shared); t0 = when it appears; T = impact
 function Fx.zone(shape, t0, T)
 	local Z = { Parts = {} }
@@ -3426,9 +3480,15 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
+local ContentProvider = game:GetService("ContentProvider")
+local SoundService = game:GetService("SoundService")
 local Debris = game:GetService("Debris")
 
 local M = {}
+
+-- the roll: a burst that eases off (studs/s over ROLL_TIME)
+local ROLL_TIME = 0.36
+local ROLL_FAST, ROLL_SLOW = 105, 38
 
 local player = Players.LocalPlayer
 local K, S, Fx, CharAnim, Aura, net, shared, ctx
@@ -3456,29 +3516,61 @@ end
 --------------------------------------------------------------------------
 -- effects (for anyone's)
 --------------------------------------------------------------------------
-function M.rollFx(char)
+-- mine: the local player's own roll (its sound already played, 2D, on the press)
+function M.rollFx(char, mine)
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	if not root then return end
-	CharAnim.play(char, CharAnim.Roll, 0.04)
+	CharAnim.play(char, CharAnim.Roll, 0.03)
 	local p = root.Position - Vector3.new(0, 2.5, 0)
+	-- a kick of dust off the floor, and a flat shockwave where you pushed off
 	Fx.emitAt(p, {
-		Texture = "10180479311", Color = ColorSequence.new(Color3.fromRGB(200, 190, 220)), Size = K.ns(0, 2, 1, 6),
-		Transparency = K.ns(0, 0.4, 1, 1), Lifetime = NumberRange.new(0.4, 0.7), Speed = NumberRange.new(4, 10),
-		SpreadAngle = Vector2.new(80, 10), LightEmission = 0.2, Rotation = NumberRange.new(0, 360),
-	}, 10, 1.2)
-	-- a green afterimage streak behind you
-	for k = 0, 2 do
-		task.delay(k * 0.06, function()
+		Texture = "10180479311", Color = ColorSequence.new(Color3.fromRGB(210, 200, 230)), Size = K.ns(0, 2, 1, 7),
+		Transparency = K.ns(0, 0.35, 1, 1), Lifetime = NumberRange.new(0.4, 0.8), Speed = NumberRange.new(6, 16),
+		SpreadAngle = Vector2.new(90, 8), LightEmission = 0.2, Rotation = NumberRange.new(0, 360),
+	}, 14, 1.2)
+	Fx.emitAt(p + Vector3.new(0, 0.3, 0), {
+		Texture = "1851669703", Color = ColorSequence.new(Color3.new(1, 1, 1), GREEN), Size = K.ns(0, 1, 1, 0),
+		Lifetime = NumberRange.new(0.2, 0.4), Speed = NumberRange.new(25, 45), SpreadAngle = Vector2.new(90, 5), Brightness = 4,
+	}, 10, 1)
+	-- a green streak off your body while you roll
+	local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso") or root
+	local a0 = Instance.new("Attachment")
+	a0.Position = Vector3.new(0, 0.9, 0)
+	a0.Parent = torso
+	local a1 = Instance.new("Attachment")
+	a1.Position = Vector3.new(0, -0.9, 0)
+	a1.Parent = torso
+	local tr = Instance.new("Trail")
+	tr.Attachment0, tr.Attachment1 = a0, a1
+	tr.Lifetime = 0.22
+	tr.LightEmission = 1
+	tr.Brightness = 3
+	tr.FaceCamera = true
+	tr.Color = ColorSequence.new(Color3.new(1, 1, 1), GREEN)
+	tr.Transparency = K.ns(0, 0.2, 1, 1)
+	tr.WidthScale = K.ns(0, 1, 1, 0.2)
+	tr.Parent = torso
+	task.delay(ROLL_TIME, function() tr.Enabled = false end)
+	Debris:AddItem(tr, ROLL_TIME + 0.3)
+	Debris:AddItem(a0, ROLL_TIME + 0.3)
+	Debris:AddItem(a1, ROLL_TIME + 0.3)
+	-- afterimages strung out behind you
+	for k = 0, 3 do
+		task.delay(k * 0.055, function()
 			for _, part in ipairs(char:GetChildren()) do
 				if part:IsA("BasePart") and part.Transparency < 1 and part.Name ~= "HumanoidRootPart" then
-					local g = K.part({ Name = "Ghost", Size = part.Size, CFrame = part.CFrame, Material = Enum.Material.Neon, Color = k == 1 and LIME or GREEN, Transparency = 0.5 + k * 0.12 }, Fx.Folder)
-					K.tween(g, 0.3, { Transparency = 1 })
-					Debris:AddItem(g, 0.35)
+					local g = K.part({ Name = "Ghost", Size = part.Size, CFrame = part.CFrame, Material = Enum.Material.Neon, Color = k % 2 == 1 and LIME or GREEN, Transparency = 0.45 + k * 0.1 }, Fx.Folder)
+					K.tween(g, 0.28, { Transparency = 1, Size = part.Size * 0.85 })
+					Debris:AddItem(g, 0.32)
 				end
 			end
 		end)
 	end
-	Fx.sound(K.S.Whoosh, root.Position, 0.7, 1.4, 150)
+	-- (a scuff as you come out of it)
+	task.delay(ROLL_TIME - 0.05, function()
+		if root.Parent then Fx.sound(K.S.StepL, root.Position, 0.6, 1.2, 120) end
+	end)
+	if not mine then Fx.sound(K.S.Whoosh, root.Position, 0.7, 1.4, 150) end
 end
 
 function M.punchFx(char, at, left)
@@ -3511,6 +3603,17 @@ end
 --------------------------------------------------------------------------
 -- actions (mine)
 --------------------------------------------------------------------------
+-- the roll's sound, loaded up front: played 2D the moment you press
+local rollSound
+local function playRollSound()
+	if not rollSound then return end
+	local snd = rollSound:Clone()
+	snd.Parent = SoundService
+	snd:Play()
+	Debris:AddItem(snd, 3)
+end
+
+local rolling
 local function roll()
 	if not active then return end
 	local char, hum, root = me()
@@ -3518,11 +3621,14 @@ local function roll()
 	local now = os.clock()
 	if now - lastRoll < attr("RollCooldown", 1.1) then return end
 	lastRoll = now
+	-- (the sound and the server's i-frames first: nothing ahead of them)
+	playRollSound()
 	net.Action:FireServer("roll")
 	local dir = hum.MoveDirection
 	if dir.Magnitude < 0.1 then dir = root.CFrame.LookVector end
 	dir = Vector3.new(dir.X, 0, dir.Z).Unit
 	root.CFrame = CFrame.lookAt(root.Position, root.Position + dir)
+	if rolling then rolling() end
 	local att = Instance.new("Attachment")
 	att.Parent = root
 	local lv = Instance.new("LinearVelocity")
@@ -3531,13 +3637,40 @@ local function roll()
 	lv.VelocityConstraintMode = Enum.VelocityConstraintMode.Plane
 	lv.PrimaryTangentAxis = Vector3.xAxis
 	lv.SecondaryTangentAxis = Vector3.zAxis
-	lv.PlaneVelocity = Vector2.new(dir.X, dir.Z) * 62
+	lv.PlaneVelocity = Vector2.new(dir.X, dir.Z) * ROLL_FAST
 	lv.RelativeTo = Enum.ActuatorRelativeTo.World
 	lv.Parent = root
-	Debris:AddItem(lv, 0.34)
-	Debris:AddItem(att, 0.34)
-	M.rollFx(char)
-	ctx.Cam.punch(6, 0.25)
+	hum.AutoRotate = false
+	-- untouchable: a green flash for as long as the i-frames last
+	local hl = Instance.new("Highlight")
+	hl.FillColor = GREEN
+	hl.OutlineColor = Color3.new(1, 1, 1)
+	hl.FillTransparency = 0.55
+	hl.OutlineTransparency = 0.2
+	hl.DepthMode = Enum.HighlightDepthMode.Occluded
+	hl.Parent = char
+	K.tween(hl, attr("RollIFrames", 0.4), { FillTransparency = 1, OutlineTransparency = 1 })
+	Debris:AddItem(hl, attr("RollIFrames", 0.4) + 0.1)
+	local t0 = os.clock()
+	local conn
+	local function stop()
+		if conn then conn:Disconnect() conn = nil end
+		lv:Destroy()
+		att:Destroy()
+		hum.AutoRotate = true
+		if rolling == stop then rolling = nil end
+	end
+	rolling = stop
+	conn = RunService.Heartbeat:Connect(function()
+		local k = (os.clock() - t0) / ROLL_TIME
+		if k >= 1 or not lv.Parent then stop() return end
+		-- fast off the mark, easing out
+		local v = ROLL_FAST + (ROLL_SLOW - ROLL_FAST) * (1 - (1 - k) ^ 2)
+		lv.PlaneVelocity = Vector2.new(dir.X, dir.Z) * v
+	end)
+	M.rollFx(char, true)
+	ctx.Cam.punch(10, 0.3)
+	ctx.Cam.roll(dir:Dot(workspace.CurrentCamera.CFrame.RightVector) * -4, 0.3)
 end
 
 local function inReach()
@@ -3574,6 +3707,13 @@ function M.init(c)
 	K, S, Fx, CharAnim, Aura = c.K, c.S, c.Fx, c.CharAnim, c.Aura
 	net = c.Net
 	shared = ReplicatedStorage:WaitForChild("AntiSpiralFight")
+	rollSound = Instance.new("Sound")
+	rollSound.Name = "BF_RollWhoosh"
+	rollSound.SoundId = "rbxassetid://" .. K.S.Whoosh
+	rollSound.Volume = 0.8
+	rollSound.PlaybackSpeed = 1.45
+	rollSound.Parent = SoundService
+	task.spawn(function() pcall(function() ContentProvider:PreloadAsync({ rollSound }) end) end)
 	ContextActionService:BindAction("BF_Roll", function(_, state)
 		if state == Enum.UserInputState.Begin then roll() end
 		return Enum.ContextActionResult.Pass
@@ -3931,9 +4071,10 @@ function Q.init(kit, shared, warn, qteRemote)
 		[Enum.KeyCode.ButtonR2] = "CLICK", [Enum.KeyCode.ButtonA] = "SPACE", [Enum.KeyCode.ButtonX] = "Q",
 		[Enum.KeyCode.ButtonY] = "E", [Enum.KeyCode.ButtonB] = "F",
 	}
-	UIS.InputBegan:Connect(function(input, processed)
+	UIS.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			if not processed then pressKey("CLICK") end
+			-- (a click lands on the circles themselves, which marks it "processed": count it anyway)
+			if not UIS:GetFocusedTextBox() then pressKey("CLICK") end
 		elseif MAP[input.KeyCode] and not UIS:GetFocusedTextBox() then
 			pressKey(MAP[input.KeyCode])
 		end
@@ -3978,8 +4119,12 @@ function Q.update(now)
 			table.remove(order, i)
 		elseif pos and not h.Failed and not h.Claimed then
 			-- (in it: the circles come; out of it before they start: nothing to do)
-			if not h.Shown and inPath(h, pos) and now >= h.T + h.Steps[1].At - LEAD then
+			if not h.Shown and inPath(h, pos) and now >= h.T + h.Steps[1].At - LEAD and now < h.T then
 				h.Shown = true
+				-- (pulled in late: the circles already gone by don't count against you)
+				for _, st in ipairs(h.Steps) do
+					if h.T + st.At - 0.25 < now and st ~= h.Steps[#h.Steps] then st.Complete = true st.Err = 0 end
+				end
 				Warn.pop("ESCAPE IT!", PINK, true, Vector2.new(0.5, 0.26))
 			end
 			if h.Shown then
@@ -4780,7 +4925,7 @@ function W.update(now)
 				end
 			end
 			-- the lock-on: the big ones, aimed at me
-			if h.Big and (h.Target == myId or h.Target == "all") and pos then
+			if false and h.Big and (h.Target == myId or h.Target == "all") and pos then -- (the lock-on is retired)
 				if not h.Lock and not h.Result and now >= T - S.WARN_LOCK and now < T then
 					h.Lock = makeLock(h.Name or "INCOMING")
 					h.LockT = now

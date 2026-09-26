@@ -30,7 +30,7 @@ function A.Run(F, P, token)
 		Big = true,
 		-- (the one QTE in the fight: five circles, one after another, the last on the collapse)
 		Qte = (function()
-			local q = F.qte.sequence({ "Q", "E", "CLICK", "F", "SPACE" }, 0.55)
+			local q = F.qte.sequence({ "Q", "E", "CLICK", "F", "CLICK" }, 0.55)
 			q.Early, q.Late, q.Perfect = 0.28, 0.18, 0.09
 			return q
 		end)(),

@@ -162,6 +162,7 @@ function A.hammer(ctx, d)
 	local zone = Fx.zone(shape, d.T0, d.T)
 	Warn.add({ Id = d.Id, T = d.T, Shape = shape, Name = "HAMMER OF DESPAIR", Target = "all", Rad = d.R, Pos = function() return d.P + Vector3.new(0, 6, 0) end })
 	Warn.callout("HAMMER OF DESPAIR")
+	ctx.Cam.follow(d.T + 0.6)
 	ctx.Fx.say("BE CRUSHED BENEATH\nTHE WEIGHT OF DESPAIR.", 1.3, true)
 	-- the cut-in: low on the arena, up at him with both fists raised to the sky
 	ctx.Cam.cut(function(now)

@@ -24,6 +24,9 @@ function A.Run(F, P, token)
 	local S = F.S
 	local rng = F.rng
 	local t0 = F.now() + 0.2
+	-- (more of you, a thicker storm)
+	local k = 1 / (1 + 0.3 * ((P.Players or 1) - 1))
+	P.BoltGap = { P.BoltGap[1] * k, P.BoltGap[2] * k }
 	local stormT = t0 + P.Corrupt
 	local endT = stormT + P.Storm
 	F.fx("GalaxyCorruption", { T0 = t0, StormT = stormT, EndT = endT, Galaxies = P.Galaxies })

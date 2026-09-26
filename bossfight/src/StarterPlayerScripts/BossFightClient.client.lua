@@ -308,6 +308,7 @@ end
 
 handlers.Start = function(d)
 	Music.play("Phase1", 1.2)
+	Cam.follow(d.T0 + 4)
 	roar(d.T0, 2.2)
 	Fx.say("COME, SPIRAL APES.\nKNOW DESPAIR.", 1.6, true)
 end
@@ -436,6 +437,7 @@ handlers.Phase = function(d)
 	Qte.cancelAll()
 	Cam.clearCuts()
 	roar(d.T0, d.Dur)
+	Cam.follow(d.T0 + d.Dur)
 	Music.play("Phase2", 1)
 	Fx.say("YOU PERSIST...\nTHEN KNOW TRUE DESPAIR.", 2, true)
 	Fx.impact("VBV", 0.06)
@@ -485,6 +487,8 @@ local function begin()
 	shared:GetAttributeChangedSignal("BossMotion"):Connect(function()
 		local p = plan()
 		if p then rig:setPlan(p) end
+		-- (now and then, the camera pulls back to watch him stride round the arena)
+		if p and p.T1 - p.T0 > 1 and math.random() < 0.35 then Cam.follow(p.T1 + 0.4) end
 	end)
 	road = Fx.road(rig.Floor)
 	rig.OnStep = function(_, pos, power) Fx.stomp(pos, power) end

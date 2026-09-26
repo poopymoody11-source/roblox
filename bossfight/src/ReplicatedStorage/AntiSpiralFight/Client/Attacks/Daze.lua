@@ -179,12 +179,7 @@ function A.finish(ctx, d)
 	local sh = d.Shape
 	local host = K.part({ Name = "RoarHost", Size = Vector3.one, Transparency = 1, CFrame = CFrame.new(d.Weak) }, Fx.Folder)
 	local SEG = 48
-	local walls = {}
-	for i = 1, SEG do
-		local q = K.quad(host, host.CFrame, 1, sh.H, "10365550877", { Color = Fx.VIOLET_HOT, Brightness = 3.5, Transparency = K.ns(0, 0.05, 0.7, 0.3, 1, 1) })
-		q.Enabled = false
-		walls[i] = q
-	end
+	local wall = Fx.shockRing(host, SEG, sh.H, sh.W or 6, true)
 	ctx.Warn.add({ Id = d.Id, Shape = sh, Name = "ROAR" })
 	task.delay(math.max(d.RingT - S.now(), 0), function()
 		if ctx.epoch() == epoch then Fx.blast(d.Weak, 25, Fx.VIOLET, { Shake = 2.5, Column = false, Sound = K.S.Boom }) end
@@ -198,21 +193,7 @@ function A.finish(ctx, d)
 			host:Destroy()
 			return
 		end
-		local o = Vector3.new(d.Weak.X, S.CENTER.Y, d.Weak.Z)
-		local da = 2 * math.pi / SEG
-		for i, q in ipairs(walls) do
-			local a0, a1 = (i - 1) * da, i * da
-			local p0 = o + Vector3.new(math.cos(a0) * r, 0, math.sin(a0) * r)
-			local p1 = o + Vector3.new(math.cos(a1) * r, 0, math.sin(a1) * r)
-			local mid = (p0 + p1) / 2
-			local show = now >= sh.T0 and S.onArena(mid, -2)
-			q.Enabled = show
-			if show then
-				local along = p1 - p0
-				K.moveQuad(q, CFrame.fromMatrix(mid + UP * sh.H / 2, along.Unit, UP))
-				K.setQuadSize(q, along.Magnitude * 1.02, sh.H)
-			end
-		end
+		wall.update(d.Weak, r, now >= sh.T0, now)
 	end)
 end
 

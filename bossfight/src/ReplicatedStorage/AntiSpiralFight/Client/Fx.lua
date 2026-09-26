@@ -380,6 +380,88 @@ local function flatDisc(name, pos, r, color, tr)
 		Color = color, Transparency = tr, CFrame = CFrame.new(pos) * CFrame.Angles(0, 0, math.pi / 2) }, folder)
 end
 
+-- A shockwave wall rolling out over the floor: solid neon segments (a
+-- violet wall, a white crest, a dark base so it reads on the gold) with
+-- a violet glow behind, and, when warn is set, a red line racing ahead of
+-- it. Additive light alone washes out to white on the gold floor.
+--   local w = Fx.shockRing(host, segs, H, W, warn)
+--   w.update(origin, radius, on, now)   -- each frame (clips to the arena)
+function Fx.shockRing(host, segs, H, W, warn)
+	local PARK = CFrame.new(S.CENTER.X, S.CENTER.Y - 450, S.CENTER.Z) -- (out of sight, above the fallen-parts height)
+	local function seg(color, material, transparency)
+		return K.part({ Name = "ShockSeg", Size = Vector3.one, Color = color, Material = material, Transparency = transparency, CFrame = PARK }, host)
+	end
+	local walls, crests, bases, aheads, glows = {}, {}, {}, {}, {}
+	for i = 1, segs do
+		walls[i] = seg(VIOLET, Enum.Material.Neon, 0.05)
+		crests[i] = seg(Color3.new(1, 1, 1), Enum.Material.Neon, 0)
+		bases[i] = seg(VIOLET_DEEP, Enum.Material.SmoothPlastic, 0)
+		if warn then aheads[i] = seg(RED, Enum.Material.Neon, 0.1) end
+		local g = K.quad(host, host.CFrame, 1, H * 2.6, SMOKE, { Color = VIOLET, Brightness = 2, Transparency = K.ns(0, 0.35, 0.5, 0.6, 1, 1) })
+		g.Enabled = false
+		glows[i] = g
+	end
+	local parts, cfs = {}, {}
+	local function put(p, cf, size)
+		if p.Size ~= size then p.Size = size end
+		parts[#parts + 1] = p
+		cfs[#cfs + 1] = cf
+	end
+	local function park(p)
+		if p.CFrame ~= PARK then
+			parts[#parts + 1] = p
+			cfs[#cfs + 1] = PARK
+		end
+	end
+	local w = {}
+	function w.update(o, r, on, now)
+		o = Vector3.new(o.X, S.CENTER.Y, o.Z)
+		local da = 2 * math.pi / segs
+		local ra = r + 14 + 4 * math.sin(now * 20)
+		for i = 1, segs do
+			local c0, s0 = math.cos((i - 1) * da), math.sin((i - 1) * da)
+			local c1, s1 = math.cos(i * da), math.sin(i * da)
+			local p0 = o + Vector3.new(c0 * r, 0, s0 * r)
+			local p1 = o + Vector3.new(c1 * r, 0, s1 * r)
+			local mid = (p0 + p1) / 2
+			local show = on and r > 0.5 and S.onArena(mid, -2)
+			glows[i].Enabled = show
+			if show then
+				local along = p1 - p0
+				local len = along.Magnitude * 1.04
+				local base = CFrame.fromMatrix(mid, along.Unit, UP)
+				put(walls[i], base * CFrame.new(0, H / 2, 0), Vector3.new(len, H, 1.2))
+				put(crests[i], base * CFrame.new(0, H + 0.3, 0), Vector3.new(len, 0.6, 1.6))
+				put(bases[i], base * CFrame.new(0, 0.8, 0), Vector3.new(len, 1.6, W))
+				K.moveQuad(glows[i], base * CFrame.new(0, H * 1.3, 0))
+				K.setQuadSize(glows[i], len, H * 2.6)
+			else
+				park(walls[i])
+				park(crests[i])
+				park(bases[i])
+			end
+			if warn then
+				-- where it'll be in a moment
+				local q0 = o + Vector3.new(c0 * ra, 0, s0 * ra)
+				local q1 = o + Vector3.new(c1 * ra, 0, s1 * ra)
+				local qm = (q0 + q1) / 2
+				if on and S.onArena(qm, -2) then
+					local along = q1 - q0
+					put(aheads[i], CFrame.fromMatrix(qm + UP * 0.15, along.Unit, UP), Vector3.new(along.Magnitude * 1.04, 0.3, 1.8))
+				else
+					park(aheads[i])
+				end
+			end
+		end
+		if #parts > 0 then
+			workspace:BulkMoveTo(parts, cfs, Enum.BulkMoveMode.FireCFrameChanged)
+			table.clear(parts)
+			table.clear(cfs)
+		end
+	end
+	return w
+end
+
 -- shape: circle / line (see Shared); t0 = when it appears; T = impact
 function Fx.zone(shape, t0, T)
 	local Z = { Parts = {} }

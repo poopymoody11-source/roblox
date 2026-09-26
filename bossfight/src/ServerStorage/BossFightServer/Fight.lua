@@ -465,7 +465,8 @@ end
 
 local function daze()
 	local t0 = S.now()
-	local dur = Config.DazeTime or 8
+	local extra = math.max(#Players:GetPlayers() - 1, 0)
+	local dur = math.max((Config.DazeTime or 8) - extra * (Config.DazeShortenPerPlayer or 0), 8)
 	local weak = F.weakPoint(t0)
 	F.Dazed = true
 	dazeEnds = t0 + dur
@@ -562,6 +563,7 @@ function F.run()
 			local mod = attacks[entry.Module]
 			local params = table.clone(mod.Defaults or {})
 			for k, v in pairs(entry.Params or {}) do params[k] = v end
+			params.Players = math.max(#F.targets(), 1)
 			local token = F.Token
 			print("[BossFight] attack: " .. entry.Module)
 			local ok, err = pcall(mod.Run, F, params, token)
