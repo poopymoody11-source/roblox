@@ -1,10 +1,13 @@
 # Packs bossfight/src into Studio model files (one per service) in bossfight/build/.
 # In Studio: right-click the service in the Explorer -> Insert from File... -> pick the file.
+# Usage: python3 tools/build_rbxmx.py [project]   (default: bossfight; e.g. fixes/portal-lock)
 import os
+import sys
 from xml.sax.saxutils import escape
 
-SRC = os.path.join(os.path.dirname(__file__), '..', 'bossfight', 'src')
-OUT = os.path.join(os.path.dirname(__file__), '..', 'bossfight', 'build')
+PROJECT = sys.argv[1] if len(sys.argv) > 1 else 'bossfight'
+SRC = os.path.join(os.path.dirname(__file__), '..', PROJECT, 'src')
+OUT = os.path.join(os.path.dirname(__file__), '..', PROJECT, 'build')
 ref = 0
 
 def item(cls, name, source=None, children=()):

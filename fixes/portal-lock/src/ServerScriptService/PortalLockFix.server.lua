@@ -1,0 +1,42 @@
+--==================================================
+-- FINAL BOSS PORTAL LOCK (server)
+-- Each base's Final Boss portal prompt (Upgrades > Purchases >
+-- bossfight > teleport) was tagged "NPCprompt". DialogModule turns
+-- every NPCprompt back on (on spawn, on death, after a conversation),
+-- so a locked portal's prompt switched on, and FinalPortalFX (which
+-- builds the vortex, runes and FINAL BOSS sign whenever the prompt is
+-- on) showed it before the upgrade was bought.
+--
+-- This takes the portal prompts out of the NPCprompt tag, and
+-- publishes whether each portal is really unlocked (the server's own
+-- prompt state, set by BaseUpgradeService) as the model's "Unlocked"
+-- attribute, for PortalLockGuard on the clients.
+--==================================================
+local CollectionService = game:GetService("CollectionService")
+
+local plotsFolder = workspace:WaitForChild("Islands"):WaitForChild("StarterIsland"):WaitForChild("IslandPlots")
+
+local function hookPrompt(model, prompt)
+	CollectionService:RemoveTag(prompt, "NPCprompt")
+	local function publish()
+		model:SetAttribute("Unlocked", prompt.Enabled)
+	end
+	publish()
+	prompt:GetPropertyChangedSignal("Enabled"):Connect(publish)
+end
+
+local function scanPlot(plot)
+	local upgrades = plot:WaitForChild("Upgrades", 10)
+	local purchases = upgrades and upgrades:WaitForChild("Purchases", 10)
+	local model = purchases and purchases:WaitForChild("bossfight", 10)
+	if not model then return end
+	for _, d in ipairs(model:GetDescendants()) do
+		if d:IsA("ProximityPrompt") then hookPrompt(model, d) end
+	end
+	model.DescendantAdded:Connect(function(d)
+		if d:IsA("ProximityPrompt") then hookPrompt(model, d) end
+	end)
+end
+
+for _, plot in ipairs(plotsFolder:GetChildren()) do task.spawn(scanPlot, plot) end
+plotsFolder.ChildAdded:Connect(function(plot) task.spawn(scanPlot, plot) end)
