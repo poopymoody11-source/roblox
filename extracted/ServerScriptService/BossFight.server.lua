@@ -1,0 +1,52 @@
+--==================================================
+-- BOSS FIGHT (server entry)
+-- Runs the reworked Anti-Spiral fight once the final cutscene
+-- hands over (workspace attribute FC_State = "Fight").
+-- Code: ServerStorage.BossFightServer (+ ReplicatedStorage.AntiSpiralFight)
+--
+-- STUDIO TESTING: set the workspace attribute BF_TestFight = true
+-- (before pressing Play) to jump past the cutscene to the fight.
+--==================================================
+local ServerScriptService = game:GetService("ServerScriptService")
+local ServerStorage = game:GetService("ServerStorage")
+local RunService = game:GetService("RunService")
+
+-- the scripts this replaces: they must not run alongside it
+for _, name in ipairs({ "BossService", "BatService", "SpiralEnergyService" }) do
+	local old = ServerScriptService:FindFirstChild(name)
+	if old and old:IsA("Script") and old.Enabled then
+		old.Enabled = false
+		warn("[BossFight] disabled the old ServerScriptService." .. name .. " - delete it from the place")
+	end
+end
+
+local folder = ServerStorage:WaitForChild("BossFightServer")
+local F = require(folder:WaitForChild("Fight"))
+local Bat = require(folder:WaitForChild("BatServer"))
+
+local model = workspace:WaitForChild("BossFight"):WaitForChild("Anti-Spiral")
+-- (anything the old boss code left on him)
+for _, d in ipairs(model:GetChildren()) do
+	if d:IsA("ForceField") then d:Destroy() end
+end
+F.init(model)
+Bat.init(F)
+
+local started = false
+local function check()
+	if started or workspace:GetAttribute("FC_FightDisabled") then return end
+	if workspace:GetAttribute("FC_State") == "Fight" then
+		started = true
+		task.spawn(F.run)
+	end
+end
+workspace:GetAttributeChangedSignal("FC_State"):Connect(check)
+
+if RunService:IsStudio() and workspace:GetAttribute("BF_TestFight") then
+	-- (the cutscene server's own debug hooks: start from its last chapter, and
+	-- don't wait for a party. The fight begins ~15 s after you spawn.)
+	warn("[BossFight] BF_TestFight: jumping to the end of the cutscene")
+	workspace:SetAttribute("FC_DebugFrom", workspace:GetAttribute("FC_DebugFrom") or "IAm")
+	task.delay(3, function() workspace:SetAttribute("FC_ForceStart", true) end)
+end
+check()
