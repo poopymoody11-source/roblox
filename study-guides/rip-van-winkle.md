@@ -76,6 +76,10 @@ Rip **flips** the work-hard-get-rich Dream. He avoids "profitable labor," loses 
 - **2a/b. Pathos:** "Poor Rip," "Poor Wolf," "henpecked." Irving makes us pity Rip and laugh at Dame, so most readers side with Rip even though Dame is technically right that he's irresponsible.
 - **3. Commenting on the times (pp. 44–46):** the sleep lets Irving jump from colony to nation in one cut. The sign changes, but the people are still loafing and arguing. Irving suggests the Revolution changed **less in daily life** than people claim, and he satirizes noisy new politics.
 - **Reflect (Irving's life):** Catskills ghost stories → the legend. The Knickerbocker hoax → the frame. Seventeen years abroad → Rip coming home to a strange America.
+  - **Rip as Irving (a strong reading):** Irving's brothers "often support[ed] him financially as he pursued his writing career" (packet p. 3). He was "an uninterested student" who "barely passed the bar," and when the family firm needed him, it went **bankrupt** (p. 4). Like Rip, he avoided "profitable labor" and lived off others' kindness. Writing Rip as lovable instead of shameful can be read as Irving **defending his own kind of life**.
+  - **Women and marriage:** Irving never married. His 17-year-old fiancée, **Matilda Hoffman, died in 1809** (p. 3), years before he wrote Rip. That loss, and his life as a lifelong bachelor, may explain why marriage in the story is a "yoke" and the wife is a "termagant."
+  - ⚠️ **Timeline check:** Emily Foster's rejection happened in **1823** (p. 4), *after* Rip was published (1819), so it **can't** have influenced this story. Use Matilda Hoffman's death instead. The rejection could fit his later works.
+  - *Exam tip:* say "this **may** reflect" or "**can be read as**." These are interpretations, not proven facts.
 
 ## American Dream (James Truslow Adams' original definition)
 A better, fuller life for everyone, with opportunity based on **ability, not birth**. Rip doesn't chase it: he has "an insuperable aversion to all kinds of profitable labor." Yet he ends up content, which questions whether the Dream has to mean hard work and success.
