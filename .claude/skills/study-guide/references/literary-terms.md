@@ -1,4 +1,4 @@
-# Class literary terms list (from the handout, pages 1–6 seen so far)
+# Class literary terms list (from the handout, pages 1–11)
 
 Use these names and definitions when labeling devices.
 
@@ -63,4 +63,77 @@ Use these names and definitions when labeling devices.
 - **Lyric poem**: expresses personal feelings rather than telling a story.
 - **Metaphor**: comparison without like/as. *Implied metaphor*: comparison implied by a verb. *Extended metaphor*: developed at length (conceit if elaborate).
 
-(Pages 7+ of the handout not yet received: likely includes symbolism, simile, satire, tone, theme, etc. Those standard terms may still be used.)
+- **Dead metaphor**: metaphor used so often it's no longer vivid ("head of the house").
+- **Mixed metaphor**: metaphor whose terms clash ("the President is a lame duck running out of gas").
+- **Metonymy**: referring to something by a thing closely associated with it ("the crown" = the monarch).
+- **Mood**: atmosphere created by diction and the details selected.
+- **Motif**: recurring image, word, idea, object, or situation that unifies a work and ties it to theme.
+- **Motivation**: the reasons for a character's behavior.
+- **Onomatopoeia**: words whose sounds echo their sense ("pop," "zap").
+- **Oxymoron**: contradictory terms in a brief phrase ("bitter-sweet").
+- **Parable**: short story teaching a moral or how to lead a good life.
+- **Paradox**: statement that seems self-contradictory but reveals a truth. *Koan*: Zen paradox ("sound of one hand clapping").
+- **Parallel structure (parallelism)**: repeated similar grammatical structures.
+- **Paratactic sentence**: clauses simply placed side by side ("I am tired; it is hot").
+- **Parody**: imitates another work's style to make fun of it.
+- **Periodic sentence**: main idea placed at the end, after introductory elements.
+- **Personification**: giving human feelings/thoughts to an object or animal.
+- **Plot**: series of related events. *Exposition* (introduces characters, situation, setting) → *Rising action* (complications) → *Climax* (turning point, greatest intensity) → *Resolution / denouement* (conflicts settled).
+- **Point of view**: *First person* (a character narrates); *Third person limited* (unknown narrator, one character's thoughts); *Omniscient* (all-knowing, many characters' thoughts); *Objective* (impersonal, no comment on thoughts).
+- **Polysyndeton**: conjunctions between every item ("X and Y and Z").
+- **Protagonist**: central character who drives the action; in a tragedy, has a *hamartia* (tragic flaw).
+- **Pun**: play on multiple meanings or similar sounds of words.
+- **Quatrain**: four-line stanza or poem.
+- **Refrain**: repeated line or group of lines in a poem.
+- **Rhythm**: rise and fall of stressed and unstressed syllables.
+- **Rhetoric**: art of effective, especially persuasive, communication.
+- **Rhetorical question**: question asked for effect, not for an answer.
+- **Romance**: story where an idealized hero/heroine undertakes a successful quest.
+- **Satire**: writing that ridicules people's or institutions' shortcomings to bring about change.
+- **Simile**: comparison using like, as, than, or resembles.
+- **Soliloquy**: long speech by a character alone on stage.
+- **Stereotype**: fixed idea of a character that ignores individuality.
+- **Stream of consciousness**: portrays the (often chaotic) inner workings of a mind.
+- **Style**: a writer's distinctive use of diction, tone, and syntax.
+- **Suspense**: uncertainty and curiosity about what happens next.
+- **Symbol**: person, place, thing, or event that means something itself and also stands for something more.
+- **Synecdoche**: a part represents the whole ("wheels" = car).
+- **Syntactic fluency**: variety of sentence structures and lengths.
+- **Syntactic permutation**: extraordinarily complex, involved sentence structures.
+- **Tall tale**: outrageously exaggerated, humorous, unbelievable story.
+- **Telegraphic sentence**: sentence shorter than five words.
+- **Theme**: the insight about human life revealed in a work.
+- **Tone**: writer's attitude toward the subject, characters, and audience (revealed through diction, figurative language, organization).
+- **Tragedy**: story where a heroic character dies or meets an unhappy end.
+- **Tricolon**: sentence of three parts of equal importance and length.
+- **Understatement**: saying less than is meant ("It's a bit breezy" about a sandstorm).
+- **Unity**: all parts of a work relate to one central idea.
+- **Vernacular**: language spoken by people in a particular place.
+
+## Writing movements and styles
+- **Plain style**: simple, clear expression (still uses allusions/metaphors); main form of the Puritan writers.
+- **Puritanism**: early English-speaking colonists' writing emphasizing obedience to God; journals, sermons, poems.
+- **Rationalism** (Neoclassicism / Age of Reason): truth through reason rather than the authority of the past, Church, or institutions.
+- **Romanticism**: revolt against Rationalism (late 1700s–1800s); emotion, imagination, nature, the individual.
+- **Transcendentalism**: 19th-c. Romantic movement: individuals reach truth through spiritual intuition, beyond reason and the senses.
+- **Realism**: 19th-c. style depicting life accurately without idealizing it.
+- **Regionalism**: emphasizes a specific region's setting, speech, behavior, attitudes.
+- **Naturalism**: extension of realism claiming to portray life exactly as it is.
+- **Impressionism**: records the artist's personal impressions rather than strict reality.
+- **Symbolism**: late-19th-c. French movement rearranging appearances to reveal a truer reality.
+- **Surrealism**: 1920s movement replacing realism with the unconscious mind.
+- **Modernism**: bold, experimental styles of the first third of the 20th century.
+
+## Timeline
+| Period | Dates |
+|---|---|
+| Puritanism | 1620–1770s |
+| Neoclassic | 1770s–early 1800s |
+| Romanticism | early 1800s–1870s |
+| Realism | 1850s–early 1900s |
+| Regionalism | 1884–early 1900s |
+| Naturalism | late 1800s–mid 1900s |
+| Modernism | 1920s–1945 |
+| Post-Modernism | 1945– |
+
+Always place each text in this timeline (e.g., Irving and Hawthorne = Romanticism; Hawthorne writes *about* the Puritan era).
