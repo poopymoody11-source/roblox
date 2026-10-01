@@ -1,0 +1,66 @@
+# Class literary terms list (from the handout, pages 1–6 seen so far)
+
+Use these names and definitions when labeling devices.
+
+- **Allegory**: story where characters/settings/events stand for abstract ideas (*Animal Farm*, *Lord of the Flies*).
+- **Alliteration**: repeated consonant sounds in nearby words.
+- **Allusion**: reference to something known from history, religion, literature, etc.
+- **Ambiguity**: deliberately suggesting two or more (sometimes conflicting) meanings.
+- **Analogy**: comparison showing how two things are alike.
+- **Anaphora**: repetition of a word/phrase at the *beginning* of successive clauses or sentences.
+- **Anastrophe / Inversion**: reversing normal word order for rhythm or emphasis.
+- **Anecdote**: brief story told to illustrate a point.
+- **Antagonist**: opponent who blocks the protagonist.
+- **Antimetabole**: words repeated in reverse order ("eat to live, not live to eat"); in poetry called chiasmus.
+- **Antithesis**: strongly contrasted words/ideas in parallel structure.
+- **Antihero**: central character lacking traditional heroic qualities.
+- **Anthropomorphism**: giving human traits to an animal or object (personification).
+- **Aphorism**: brief, clever statement of a general truth (maxim, epigram).
+- **Apostrophe**: addressing an absent/dead person, abstract idea, or object (to a god = invocation).
+- **Apposition**: placing an explanatory element right after another.
+- **Assonance**: repeated vowel sounds.
+- **Asyndeton**: list with commas and no conjunctions (opposite: polysyndeton).
+- **Balance**: sentence halves of equal length/importance.
+- **Characterization**: how a writer reveals personality. *Direct* = author tells us; *Indirect* = shown through looks, speech, thoughts, effect on others, actions.
+- **Static / Dynamic character**: doesn't change / changes in an important way.
+- **Flat / Round character**: one or two traits / complex, like a real person.
+- **Chiasmus**: second part balances the first with parts reversed.
+- **Cliché**: overused, lifeless phrase.
+- **Colloquialism**: informal, everyday word or phrase.
+- **Comedy**: story ending with a happy resolution.
+- **Conceit**: elaborate metaphor comparing startlingly different things.
+- **Confessional poetry**: 20th-c. poetry using intimate material from the poet's life.
+- **Conflict**: struggle between opposing forces. *External* (person vs. person/nature/society/machine) or *Internal* (within a mind).
+- **Connotation**: emotional associations of a word beyond its dictionary meaning.
+- **Couplet**: two consecutive rhyming lines.
+- **Dialect**: speech characteristic of a social group or region.
+- **Diction**: writer's choice of words.
+- **Didactic**: writing that teaches a lesson or moral.
+- **Elegy**: poem of mourning. **Eulogy**: speech praising someone who died.
+- **Epanalepsis**: same word at the beginning and end of a line/clause/sentence.
+- **Epic**: long heroic narrative poem in elevated language.
+- **Epigraph**: quotation at the start of a work, hinting at theme.
+- **Epistrophe**: repetition at the *end* of successive clauses (opposite of anaphora).
+- **Epithet**: descriptive phrase attached to a person ("swift-footed Achilles").
+- **Essay types**: Argumentation (logos/ethos/pathos), Persuasion (more emotional), Argument (appeals to reason), Causal relationship (one thing causes another).
+- **Description**: discourse creating mood or emotion. **Exposition**: discourse that explains. **Narrative**: discourse telling events.
+- **Explication**: interpreting a text through close reading.
+- **Fable**: short story teaching a practical lesson.
+- **Farce**: comedy with ridiculous situations and stereotyped characters.
+- **Figurative language**: words not meant literally (similes, metaphors).
+- **Flashback**: scene showing an earlier time.
+- **Foil**: character who contrasts with another to highlight traits.
+- **Foreshadowing**: hints about what will happen later.
+- **Free verse**: poetry without regular meter or rhyme.
+- **Hyperbole**: extreme exaggeration for effect.
+- **Hypotactic**: sentences using connecting words to show logical relationships.
+- **Imagery**: language evoking sensory pictures or experiences.
+- **Irony**: gap between appearance and reality. *Verbal* (saying one thing, meaning another), *Situational* (opposite of what's expected happens), *Dramatic* (audience knows what a character doesn't).
+- **Juxtaposition**: placing unlike ideas/images side by side for contrast.
+- **Litotes**: understatement through negating the opposite ("not unsubstantial").
+- **Local color**: emphasis on a specific setting's customs, dialect, landscape.
+- **Loose sentence**: main clause first, details after (vs. periodic sentence).
+- **Lyric poem**: expresses personal feelings rather than telling a story.
+- **Metaphor**: comparison without like/as. *Implied metaphor*: comparison implied by a verb. *Extended metaphor*: developed at length (conceit if elaborate).
+
+(Pages 7+ of the handout not yet received: likely includes symbolism, simile, satire, tone, theme, etc. Those standard terms may still be used.)
