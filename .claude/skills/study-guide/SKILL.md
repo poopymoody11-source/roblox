@@ -9,14 +9,15 @@ Make **one guide per text**. If the user is still sending pages ("wait", "more c
 
 ## Before writing
 1. Read `references/essential-question.md` (course EQ, unit EQs, core texts).
-2. Read `references/literary-terms.md` — pick devices from THIS list (the class's own terms and definitions).
-3. Check `study-guides/` for guides already made, so you can draw connections between texts.
-4. Read every page image closely, including handwriting in margins, underlines, circles, boxes, and arrows.
+2. Read `references/unit-plan.md`: exam scope, reading order, the teacher's analysis methods, and **the teacher's own discussion questions and vocab list for each text**. Match the guide to these.
+3. Read `references/literary-terms.md` — pick devices from THIS list (the class's own terms and definitions).
+4. Check `study-guides/` for guides already made, so you can draw connections between texts.
+5. Read every page image closely, including handwriting in margins, underlines, circles, boxes, and arrows.
 
 ## Guide format
 Save to `study-guides/<kebab-case-title>.md`, then summarize in chat (don't paste the whole guide unless asked). Use these sections, in this order:
 
-1. **Quick overview** — title, author, year, genre, a 2–3 sentence summary.
+1. **Quick overview** — title, author, year, genre, **which exam it's on** (from unit-plan.md), a 2–3 sentence summary.
 2. **Important characters** — table: name | who they are | key actions | characterization (direct vs. indirect, flat/round, static/dynamic, foil) | key quote with line #.
 3. **Plot events** — numbered, chronological. Mark exposition / rising action / climax / falling action / resolution where it applies. Note flashbacks or frame structure.
 4. **Setting & mood** — place and time inside the story; mood words; 3+ **direct quotes with line numbers**, each followed by a one-line explanation of how it creates the mood.
@@ -24,9 +25,10 @@ Save to `study-guides/<kebab-case-title>.md`, then summarize in chat (don't past
 6. **Historical context (time/place written)** — what was happening when it was written and how that shaped the story's events, characters, and themes.
 7. **Literary devices** — table: device (name from the class list) | quote + line # | effect/why it matters. Aim for 6–10 major ones; always check for irony, foil, symbolism/allegory, imagery, metaphor/extended metaphor, juxtaposition, hyperbole, allusion, foreshadowing.
 8. **Themes**, each with one supporting quote.
-9. **Connection to the essential question** — link to the course EQ ("How can we critically interpret the American Dream?") AND the current unit's EQ. Include a 2–3 sentence model answer.
+9. **Connection to the essential question** — use James Truslow Adams' original American Dream definition (unit-plan.md); link to the course EQ ("How can we critically interpret the American Dream?") AND the current unit's EQ. Include a 2–3 sentence model answer.
 10. **Your annotations** — list the user's own markings: underlined/boxed vocab (with definitions in context), margin notes (transcribe as best you can, then confirm or correct the interpretation), and circled passages and why they matter. Say "[unreadable]" rather than guessing.
-11. **Vocabulary** — hard words and proper nouns, with the meaning that fits the context.
+11. **Vocabulary** — always include every word on the teacher's vocab list for this text (unit-plan.md), with the context-fitting meaning, plus other hard words or proper nouns.
+11b. **Class questions** — if unit-plan.md lists the teacher's questions for this text, answer each briefly (2–3 sentences with page-cited evidence). These are the most likely exam material.
 12. **Likely test questions** — 4–6 questions (mix of recall and analysis, including at least one Pivotal Question: "In what ways / To what extent / How... and why is this significant?"), with short answer keys.
 13. **Connections to other texts** — compare with guides already in `study-guides/`.
 

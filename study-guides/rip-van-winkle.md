@@ -1,6 +1,6 @@
 # Rip Van Winkle — Washington Irving (1819)
 
-**Genre:** short story / tall tale, frame narrative · **Movement:** American Romanticism
+**📝 On the Unit 1 exam (Tue 10/6)** · **Genre:** short story / tall tale, frame narrative · **Movement:** American Romanticism
 **Summary:** Lazy, likable Rip escapes his nagging wife into the Catskills, drinks with the ghosts of Henry Hudson's crew, and sleeps **20 years**. He wakes to find his wife dead, his daughter grown, and King George replaced by George Washington. He slept through the Revolution.
 *(Handout has no line numbers, so quotes cite page numbers.)*
 
@@ -70,8 +70,20 @@ Rip **flips** the work-hard-get-rich Dream. He avoids "profitable labor," loses 
 - **Romanticism packet:** "Key points" on the characteristics list; "zenith = absolute peak" ✔; "Nationalism = support for your nation" ✔; Gothic = "mix of Romanticism?" ✔ (an extreme form of it).
 - **Irving bio:** "Parody" (*Salmagundi*) ✔; "Rise to fame (possibly)" (the hoax) ✔ yes; "bootleggers = illegal copies" ✔; "Falling part of his life" (bankruptcy); "Legend of Sleepy Hollow" by his grave.
 
-## Quick Vocab
-**termagant:** scolding woman · **henpecked:** bossed by one's wife · **insuperable:** unbeatable · **ninepins:** early bowling · **flagon:** liquor jug · **Tory:** loyal to the King · **despotism:** tyranny · **disputatious:** argumentative · **zenith:** peak · **predilection:** strong liking · **occult:** supernatural
+## Class Questions (from the unit plan)
+- **Imagery and setting (pp. 33–34):** "magical hues," "fairy mountains," mountains "lording it over" the land. These words create a **dreamy, enchanted** mood that sets up the supernatural.
+- **1a/b. Men vs. women (pp. 35–36):** Rip and Wolf are sympathetic "fellow-sufferers." Dame is a "termagant" with a "sharp tongue." Irving's language clearly **favors the male** side. Women are portrayed as nagging rulers, and men as innocent victims.
+- **2a/b. Pathos:** "Poor Rip," "Poor Wolf," "henpecked." Irving makes us pity Rip and laugh at Dame, so most readers side with Rip even though Dame is technically right that he's irresponsible.
+- **3. Commenting on the times (pp. 44–46):** the sleep lets Irving jump from colony to nation in one cut. The sign changes, but the people are still loafing and arguing. Irving suggests the Revolution changed **less in daily life** than people claim, and he satirizes noisy new politics.
+- **Reflect (Irving's life):** Catskills ghost stories → the legend. The Knickerbocker hoax → the frame. Seventeen years abroad → Rip coming home to a strange America.
+
+## American Dream (James Truslow Adams' original definition)
+A better, fuller life for everyone, with opportunity based on **ability, not birth**. Rip doesn't chase it: he has "an insuperable aversion to all kinds of profitable labor." Yet he ends up content, which questions whether the Dream has to mean hard work and success.
+
+## Class Vocab List
+**burghers** (31): respectable townspeople · **scrupulous** (32): very careful and exact · **latticed** (34): crisscross-framed windows · **surmounted** (34): topped with · **weathercocks** (34): rooster-shaped weathervanes · **obsequious** (34): overly eager to please · **conciliating** (34): soothing, trying to keep the peace · **termagant** (34): harsh, scolding woman · **insuperable** (35): impossible to overcome · **aversion** (35): strong dislike · **assiduity** (35): constant hard effort · **dale** (35): valley · **pestilent** (35): annoying, troublesome · **patrimonial** (35): inherited from his father · **urchin** (35): ragged little kid · **galli-gaskins** (36): baggy pants · **rubicund** (37): red-faced · **junto** (37): small political club · **adherents** (37): followers · **approbation** (38): approval · **virago** (38): domineering woman · **jerkin** (39): close-fitting jacket · **alacrity** (40): cheerful eagerness · **smote** (41): struck · **flagons** (41): large liquor jugs · **roysterers** (42): rowdy partiers · **connubial** (44): about marriage · **akimbo** (46): hands on hips, elbows out
+
+**Packet vocab:** **historiography**: how history is written · **Classicism / Neoclassicism**: order, balance, rules (Greek/Roman ideals) · **Enlightenment / Rationalism**: reason over emotion and tradition · **Transcendental**: spiritual truth through intuition · **exaltation**: raising up, praising · **predilection**: strong liking · **occult**: supernatural · **satanic**: devilish
 
 ## Practice Questions
 1. **What did Rip sleep through?** The American Revolution (20 years).
