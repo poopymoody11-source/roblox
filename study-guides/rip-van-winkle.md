@@ -4,6 +4,40 @@
 **Summary:** Lazy, likable Rip escapes his nagging wife into the Catskills, drinks with the ghosts of Henry Hudson's crew, and sleeps **20 years**. He wakes to find his wife dead, his daughter grown, and King George replaced by George Washington. He slept through the Revolution.
 *(Handout has no line numbers, so quotes cite page numbers.)*
 
+## 🧠 Confusing Terms in Plain English
+**Story/history words**
+- **The Revolution:** the war (1775–1783) where the colonies broke away from England and became the USA.
+- **King George III:** the king of England who ruled the colonies before the Revolution.
+- **Tory:** someone who stayed loyal to the King. After the war, calling someone a Tory was like calling them a traitor.
+- **"Federal or Democrat?":** the two first political parties in the U.S. It's like asking "Republican or Democrat?" today. Rip has no idea what they mean.
+- **Henry (Hendrick) Hudson:** a real explorer who sailed up the Hudson River in 1609. In the story, his ghost and crew haunt the mountains.
+- **Ninepins:** old-school bowling.
+
+**Literature words**
+- **Frame narrative / preface:** a story wrapped inside another story. Here, the intro pretends a dead historian (Knickerbocker) wrote it, to make it seem "real."
+- **Persona / pseudonym:** a fake identity or fake name an author writes under.
+- **Static character:** doesn't change by the end. Rip is still lazy.
+- **Flat character:** has only one or two traits. Dame = just "nagging."
+- **Foil:** a character who is the opposite of another, which makes the other's traits stand out. Hardworking, strict Dame makes lazy, chill Rip look even lazier.
+- **Satire:** making fun of something to point out its flaws, like a comedy sketch mocking politicians.
+- **Irony:** when what happens is the opposite of what you'd expect. Rip never cared about politics, yet he gets accused of being a political spy.
+- **Ambiguity:** when something could mean more than one thing, so you can't be sure. Is Rip's story true, or did he make it up?
+- **Symbol:** an object that stands for a bigger idea. The repainted inn sign stands for "the government changed, but people didn't."
+- **Foreshadowing:** hints about what will happen later. "Fairy mountains" hints that something magical is coming.
+- **Imagery:** descriptions that let you picture, hear, or feel something.
+- **Personification:** giving human actions to non-human things. The mountains "lording it over" the land, like a king would.
+- **Metaphor:** comparing two things without "like" or "as." Calling marriage a "yoke" (the wooden bar that ties oxen together) means marriage felt like being trapped.
+- **Aphorism:** a short, clever saying that sounds like a life lesson.
+- **Tall tale:** a story so exaggerated it's obviously not true, told for fun.
+- **Pathos:** making the reader **feel** something (pity, sadness) to win them over. "Poor Rip!" makes you feel sorry for him.
+
+**Big-idea words**
+- **Romanticism:** an art and writing movement (about 1800–1870) that cared about **feelings, nature, imagination, folk tales, and the supernatural** more than logic and rules.
+- **Enlightenment / Rationalism:** the movement before Romanticism (1700s) that said **logic and reason** matter most. Romanticism rebelled against it.
+- **Folklore:** traditional stories passed down by regular people, like legends and ghost stories.
+- **Cultural artifact:** something that shows what a culture was like at a certain time, the way a fossil shows what an animal was like.
+- **American Dream:** the idea that anyone in America can have a better life if they have talent and work hard, no matter what family they were born into.
+
 ---
 
 ## Characters

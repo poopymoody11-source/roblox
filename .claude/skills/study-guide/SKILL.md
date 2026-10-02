@@ -37,7 +37,7 @@ Save to `study-guides/<kebab-case-title>.md`, then summarize in chat (don't past
 - Bullets over tables, except one devices table (max ~8 rows). 1 line per character, 1 quote per mood point, 3–4 themes, 4 practice questions.
 - Annotations: one bullet per page/section, only the meaningful notes, ✔ if correct.
 - Skip optional extras (packet question answers, long vocab tables) unless asked.
-- Plain, clear language for a high-school student.
+- Plain, clear language for a high-school student. **Always include a "🧠 Confusing Terms in Plain English" section near the top** explaining every literary term, historical reference, and big-idea word used in the guide in simple everyday words with a quick example from the text. The user wants jargon explained, not assumed.
 - Always give line numbers when the handout has them.
 - Don't invent quotes. Only quote text visible in the images or text you are certain of; mark paraphrases as paraphrases.
 - If a page is missing or blurry, say which lines are missing at the top of the guide.
