@@ -41,14 +41,59 @@
 ---
 
 ## Characters
-- **Rip:** kind to everyone, but has "an insuperable aversion to all kinds of profitable labor" (p. 35). **Static**: just as idle at the end, but now nobody cares.
-- **Dame Van Winkle:** nagging wife ("termagant"). **Flat**, and a **foil** to Rip. Stands for strict rule, like England. Dies in a rage.
-- **Wolf:** Rip's dog and "fellow-sufferer in persecution."
-- **Nicholas Vedder:** innkeeper and village patriarch; dead by the time Rip returns.
-- **Hudson's ghost crew:** silent Dutchmen playing ninepins (the thunder); the source of the magic liquor.
-- **Judith:** Rip's grown daughter, who takes him in. **Rip Jr.** is just as lazy as his father.
-- **Man in the cocked hat:** loud new politician who calls Rip "A tory! a spy!" (p. 46). Satire.
-- **Diedrich Knickerbocker:** fake narrator from the Preface (Irving's hoax persona).
+
+### ⭐ Rip Van Winkle (protagonist)
+**Who he is:** a friendly villager from a once-brave Dutch family (his ancestors fought at Fort Christina). Everyone loves him, except his wife.
+- **Nice to everyone else:** kids follow him around, dogs never bark at him, and he'll help any neighbor. "He would never refuse to assist a neighbor even in the roughest toil" (p. 35).
+- **Lazy at home:** "The great error in Rip's composition was an insuperable aversion to all kinds of profitable labor" (p. 35). In plain words, he can't stand doing work that pays. He'd "rather starve on a penny than work for a pound" (p. 36). His farm falls apart, and his kids are "as ragged and wild as if they belonged to nobody" (p. 35).
+- **Avoids conflict:** when his wife yells, he just "shrugged his shoulders, shook his head, cast up his eyes, but said nothing" (p. 36), then escapes to the inn or the woods.
+- **Loyal to the King, without thinking about it:** "I am a poor, quiet man, a native of the place, and a loyal subject of the King, God bless him!" (p. 46). He isn't political. He just never noticed the world changed.
+- **Loses his identity:** "I'm not myself — I'm somebody else — that's me yonder" (p. 47). Without his old life, he doesn't know who he is.
+- **Ends up happy:** "arrived at that happy age when a man can be idle with impunity" (p. 50). Now that he's old, laziness is *allowed*. He becomes the village's "chronicler of the old times."
+
+**Characterization:** mostly **indirect** (we learn about him from his actions), plus some **direct** ("a simple, good-natured man"). He's **round** (both lovable *and* irresponsible) and **static**: 20 years pass, and he's still exactly the same.
+**What he represents:** the "old," easygoing colonial way of life, and maybe Irving himself (see the Reflect section).
+**Exam angle:** is Rip a hero or a failure? Irving makes us *like* a man who fails at everything adults are "supposed" to do. That's a challenge to the work-hard American Dream.
+
+### ⭐ Dame Van Winkle (Rip's wife)
+**Who she is:** the "termagant" (scolding) wife who nags Rip nonstop.
+- **Constant nagging:** "Morning, noon, and night, her tongue was incessantly going" (p. 36).
+- **Sharp-tongued:** "a tart temper never mellows with age, and a sharp tongue is the only edged tool that grows keener with constant use" (p. 37).
+- **Feared by everyone:** she even breaks up the men's club at the inn. Rip dreads "the terrors of Dame Van Winkle" (p. 39), and she's called a "virago" (p. 38), meaning a bossy, loud woman.
+- **Dies in a rage:** "she broke a blood-vessel in a fit of passion at a New England peddler" (p. 48). Even her death is a joke about her temper.
+
+**Characterization:** **flat** (just "nagging") and **stereotyped**. We only see her through Rip's side, so she never gets to explain herself. She's a **foil** to Rip: she's all work and duty, he's all fun and laziness.
+**The twist to know:** she's actually *right*. The farm is falling apart and the kids are ragged. Irving uses **pathos** ("Poor Rip!") to make us side with Rip anyway.
+**What she represents:** strict rule and responsibility. Rip calls her rule "petticoat government" and "despotism" (p. 50), the same words used about King George. So **Dame = England**, and her death = Rip's own "revolution."
+**Exam angle:** Class Q1 asks if Irving favors men over women. He clearly does: Dame is a cartoon villain, and Rip and Wolf are the victims.
+
+### ⭐ Wolf (Rip's dog)
+**Who he is:** Rip's only friend at home, "as much henpecked as his master" (p. 36).
+- **Scared of Dame too:** "The moment Wolf entered the house his crest fell, his tail drooped" (p. 36).
+- **Rip's buddy:** "Poor Wolf... thy mistress leads thee a dog's life of it; but never mind, my lad, whilst I live thou shalt never want a friend to stand by thee!" (p. 38).
+- **When Rip returns:** a half-starved dog that looks like Wolf snarls at him: "My very dog... has forgotten me!" (p. 44). That shows how completely Rip has lost his old life.
+
+**Characterization:** **personified** (treated like a person) and **flat**. He's a "fellow-sufferer," so he **mirrors Rip**.
+**Why he matters:** he doubles the sympathy. If even the *dog* is scared of Dame, she must be awful. That's a **pathos** trick.
+
+### ⭐ The Stranger & Hendrick Hudson's Crew (the ghosts)
+**Who they are:** the ghosts of explorer Henry Hudson and his ship's crew from the *Half-moon*, who come back to the Catskills every 20 years.
+- **The stranger:** a "short, square-built old fellow, with thick bushy hair, and a grizzled beard," dressed in "the antique Dutch fashion" (p. 39). He silently gets Rip to help carry a keg.
+- **The crew:** play ninepins (bowling) in total silence with "the gravest faces." It's "the most melancholy party of pleasure he had ever witnessed" (p. 41). Their bowling balls make the "thunder."
+- **They cause the sleep:** Rip sneaks drinks of their liquor and falls asleep for 20 years.
+
+**What they represent:** the **old Dutch past** and the **supernatural**, a key Romantic trait. They're frozen in time, like Rip will be.
+**Exam angle:** they explain the folk legend, and old Peter Vanderdonk confirms it (p. 49). That makes the story feel like real **folklore**, which is exactly what Romanticism loved.
+
+### Minor characters (know these briefly)
+- **Nicholas Vedder:** the innkeeper and "patriarch" who ruled the inn club with his pipe smoke. He's dead when Rip returns, so the old leadership is gone.
+- **Derrick Van Bummel:** the schoolmaster who read old newspapers aloud. He became a general and a congressman, showing that the new America rewards ambition.
+- **Brom Dutcher:** Rip's friend who went to war and died. Shows the Revolution's real cost.
+- **Man in the cocked hat:** a loud new politician who calls Rip "A tory! a tory! a spy!" (p. 46). **Satire** of self-important politics.
+- **Judith Gardenier:** Rip's grown daughter. She recognizes him and takes him in, giving the story its happy ending.
+- **Rip Jr.:** "a precise counterpart of himself... apparently as lazy" (p. 47). Laziness runs in the family.
+- **Peter Vanderdonk:** the oldest villager, a local historian who confirms the Hudson legend.
+- **Diedrich Knickerbocker:** the fake narrator in the Preface, Irving's made-up historian.
 
 ## Plot
 1. **Preface:** the story was "found among the papers of the late Diedrich Knickerbocker." It's a frame that makes it look like real history.
