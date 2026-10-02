@@ -11,8 +11,9 @@ Make **one guide per text**. If the user is still sending pages ("wait", "more c
 1. Read `references/essential-question.md` (course EQ, unit EQs, core texts).
 2. Read `references/unit-plan.md`: exam scope, reading order, the teacher's analysis methods, and **the teacher's own discussion questions and vocab list for each text**. Match the guide to these.
 3. Read `references/literary-terms.md` — pick devices from THIS list (the class's own terms and definitions).
-4. Check `study-guides/` for guides already made, so you can draw connections between texts.
-5. Read every page image closely, including handwriting in margins, underlines, circles, boxes, and arrows.
+4. Read `references/class-notes.md`: the user's own notebook notes and teacher feedback. Weave their ideas in, fix mistakes gently, and follow the teacher feedback (e.g., quote full imagery phrases).
+5. Check `study-guides/` for guides already made, so you can draw connections between texts.
+6. Read every page image closely, including handwriting in margins, underlines, circles, boxes, and arrows.
 
 ## Guide format
 Save to `study-guides/<kebab-case-title>.md`, then summarize in chat (don't paste the whole guide unless asked). Use these sections, in this order:
