@@ -104,7 +104,11 @@ James Truslow Adams' Dream is a better life for anyone, **"regardless of the cir
 - **What is the Eve of St. Agnes?** January 20th, when girls who follow the rituals dream of their future husbands (53–63). St. Agnes was a young martyr and the patron saint of virgins.
 - **What's the story, and Keats' message?** Porphyro sneaks in, wakes Madeline, and they escape (see the plot section). **Message:** love is worth risking everything, but dreams are more perfect than reality, and youth and love are brief, surrounded by age and death.
 - **How do the devices help tell the story?** Cold imagery makes the warm love scenes stand out. Allusions (Merlin, "La belle dame") make it feel like an old legend. The Beadsman frame reminds us that everyone dies.
-- **Connection to "The Haunted Palace" / Ethelred (in "Usher"):** like those, it's a **story inside a story** with a medieval, supernatural setting and a building that holds danger. *(This will become clearer after you read "Usher.")*
+- **Connection to "Usher" / "The Haunted Palace" / Ethelred:**
+  - **Your idea: the "fall" of the house.** In "Usher," the last Ushers (Roderick and Madeline) die and the house literally collapses. Here, the castle doesn't fall physically, but its **future** walks out the door. Madeline (the Baron's daughter) runs off with the enemy's son, leaving behind only drunk guests, a Baron who "dreamt of many a woe" (414), a dead nurse (418), and a dead Beadsman (420). The family line is symbolically "dead."
+  - **Fun detail:** both heroines are named **Madeline**, and both are tied to a house's end.
+  - **Also similar:** a medieval, supernatural, Gothic setting; a story within a story (the St. Agnes legend / "The Haunted Palace" and "The Mad Tryst"); and a cold, tomb-like house ("silent as a tomb," 126).
+  - **How to word it:** the poem never says Madeline is the *last* heir, so phrase it as an interpretation: "Madeline's escape **can be read as** the symbolic fall of the Baron's house." 
 
 ## Practice Questions
 1. **What does Madeline need to do on St. Agnes' Eve?** Skip dinner, lie on her back, and not look behind her, so she'll dream of her future husband.
@@ -115,4 +119,5 @@ James Truslow Adams' Dream is a better life for anyone, **"regardless of the cir
 ## Connections
 - **"Rip Van Winkle":** both are about **sleep and dreams**, and both are from **1819**. Rip wakes to a changed world. Madeline wakes to a "changed" Porphyro. Both blur dream and reality, and both have a legend explaining the magic (Hudson's ghosts / St. Agnes).
 - **Romanticism packet:** medieval setting, legend, emotion, and the supernatural all match the "characteristic attitudes" you bracketed as "Key points."
+- **"The Fall of the House of Usher":** both houses "fall" at the end, Usher literally and the Baron's house symbolically, when its daughter leaves with the enemy (your idea, explained under Class Questions).
 - **"The Custom-House" (Unit 2):** both are framed by **old men** (the Beadsman / the old Inspector and General) who represent age and decay.
