@@ -497,12 +497,13 @@ local function watchClone(clone)
 	-- hard: 12 rings, fast, tight timing, one mistake allowed
 	-- (nerfed: fewer notes, more time between them, a wider window, a longer lead, one more miss allowed)
 	local QTE_COUNT, QTE_GAP, QTE_WINDOW, QTE_GRACE, QTE_LEAD = 8, 0.72, 0.26, 0.3, 1.0
-	-- a ring can stay up this much longer if a lag spike brought it in late
-	-- (phones); keep in step with LAG_GRACE in CrueltyFightClient
-	local LAG_GRACE = 0.5
-	-- phones get each circle up this much longer (TOUCH_EXTRA in CrueltyFightClient);
-	-- answers are accepted that late for everyone, the client keeps keys strict
-	local TOUCH_EXTRA = 1.6
+	-- The rings are timed on each player's own device (CrueltyFightClient): the
+	-- shared server clock is only an estimate on the client, and on phones it
+	-- was far enough off that every ring was "late" the instant it appeared.
+	-- So the server just collects the answers (the client sends 0 for a miss)
+	-- and waits for everyone to finish, up to EXTRA_WAIT past the planned end.
+	local TOUCH_EXTRA = 1.6 -- phones keep each ring up this much longer
+	local EXTRA_WAIT = 4
 	local MAX_MISSES = 2
 	local qteState = nil
 	local qteConn = qteRemote.OnServerEvent:Connect(function(player, index, symbol)
@@ -510,12 +511,7 @@ local function watchClone(clone)
 		local st = qteState.players[player.UserId]
 		if not st or type(index) ~= "number" or index % 1 ~= 0 or index < 1 or index > QTE_COUNT then return end
 		if st.answered[index] ~= nil then return end
-		local now = workspace:GetServerTimeNow()
-		local hitAt = qteState.start + (index - 1) * QTE_GAP
-		-- the client judges the timing (a key pressed too early sends 0); taps on
-		-- the circle count from the moment it shows up. Late side allows for
-		-- ping and lag spikes.
-		local ok = symbol == st.seq[index] and now >= hitAt - QTE_LEAD - 0.3 and now <= hitAt + QTE_WINDOW + QTE_GRACE + math.max(LAG_GRACE, TOUCH_EXTRA)
+		local ok = symbol == st.seq[index]
 		st.answered[index] = ok
 		if ok then st.hits += 1 else st.misses += 1 end
 		fx:FireClient(player, "QTEResult", index, ok)
@@ -549,7 +545,7 @@ local function watchClone(clone)
 
 		local INTRO = 6.5
 		local start = workspace:GetServerTimeNow() + INTRO
-		local resolveAt = start + (QTE_COUNT - 1) * QTE_GAP + QTE_WINDOW + QTE_GRACE + math.max(LAG_GRACE, TOUCH_EXTRA) + 0.15
+		local resolveAt = start + (QTE_COUNT - 1) * QTE_GAP + QTE_WINDOW + QTE_GRACE + TOUCH_EXTRA + 0.15
 		qteState = { start = start, players = {} }
 		local ids = {}
 		for _, player in ipairs(participants) do
@@ -569,7 +565,7 @@ local function watchClone(clone)
 			table.insert(ids, player.UserId)
 			local spotList = {}
 			for i, v in ipairs(spots) do spotList[i] = { v.X, v.Y } end
-			fx:FireClient(player, "FinalQTE", { seq = seq, spots = spotList, start = start, gap = QTE_GAP, window = QTE_WINDOW, lead = QTE_LEAD, count = QTE_COUNT, maxMisses = MAX_MISSES })
+			fx:FireClient(player, "FinalQTE", { seq = seq, spots = spotList, start = start, gap = QTE_GAP, window = QTE_WINDOW, lead = QTE_LEAD, count = QTE_COUNT, maxMisses = MAX_MISSES, delay = INTRO })
 		end
 		broadcast("FinalAttack", LINES.Final, { start = start, resolveAt = resolveAt, count = QTE_COUNT, gap = QTE_GAP, participants = ids })
 
@@ -577,7 +573,21 @@ local function watchClone(clone)
 		local base = root.CFrame
 		local flat = CFrame.new(base.Position) * (base - base.Position)
 		local riseT = 0
-		while workspace:GetServerTimeNow() < resolveAt and clone.Parent do
+		-- everyone still in it has answered every ring (or left / died)
+		local function allAnswered()
+			for _, player in ipairs(participants) do
+				local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+				local st = qteState.players[player.UserId]
+				if player.Parent and hum and hum.Health > 0 and st then
+					for i = 1, QTE_COUNT do
+						if st.answered[i] == nil then return false end
+					end
+				end
+			end
+			return true
+		end
+		while clone.Parent and workspace:GetServerTimeNow() < resolveAt + EXTRA_WAIT
+			and (workspace:GetServerTimeNow() < start or not allAnswered()) do
 			riseT += task.wait()
 			local a = math.min(riseT / 3, 1)
 			local shakeAmt = (riseT > 1.5) and 0.25 or 0

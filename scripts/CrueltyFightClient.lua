@@ -1068,12 +1068,16 @@ local NOTE_COLOUR = { Color3.fromRGB(255, 70, 90), Color3.fromRGB(255, 170, 40),
 local SFX_APPEAR = "rbxassetid://9048764475"
 local SFX_HIT = "rbxasset://sounds/swordslash.wav"
 local SFX_MISS = "rbxasset://sounds/collide.wav"
+-- The rings are timed on YOUR device's own clock (os.clock), from the moment
+-- the server's message arrives. They used to be timed against the shared
+-- server clock, and on phones that estimate can be off by a second or more -
+-- every ring was already "late" when it appeared and vanished as a miss.
+-- The server just collects the answers (a miss is sent as 0).
 local MIN_SHOW = 0.9   -- shortest time a ring stays up (lag spikes)
-local LAG_GRACE = 0.5  -- how far past its hit time that can stretch (matches the server)
 -- PHONES: finding and tapping 8 circles at random spots in ~1.4s each was
 -- next to impossible, so on touch screens each circle stays up this much
 -- longer after its hit time (its ring shrinks over the whole time as a
--- countdown). Must not be more than TOUCH_EXTRA in CrueltyFightService.
+-- countdown).
 local TOUCH_EXTRA = 1.6
 
 local function inputMode()
@@ -1202,7 +1206,7 @@ end
 local function tryHit(note, sym, tapped)
 	local run = qte
 	if not run or note.done then return end
-	local now = workspace:GetServerTimeNow()
+	local now = os.clock()
 	local dtHit = now - note.hitAt
 	local ok
 	if tapped then
@@ -1242,10 +1246,16 @@ local function makeNote(run, i)
 	-- every ring gets at least MIN_SHOW seconds on screen, even if a lag spike
 	-- (phones, during all the effects) brought it in late
 	local hitAt = run.start + (i - 1) * run.gap
-	local appearAt = workspace:GetServerTimeNow()
-	local expireAt = math.clamp(appearAt + MIN_SHOW, hitAt + run.window + 0.12, hitAt + run.window + 0.12 + LAG_GRACE)
+	local appearAt = os.clock()
+	-- each ring's time is counted from when it actually showed up, so a lag
+	-- spike can't make it vanish the moment it appears
 	local touch = touchMode()
-	if touch then expireAt = math.max(expireAt, hitAt + run.window + 0.12 + TOUCH_EXTRA) end
+	local expireAt
+	if touch then
+		expireAt = math.max(hitAt + run.window + 0.12 + TOUCH_EXTRA, appearAt + run.lead + TOUCH_EXTRA)
+	else
+		expireAt = math.max(hitAt + run.window + 0.12, appearAt + MIN_SHOW)
+	end
 	local note = { i = i, sym = sym, colour = colour, hitAt = hitAt, expireAt = expireAt, appearAt = appearAt, touch = touch, frame = frame, ring = ring, body = body, stroke = stroke, label = label, number = number, rim = frame:FindFirstChild("Rim") }
 	body.Activated:Connect(function() tryHit(note, sym, true) end)
 	applyGlyph(note)
@@ -1282,6 +1292,13 @@ end
 local function stopQTE()
 	local run = qte
 	qte = nil
+	if run then
+		local left = 0
+		for _, note in ipairs(run.notes) do if not note.done then left += 1 end end
+		if left > 0 or run.spawned < run.count then
+			warn(("[QTE] stopped with %d rings still up, %d not shown yet"):format(left, run.count - run.spawned), debug.traceback())
+		end
+	end
 	ContextActionService:UnbindAction("CrueltyQTE")
 	if run then
 		for _, note in ipairs(run.notes) do if note.frame.Parent then note.frame:Destroy() end end
@@ -1292,7 +1309,9 @@ end
 local function startQTE(info)
 	if type(info) ~= "table" or type(info.seq) ~= "table" then return end
 	stopQTE()
-	local run = { seq = info.seq, spots = info.spots or {}, start = info.start, gap = info.gap or 0.62, window = info.window or 0.3, lead = info.lead or 1, count = info.count or #info.seq, maxMisses = info.maxMisses or 2, answered = {}, notes = {}, misses = 0, combo = 0, spawned = 0 }
+	-- when the first ring closes, on this device's clock
+	local delay = tonumber(info.delay) or math.max(0, (info.start or 0) - workspace:GetServerTimeNow())
+	local run = { seq = info.seq, spots = info.spots or {}, start = os.clock() + delay, gap = info.gap or 0.62, window = info.window or 0.3, lead = info.lead or 1, count = info.count or #info.seq, maxMisses = info.maxMisses or 2, answered = {}, notes = {}, misses = 0, combo = 0, spawned = 0 }
 	for i = 1, run.count do
 		if not run.spots[i] then run.spots[i] = { 0.3 + math.random() * 0.4, 0.3 + math.random() * 0.3 } end
 	end
@@ -1342,7 +1361,7 @@ local function startQTE(info)
 
 	task.spawn(function()
 		while qte == run do
-			local now = workspace:GetServerTimeNow()
+			local now = os.clock()
 			qteLayer.Visible = now >= run.start - run.lead - 0.4
 			-- bring rings in on time
 			while run.spawned < run.count and now >= run.start + run.spawned * run.gap - run.lead do
@@ -1365,6 +1384,7 @@ local function startQTE(info)
 					st.Color = (not note.touch and math.abs(note.hitAt - now) <= run.window) and WHITE or note.colour
 					-- late: counts as a miss
 					if now > note.expireAt then
+						warn(("[QTE] ring %d timed out: up %.2fs, touch=%s"):format(note.i, now - note.appearAt, tostring(note.touch)))
 						if qteRemote then qteRemote:FireServer(note.i, 0) end
 						judge(note, false)
 					end
@@ -1632,7 +1652,8 @@ local function finalAttack(lines, info)
 	end
 
 	-- SHOT 3 (the rings): low behind your shoulder, the sphere coming down on you
-	while owner == camOwner and state.alive and workspace:GetServerTimeNow() < resolveAt + 0.2 do
+	while owner == camOwner and state.alive and workspace:GetServerTimeNow() < resolveAt + 6
+		and (workspace:GetServerTimeNow() < resolveAt + 0.2 or qte ~= nil) do
 		local dt = RunService.RenderStepped:Wait()
 		local r = myRoot()
 		local p = state.orbPos()
