@@ -178,81 +178,6 @@ local function bind(screen)
 		end
 	end
 
-	-- PHONES: the PP counter in the bottom-left sat under the movement joystick.
-	-- Lift it to just above the stick; if that would run into the quest panel,
-	-- slide it right of the stick instead (staying at the bottom).
-	local moneyTarget
-	for _, t in ipairs(targets) do
-		if t.gui and t.gui.Name == "Money" then moneyTarget = t end
-	end
-	local stickCache, stickCacheFor
-	local function stickRect()
-		local touchGui = pg:FindFirstChild("TouchGui")
-		if not (touchGui and touchGui.Enabled) then return nil end
-		local key = tostring(screen.AbsoluteSize)
-		-- measured once per screen shape: the dynamic stick follows the thumb
-		-- while it's in use, and the counter shouldn't chase it around
-		if stickCache and stickCacheFor == key then return stickCache end
-		local minX, minY, maxX, maxY = math.huge, math.huge, -math.huge, -math.huge
-		local classic = touchGui:FindFirstChild("ThumbstickFrame", true)
-		local dynamic = touchGui:FindFirstChild("DynamicThumbstickFrame", true)
-		if classic and classic.Visible and classic.AbsoluteSize.X > 0 then
-			local p, s = screenRect(classic)
-			minX, minY, maxX, maxY = p.X, p.Y, p.X + s.X, p.Y + s.Y
-		elseif dynamic and dynamic.Visible then
-			-- the frame is a big invisible touch zone; the stick is its images
-			for _, d in ipairs(dynamic:GetDescendants()) do
-				if d:IsA("ImageLabel") and d.Visible and d.AbsoluteSize.X > 0 then
-					local p, s = screenRect(d)
-					minX, minY = math.min(minX, p.X), math.min(minY, p.Y)
-					maxX, maxY = math.max(maxX, p.X + s.X), math.max(maxY, p.Y + s.Y)
-				end
-			end
-		end
-		if minX == math.huge then
-			-- no stick to measure yet: assume one the size of the jump button area,
-			-- mirrored into the bottom-left corner
-			local jump = touchGui:FindFirstChild("JumpButton", true)
-			if not (jump and jump.Visible and jump.AbsoluteSize.X > 0) then return nil end
-			local jp, js = screenRect(jump)
-			local sp, ss = screen.AbsolutePosition, screen.AbsoluteSize
-			minX, maxX = sp.X, sp.X + js.X * 2.6
-			minY, maxY = jp.Y - js.Y * 0.4, sp.Y + ss.Y
-		else
-			stickCache = { minX, minY, maxX, maxY }
-			stickCacheFor = key
-		end
-		return { minX, minY, maxX, maxY }
-	end
-	local function avoidStick(margin)
-		local t = moneyTarget
-		if not (t and t.pinned and t.gui.Parent) then return end
-		t.gui.Position = t.pinned -- start from the edge-pinned spot each time
-		if not UIS.TouchEnabled then return end
-		local stick = stickRect()
-		if not stick then return end
-		local sx1, sy1, sx2, sy2 = stick[1], stick[2], stick[3], stick[4]
-		local mx1, my1, mx2, my2 = bounds(t.gui)
-		if mx2 <= sx1 or mx1 >= sx2 or my2 <= sy1 or my1 >= sy2 then return end -- already clear
-		-- lowest thing on the left above it: the quest panel / its button
-		local ceiling = screen.AbsolutePosition.Y + margin
-		local quest = master:FindFirstChild("QuestUI")
-		if quest then
-			for _, c in ipairs(quest:GetChildren()) do
-				if c:IsA("GuiObject") and c.AbsoluteSize.Y > 0 then
-					local p, s = screenRect(c)
-					if p.X < sx2 then ceiling = math.max(ceiling, p.Y + s.Y + margin) end
-				end
-			end
-		end
-		local dy = (sy1 - margin) - my2
-		if my1 + dy >= ceiling then
-			t.gui.Position = t.pinned + UDim2.fromOffset(0, math.round(dy))
-		else
-			t.gui.Position = t.pinned + UDim2.fromOffset(math.round(sx2 + margin - mx1), 0)
-		end
-	end
-
 	-- Snap each group so its outermost edge sits MARGIN from the real screen
 	-- edge -- the same small gap on every device, whatever its shape.
 	-- onlyRight: re-place just the right-edge column (the once-a-second phone
@@ -311,11 +236,9 @@ local function bind(screen)
 					dy = (screenPos.Y + screenSize.Y - margin) - maxY
 				end
 				g.Position = t.base + UDim2.fromOffset(math.round(dx), math.round(dy))
-				t.pinned = g.Position
 			end
 		end
 		avoidJump(targets, margin)
-		avoidStick(margin)
 	end
 
 	screen:GetPropertyChangedSignal("AbsoluteSize"):Connect(apply)
