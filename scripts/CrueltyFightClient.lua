@@ -1208,8 +1208,11 @@ local function tryHit(note, sym, tapped)
 	if tapped then
 		ok = sym == note.sym and now <= note.expireAt
 	else
-		if dtHit < -0.6 then return end -- way too early: ignore the press
-		ok = sym == note.sym and dtHit >= -run.window and now <= note.expireAt
+		-- before the ring is nearly closed: ignore the press. W A S D are also
+		-- the walking keys, so anyone still walking when the rings appeared
+		-- lost every ring the instant it showed up.
+		if dtHit < -run.window then return end
+		ok = sym == note.sym and now <= note.expireAt
 	end
 	-- (a miss here is a miss on the server too)
 	if qteRemote then qteRemote:FireServer(note.i, ok and sym or 0) end
