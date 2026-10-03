@@ -500,6 +500,9 @@ local function watchClone(clone)
 	-- a ring can stay up this much longer if a lag spike brought it in late
 	-- (phones); keep in step with LAG_GRACE in CrueltyFightClient
 	local LAG_GRACE = 0.5
+	-- phones get each circle up this much longer (TOUCH_EXTRA in CrueltyFightClient);
+	-- answers are accepted that late for everyone, the client keeps keys strict
+	local TOUCH_EXTRA = 1.6
 	local MAX_MISSES = 2
 	local qteState = nil
 	local qteConn = qteRemote.OnServerEvent:Connect(function(player, index, symbol)
@@ -512,7 +515,7 @@ local function watchClone(clone)
 		-- the client judges the timing (a key pressed too early sends 0); taps on
 		-- the circle count from the moment it shows up. Late side allows for
 		-- ping and lag spikes.
-		local ok = symbol == st.seq[index] and now >= hitAt - QTE_LEAD - 0.3 and now <= hitAt + QTE_WINDOW + QTE_GRACE + LAG_GRACE
+		local ok = symbol == st.seq[index] and now >= hitAt - QTE_LEAD - 0.3 and now <= hitAt + QTE_WINDOW + QTE_GRACE + math.max(LAG_GRACE, TOUCH_EXTRA)
 		st.answered[index] = ok
 		if ok then st.hits += 1 else st.misses += 1 end
 		fx:FireClient(player, "QTEResult", index, ok)
@@ -546,7 +549,7 @@ local function watchClone(clone)
 
 		local INTRO = 6.5
 		local start = workspace:GetServerTimeNow() + INTRO
-		local resolveAt = start + (QTE_COUNT - 1) * QTE_GAP + QTE_WINDOW + QTE_GRACE + LAG_GRACE + 0.15
+		local resolveAt = start + (QTE_COUNT - 1) * QTE_GAP + QTE_WINDOW + QTE_GRACE + math.max(LAG_GRACE, TOUCH_EXTRA) + 0.15
 		qteState = { start = start, players = {} }
 		local ids = {}
 		for _, player in ipairs(participants) do

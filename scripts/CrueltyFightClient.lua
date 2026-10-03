@@ -1070,12 +1070,20 @@ local SFX_HIT = "rbxasset://sounds/swordslash.wav"
 local SFX_MISS = "rbxasset://sounds/collide.wav"
 local MIN_SHOW = 0.9   -- shortest time a ring stays up (lag spikes)
 local LAG_GRACE = 0.5  -- how far past its hit time that can stretch (matches the server)
+-- PHONES: finding and tapping 8 circles at random spots in ~1.4s each was
+-- next to impossible, so on touch screens each circle stays up this much
+-- longer after its hit time (its ring shrinks over the whole time as a
+-- countdown). Must not be more than TOUCH_EXTRA in CrueltyFightService.
+local TOUCH_EXTRA = 1.6
 
 local function inputMode()
 	local last = UserInputService:GetLastInputType()
 	if last == Enum.UserInputType.Touch then return "touch" end
 	if last.Name:find("Gamepad") then return "pad" end
 	return "keys"
+end
+local function touchMode()
+	return inputMode() == "touch" or (UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled)
 end
 local function labelFor(sym)
 	local mode = inputMode()
@@ -1231,8 +1239,11 @@ local function makeNote(run, i)
 	-- every ring gets at least MIN_SHOW seconds on screen, even if a lag spike
 	-- (phones, during all the effects) brought it in late
 	local hitAt = run.start + (i - 1) * run.gap
-	local expireAt = math.clamp(workspace:GetServerTimeNow() + MIN_SHOW, hitAt + run.window + 0.12, hitAt + run.window + 0.12 + LAG_GRACE)
-	local note = { i = i, sym = sym, colour = colour, hitAt = hitAt, expireAt = expireAt, frame = frame, ring = ring, body = body, stroke = stroke, label = label, number = number, rim = frame:FindFirstChild("Rim") }
+	local appearAt = workspace:GetServerTimeNow()
+	local expireAt = math.clamp(appearAt + MIN_SHOW, hitAt + run.window + 0.12, hitAt + run.window + 0.12 + LAG_GRACE)
+	local touch = touchMode()
+	if touch then expireAt = math.max(expireAt, hitAt + run.window + 0.12 + TOUCH_EXTRA) end
+	local note = { i = i, sym = sym, colour = colour, hitAt = hitAt, expireAt = expireAt, appearAt = appearAt, touch = touch, frame = frame, ring = ring, body = body, stroke = stroke, label = label, number = number, rim = frame:FindFirstChild("Rim") }
 	body.Activated:Connect(function() tryHit(note, sym, true) end)
 	applyGlyph(note)
 	if note.glyph then tween(note.glyph, 0.2, { ImageTransparency = 0 }) end
@@ -1295,7 +1306,7 @@ local function startQTE(info)
 	ContextActionService:BindActionAtPriority("CrueltyQTE", qteAction, false, 3000, table.unpack(keys))
 	local function refreshHint()
 		local mode = inputMode()
-		hintLabel.Text = (mode == "touch") and "TAP EACH CIRCLE BEFORE ITS RING CLOSES IN" or (mode == "pad" and "PRESS THE BUTTON AS THE RING CLOSES IN" or "PRESS ITS KEY - W A S D - AS THE RING CLOSES IN")
+		hintLabel.Text = (mode == "touch") and "TAP EVERY CIRCLE BEFORE ITS RING CLOSES!" or (mode == "pad" and "PRESS THE BUTTON AS THE RING CLOSES IN" or "PRESS ITS KEY - W A S D - AS THE RING CLOSES IN")
 	end
 	refreshHint()
 	-- picked up a controller / switched to keyboard mid-QTE: relabel everything
@@ -1306,6 +1317,24 @@ local function startQTE(info)
 		for _, note in ipairs(run.notes) do
 			if not note.done then applyGlyph(note) end
 		end
+	end)
+
+	-- backup for taps on phones: any touch on (or right next to) a circle hits
+	-- it, even if something else on screen swallowed the button press
+	local touchConn
+	touchConn = UserInputService.InputBegan:Connect(function(input)
+		if qte ~= run then touchConn:Disconnect() return end
+		if input.UserInputType ~= Enum.UserInputType.Touch then return end
+		local pos = Vector2.new(input.Position.X, input.Position.Y)
+		local best, bestD
+		for _, note in ipairs(run.notes) do
+			if not note.done and note.body.Parent then
+				local c = note.body.AbsolutePosition + note.body.AbsoluteSize / 2
+				local d = (c - pos).Magnitude
+				if d <= note.body.AbsoluteSize.X * 0.75 and (not bestD or d < bestD) then best, bestD = note, d end
+			end
+		end
+		if best then tryHit(best, best.sym, true) end
 	end)
 
 	task.spawn(function()
@@ -1319,12 +1348,18 @@ local function startQTE(info)
 			end
 			for _, note in ipairs(run.notes) do
 				if not note.done then
-					local k = math.clamp(1 - (note.hitAt - now) / run.lead, 0, 1)
+					local k
+					if note.touch then
+						-- phones: the ring closes over the circle's whole time on screen
+						k = math.clamp((now - note.appearAt) / math.max(note.expireAt - note.appearAt, 0.1), 0, 1)
+					else
+						k = math.clamp(1 - (note.hitAt - now) / run.lead, 0, 1)
+					end
 					local size = 104 + (1 - k) * 250
 					note.ring.Size = UDim2.fromOffset(size, size)
 					local st = note.ring:FindFirstChildOfClass("UIStroke")
 					st.Thickness = 4 + k * 4
-					st.Color = (math.abs(note.hitAt - now) <= run.window) and WHITE or note.colour
+					st.Color = (not note.touch and math.abs(note.hitAt - now) <= run.window) and WHITE or note.colour
 					-- late: counts as a miss
 					if now > note.expireAt then
 						if qteRemote then qteRemote:FireServer(note.i, 0) end
