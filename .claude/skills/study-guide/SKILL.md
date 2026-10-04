@@ -30,7 +30,17 @@ Save to `study-guides/<kebab-case-title>.md`, then summarize in chat (don't past
 10. **Your annotations** — list the user's own markings: underlined/boxed vocab (with definitions in context), margin notes (transcribe as best you can, then confirm or correct the interpretation), and circled passages and why they matter. Say "[unreadable]" rather than guessing.
 11. **Vocabulary** — always include every word on the teacher's vocab list for this text (unit-plan.md), with the context-fitting meaning, plus other hard words or proper nouns.
 11b. **Class questions** — if unit-plan.md lists the teacher's questions for this text, answer each briefly (2–3 sentences with page-cited evidence). These are the most likely exam material.
-12. **Likely test questions** — 4–6 questions (mix of recall and analysis, including at least one Pivotal Question: "In what ways / To what extent / How... and why is this significant?"), with short answer keys.
+12. **Practice test (teacher's exam format)**: write questions in the exact formats the teacher listed, about 1–2 of each, multiple-choice style with an answer key:
+   - "Which of the following literary devices are present in [quote, line #]?"
+   - "The word ___ in line # means ___ in this context."
+   - "Definition: ___. Which word from the text matches?"
+   - "The quote '___' is said to/by which character?"
+   - "The quotes '___' are about ___." (who or what is being described)
+   - Chronology: put these events in order.
+   - Plot recall.
+   - Reading comprehension of a short passage.
+   - Plus one Pivotal Question ("In what ways / To what extent / How... and why is this significant?").
+12b. **Stories within the story** — when a text embeds another work (a poem, legend, or inner tale), add a deeper-analysis section: summarize it stanza by stanza or part by part, explain what each part mirrors in the main story, and why the author included it. If the user drew a picture of it, describe and interpret the drawing.
 13. **Connections to other texts** — compare with guides already in `study-guides/`.
 
 ## Style
