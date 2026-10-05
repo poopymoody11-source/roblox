@@ -72,14 +72,106 @@ Every Unit 1 question from the Life Plan, answered briefly with evidence. Page n
 
 ---
 
-## GrAmSS Introduction + Emerson: connect each definition to every Unit 1 text
-*(I don't have the Intro or Emerson handout pages, so this uses Materialist vs. Idealist from your notes and the Romanticism packet. Send those pages for a fuller answer.)*
+## "Young Goodman Brown" (Hawthorne, 1835)
+**Quick summary:** Goodman Brown leaves his new wife Faith (pink ribbons) for one night in the forest. He meets a traveler who looks like his grandfather and carries a snake-like staff (the devil), then sees Goody Cloyse, the minister, and Deacon Gookin all heading to a witch meeting. At the meeting, the whole "good" town is there, and so is Faith. He cries "look up to heaven, and resist the wicked one" and wakes alone in the forest. For the rest of his life he's "a stern, a sad, a darkly meditative, a distrustful, if not a desperate man," and "they carved no hopeful verse upon his tombstone, for his dying hour was gloom" (68).
 
-| Text | Materialist or Idealist? | Romantic / Gothic / Realist traits |
-|---|---|---|
-| "Rip Van Winkle" | Materialist: Rip is shaped by his surroundings and politics; Irving's own hardships | Romantic: magical nature, folklore, supernatural |
-| Irving / Romanticism packet | Defines the movement: emotion, imagination, nature, the individual | Romanticism; Gothic as its extreme |
-| "Eve of St. Agnes" | Idealist: dreams, desire, the spiritual vs. the physical | Romantic: medieval past, legend, emotion |
-| "Fall of the House of Usher" | Idealist: horror lives in the mind; the house = the mind | Gothic Romanticism |
-| "Baker's Bluejay Yarn" | Idealist (your note: jays ≈ gold rush) told in a Realist style | Realism / Regionalism: dialect, humor |
-| "Young Goodman Brown" | Idealist: "mind is the only place man can be perfect"; good people are bad inside | Dark Romanticism, allegory (Faith double entendre) |
+**Key points to know:**
+- **Faith double entendre:** Faith is his wife *and* his religious faith. "Faith kept me back a while" (55). "My Faith is gone!... There is no good on earth; and sin is but a name. Come, devil! for to thee is this world given" (62).
+- **Pink ribbons:** a symbol of Faith's innocence. A ribbon falls from the sky when he loses hope.
+- **The forest** = sin, evil, the unknown. **Salem village** = the Puritans' outward goodness.
+- **Allegory:** Goodman ("good man") Brown = every person tempted by evil.
+- **The devil's message:** "Evil is the nature of mankind. Evil must be your only happiness" (66).
+- **Was it a dream?** "Had Goodman Brown fallen asleep in the forest and only dreamed a wild dream of a witch-meeting? Be it so if you will" (68). Hawthorne leaves it **ambiguous**. Your note: "maybe [a] dream, we don't know" ✔. Either way, it ruins him.
+- **History:** set in Puritan Salem around the 1692 witch trials (Martha Carrier was a real accused witch). Hawthorne's ancestor John Hathorne was a witch-trial judge. Brown's grandfather "lashed the Quaker woman," and his father set fire to an Indian village in King Philip's War (56). Your note ✔: the Puritans claimed to be good while doing terrible things.
+- **Your notes:** "He doubts everything... realizes everyone is EVIL" ✔ and "Message: evil (Christians?)" ✔. Hawthorne critiques Puritan hypocrisy.
+- **American Dream:** the Puritan "city on a hill" ideal of a perfect, holy community is exposed as a mask. Brown's distrust destroys his happiness.
+
+---
+
+## Emerson: "The Transcendentalist" excerpt
+**Summary (bullets):**
+- The **materialist** starts from the outside world: society, government, property, numbers, luxury. A person is just a "product" of their surroundings.
+- The **idealist** starts from his own mind (consciousness). He thinks the physical world is just an "appearance."
+- "Mind is the only reality." Nature, history, and literature are "subjective," meaning they depend on how you see them.
+- The idealist only respects government, church, charity, labor, and property as **symbols** of deeper truths, not for themselves.
+- "His thought—that is the Universe." Everything flows outward from an "Unknown Centre" inside the self.
+
+**Reflect: In what ways does this excerpt reflect themes from the Great American Short Stories unit?**
+> Emerson's idea that "Mind is the only reality" and that the outside world is only "an appearance" runs through the Unit 1 stories. In "Young Goodman Brown," what matters is not whether the witch meeting really happened but what Brown believes he saw: his mind reshapes the whole village into evil, and it ruins his life. In "The Fall of the House of Usher," the house mirrors Roderick's collapsing mind, and "The Haunted Palace" literally turns his head into a building. Even "Rip Van Winkle" shows the materialist side: the outside world of "Society, Government" changes completely while Rip's inner self stays the same. Together these stories show the Romantic and Transcendentalist belief that the inner self shapes reality more than the outside world does.
+
+---
+
+## GrAmSS Introduction (Wallace and Mary Stegner)
+**Big ideas to know:**
+- The short story is the literary form "that most expresses us as a people" (10–11). "It is in our short stories that we most clearly see ourselves, because together they give us a thousand eyes, a thousand points of view" (28).
+- **Selection criteria:** each story's own excellence plus how well it represents the history of the American short story.
+- **Specific gravity** (Canby's term): "moral or intellectual weight." The editors left out stories that were only skillful without it.
+- **Irving:** "the orderly tale of linked incidents chronologically treated." "Rip Van Winkle" is "one of the most graceful, humorous" examples and has never been matched.
+- **Poe:** invented "the concentrated tale of effect, its single, preconceived impression." Gothic, "draped in Gothic black." Poe said his terror was "not of Germany but of the soul." "Usher" is "Poe at his best"; the house can be read as "the true habitation of Poe's own tormented" soul.
+- **Hawthorne:** "moral earnestness and his symbolic depth"; he "exposed or probed situations." Usher and "Young Goodman Brown" are both "built on a journey and a return... from light into darkness and back into light, or light of a sort" (14). In YGB, "the dark wood" is "the darkness of the soul, the forest of sin and evil," and Brown comes to believe "virtue is a mask and all men are guilty." Brown represents "the cheerless, life-hating coldness of Puritanism" and "every man's descent into his own unconscious 'heart of darkness.'" Compared to Poe, YGB is "as granite to pine": heavier and more real, since "the Puritan darkness... is much closer to human reality than the Gothic."
+- **Local color** (after the Civil War, Bret Harte): stories about a specific region's people, speech, and "picturesque" places.
+- **Beast fable / humor:** Twain's "Bluejay Yarn" belongs to the old animal-fable tradition: a humorous story with human lessons, in the frontier style of humor.
+
+**Connect each definition to every Unit 1 text:**
+| Text | Type (per the Intro) | Materialist or idealist (Emerson) | Movement |
+|---|---|---|---|
+| "Rip Van Winkle" | Linked incidents told in order; humorous | Materialist: society and government change around Rip | Romanticism (folklore, supernatural) |
+| Irving / Romanticism packet | Background on Irving and the movement | Romantic focus on emotion and imagination | Romanticism / Gothic |
+| "Eve of St. Agnes" | Narrative poem; legend | Idealist: dreams vs. reality | English Romanticism |
+| "Usher" | Tale of single effect | Idealist: horror lives in the mind | Gothic Romanticism |
+| "Bluejay Yarn" | Beast fable, frontier humor, local color | Idealist idea (jays ≈ gold rush) in Realist style | Realism / Regionalism |
+| "Young Goodman Brown" | Probed situation; journey and return; moral weight | Idealist: his mind turns the world evil | Dark Romanticism, allegory |
+
+---
+
+## Top 50 Vocab Words (all Unit 1 texts)
+1. **allegory**: story where characters and events stand for bigger ideas (YGB)
+2. **ambiguity**: having more than one possible meaning (dream or real? YGB)
+3. **double entendre**: word with two meanings at once (Faith)
+4. **foil**: character who contrasts with another (Dame vs. Rip)
+5. **frame narrative**: story inside a story (Knickerbocker, Baker)
+6. **Romanticism**: movement valuing emotion, imagination, nature, the supernatural
+7. **Gothic**: dark, horror-filled Romanticism (Usher)
+8. **Transcendentalism**: truth through intuition and spirit; self-reliance (Emerson)
+9. **materialist**: starts from the outside world and society (Emerson)
+10. **idealist**: starts from the mind; "Mind is the only reality" (Emerson)
+11. **consciousness**: awareness, the mind (Emerson)
+12. **subjective**: depending on personal perception (Emerson)
+13. **chronocentrism**: thinking your own time is superior
+14. **specific gravity**: moral or intellectual weight (Intro)
+15. **local color**: writing about a region's people, speech, places (Intro)
+16. **Puritanism**: strict 1600s–1700s New England Protestant faith (YGB)
+17. **covenant**: binding agreement or promise (YGB, the devil's "covenant")
+18. **catechism**: religious lessons in question-and-answer form (Goody Cloyse)
+19. **communion**: church ritual / joining a group (the witch meeting)
+20. **blasphemy**: disrespect toward God (YGB)
+21. **anathema**: something cursed or hated (YGB)
+22. **impious**: disrespectful to God (St. Agnes, YGB)
+23. **pious**: deeply religious (Goody Cloyse, Madeline)
+24. **termagant**: harsh, scolding woman (Dame)
+25. **henpecked**: bossed around by one's wife (Rip, Wolf)
+26. **insuperable**: impossible to overcome (Rip)
+27. **aversion**: strong dislike (Rip)
+28. **virago**: loud, domineering woman (Dame)
+29. **Tory**: colonist loyal to the King (Rip)
+30. **despotism**: tyranny (Rip, "petticoat government")
+31. **beldame**: old woman (Angela)
+32. **stratagem**: sneaky plan (Porphyro)
+33. **penance**: self-punishment for sins (Beadsman)
+34. **eremite**: hermit (St. Agnes)
+35. **reprieve**: relief, pardon (St. Agnes)
+36. **tarn**: small dark lake (Usher)
+37. **fissure**: crack (Usher)
+38. **melancholy**: deep sadness (Usher)
+39. **insufferable**: unbearable (Usher)
+40. **malady**: illness (Usher)
+41. **cadaverousness**: corpse-like paleness (Roderick)
+42. **sentience**: being alive, able to feel (the house)
+43. **pallor**: paleness (Roderick)
+44. **emaciated**: extremely thin (Madeline)
+45. **vernacular**: everyday local speech (Bluejay)
+46. **yarn**: long exaggerated tale (Bluejay)
+47. **rudiments**: the most basic beginnings (Bluejay)
+48. **zenith**: highest point (Romanticism packet)
+49. **predilection**: strong liking (Romanticism packet)
+50. **occult**: hidden, supernatural (Romanticism packet)
