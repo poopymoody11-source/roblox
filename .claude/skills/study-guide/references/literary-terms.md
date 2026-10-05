@@ -137,3 +137,7 @@ Use these names and definitions when labeling devices.
 | Post-Modernism | 1945– |
 
 Always place each text in this timeline (e.g., Irving and Hawthorne = Romanticism; Hawthorne writes *about* the Puritan era).
+
+## Extra class terms (user request)
+- **Chronocentrism**: bias that one's own time period is superior or more important; judging the past only by present standards.
+- **Transcendentalism**: 1830s–1850s American movement (Emerson, Thoreau) out of Romanticism: truth through intuition and spirit, the divine in nature and every individual, self-reliance. Emerson's "Idealists."
