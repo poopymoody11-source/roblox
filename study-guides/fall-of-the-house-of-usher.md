@@ -67,6 +67,24 @@ The isolated Usher mansion beside a black tarn, in autumn, cut off from everyone
 - It's an "idealist" text in Emerson's sense, since it's all inside the mind. Many readers see the house as Roderick's **mind** falling apart.
 - It's set in no real place or time. Poe wanted the effect on the reader's emotions, not a lesson. Like Irving, he wrote to create an effect, not to preach.
 
+## The Time Gap: Boyhood Friends, Years Apart
+The narrator and Roderick were close as boys, but they haven't seen each other in years when the story starts.
+- "Roderick Usher, had been one of my boon companions in boyhood; but many years had elapsed since our last meeting" (p. 70)
+- "Although as boys we had been even intimate associates, yet I really knew little of my friend" (p. 71)
+- "Surely man had never before so terribly altered in so brief a period as had Roderick Usher!" (p. 74)
+- "It was with difficulty that I could bring myself to admit the identity of the wan being before me with the companion of my early boyhood" (p. 74)
+
+**How it affects the story:**
+1. **Shows how far Roderick has decayed.** The narrator remembers the boy, so the change shocks him. It's a before-and-after, like the house and "The Haunted Palace."
+2. **Explains why the narrator comes.** The old friendship is the only reason he answers the desperate letter. He's Roderick's "only personal friend" (p. 70), which shows how isolated Roderick is.
+3. **Makes him an outsider.** He "really knew little" about Roderick, so he discovers the curse, the twin, and the house along with us. That builds suspense.
+4. **Makes him partly unreliable.** He judges the present through old memories and doesn't truly understand his friend.
+5. **Fits the theme of time and decay.** The family, the house, and the friendship have all worn down over the years.
+
+**Connection to Rip:** both use a time gap to show shocking change. Rip doesn't recognize his village after 20 years. The narrator barely recognizes his friend. Rip's version is funny; Usher's is horrifying.
+
+**Exam-ready sentence:** The years separating the narrator from his "boon companion" of boyhood let Poe show Roderick's decline through contrast. The narrator can barely "admit the identity of the wan being before me with the companion of my early boyhood" (p. 74), and Roderick's collapse mirrors the decay of the house itself.
+
 ## Key Literary Devices
 | Device | Example (page) | Effect |
 |---|---|---|
