@@ -42,3 +42,6 @@ The user's reading of Emerson's **Materialist vs. Idealist**:
 
 ## Notes-taking habit
 The user writes MOT (motivation / do-now) prompts with dates. Treat these as clues to what the teacher is emphasizing.
+
+## Saved for the future "Young Goodman Brown" guide (user request)
+- **Must include: the double entendre of "Faith."** Faith is Goodman Brown's wife's name AND his religious faith. Lines like "my Faith is gone!" and leaving Faith behind to go into the forest mean both at once: he leaves his wife and abandons his belief. Explain it in the devices table (as **double entendre / pun**, plus **allegory** and **symbol**) and in the Confusing Terms section ("double entendre = a word or phrase with two meanings at the same time"). Also note her **pink ribbons** as a symbol tied to Faith.
