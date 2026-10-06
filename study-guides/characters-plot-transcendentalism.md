@@ -2,6 +2,18 @@
 
 Page numbers are GrAmSS pages; "St. Agnes" uses line numbers.
 
+## All Unit 1 Texts and Authors
+| Text | Author | Year |
+|---|---|---|
+| "Rip Van Winkle" | Washington Irving | 1819 |
+| "The Eve of St. Agnes" | John Keats | 1819 |
+| "The Fall of the House of Usher" (incl. "The Haunted Palace") | Edgar Allan Poe | 1839 |
+| "Baker's Bluejay Yarn" | Mark Twain | 1880 |
+| "Young Goodman Brown" | Nathaniel Hawthorne | 1835 |
+| "The Transcendentalist" (excerpt) | Ralph Waldo Emerson | 1842 |
+| *Great American Short Stories* Introduction | Wallace and Mary Stegner | n/a |
+| "The Mad Trist" (story within "Usher") | "Sir Launcelot Canning" (fictional, invented by Poe) | n/a |
+
 ---
 
 # 1. Rip Van Winkle (Washington Irving, 1819)
